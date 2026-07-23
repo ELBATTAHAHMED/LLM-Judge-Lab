@@ -1,0 +1,53 @@
+# ==========================================
+# JudgeLab (.gitignore)
+# ==========================================
+
+# 1. Environment & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+
+# 2. Python Virtual Environments & Caches
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 3. Node.js & React / Vite Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 4. Databases & Logs
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# 5. OS & IDE System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
