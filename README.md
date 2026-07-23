@@ -99,7 +99,7 @@ The system operates via a decoupled multi-tier architecture:
 
 `ash
 # Clone repository
-git clone https://github.com/your-username/llm-judge-lab.git
+git clone https://github.com/ELBATTAHAHMED/LLM-Judge-Lab.git
 cd llm-judge-lab
 
 # Create and activate virtual environment
