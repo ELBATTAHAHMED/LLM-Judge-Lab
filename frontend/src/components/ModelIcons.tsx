@@ -108,3 +108,48 @@ export const ModelIcon: React.FC<ModelIconProps> = ({ modelName, className = "w-
 
   return <SingleModelIcon modelName={modelName} className={className} />;
 };
+
+export const FormattedMatchup: React.FC<{
+  modelNames: string;
+  className?: string;
+  iconClassName?: string;
+}> = ({
+  modelNames,
+  className = "text-xs font-medium font-sans text-neutral-900 dark:text-white",
+  iconClassName = "w-3.5 h-3.5",
+}) => {
+  if (!modelNames) return null;
+
+  const parts = modelNames.split(/\s+vs\s+/i);
+
+  if (parts.length > 1) {
+    const nameA = parts[0].trim();
+    const nameB = parts[1].trim();
+    const formattedA = formatModelName(nameA);
+    const formattedB = formatModelName(nameB);
+
+    return (
+      <span className={`inline-flex items-center gap-1.5 flex-wrap ${className}`}>
+        <span className="inline-flex items-center gap-1 shrink-0">
+          <SingleModelIcon modelName={nameA} className={iconClassName} />
+          <span>{formattedA}</span>
+        </span>
+        <span className="text-[11px] text-neutral-400 font-mono font-normal lowercase px-0.5">vs</span>
+        <span className="inline-flex items-center gap-1 shrink-0">
+          <SingleModelIcon modelName={nameB} className={iconClassName} />
+          <span>{formattedB}</span>
+        </span>
+      </span>
+    );
+  }
+
+  const name = modelNames.trim();
+  const formatted = formatModelName(name);
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+      <SingleModelIcon modelName={name} className={iconClassName} />
+      <span>{formatted}</span>
+    </span>
+  );
+};
