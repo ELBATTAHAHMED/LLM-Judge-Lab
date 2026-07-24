@@ -573,3 +573,60 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
         "verbatim_reasoning": reasoning_text,
         "model_name": f"{model_name} (Simulated Sandbox)",
     }
+
+
+# ── POST /api/evaluate/calibrated (Active Real-Time In-Flight Mitigation) ───
+
+class CalibratedEvaluationRequest(BaseModel):
+    question: str
+    answer_a: str
+    answer_b: str
+    model_name: str = "gpt-4o-mini"
+    temperature: float = 0.0
+
+
+@app.post("/api/evaluate/calibrated")
+async def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
+    """
+    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
+
+    Invokes the evaluator twice (Original and Swapped candidate presentation order),
+    maps verdicts back to candidate IDs, and resolves position-order bias in real-time.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise HTTPException(
+            status_code=500,
+            detail="OPENAI_API_KEY environment variable is not properly configured in .env."
+        )
+
+    try:
+        import openai
+        client = openai.OpenAI(api_key=api_key)
+        from judge_engine import call_calibrated_judge
+
+        res = call_calibrated_judge(
+            client=client,
+            question=req.question,
+            answer_a=req.answer_a,
+            answer_b=req.answer_b,
+            model_name=req.model_name,
+            temperature=req.temperature,
+        )
+
+        return {
+            "status": "success",
+            "original_order_winner": res.original_order_winner,
+            "swapped_order_winner": res.swapped_order_winner,
+            "final_calibrated_winner": res.final_calibrated_winner,
+            "position_bias_detected": res.position_bias_detected,
+            "detailed_reasoning": res.detailed_reasoning,
+            "total_input_tokens": res.total_input_tokens,
+            "total_output_tokens": res.total_output_tokens,
+            "model_name": res.model_name,
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Calibrated evaluation failed: {str(exc)}"
+        )

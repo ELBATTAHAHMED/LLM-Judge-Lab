@@ -58,6 +58,21 @@ class JudgeResult:
     output_tokens: int        # Completion token usage
 
 
+@dataclass(frozen=True)
+class CalibratedJudgeResult:
+    """Structured output from a real-time Dual A/B Swap calibrated evaluation."""
+    original_order_winner: str     # Candidate winner from Pass 1 ("A", "B", "TIE", "UNKNOWN")
+    swapped_order_winner: str      # Candidate winner from Pass 2 mapped back to original IDs
+    final_calibrated_winner: str   # Final debiased consensus winner ("A", "B", "TIE", "UNKNOWN")
+    position_bias_detected: bool   # True if Pass 1 and Pass 2 verdicts diverged
+    reasoning_original: str        # Raw text from Pass 1
+    reasoning_swapped: str         # Raw text from Pass 2
+    detailed_reasoning: str        # Combined auditable reasoning narrative
+    model_name: str                # Evaluator model identifier
+    total_input_tokens: int        # Aggregate prompt tokens used
+    total_output_tokens: int       # Aggregate completion tokens used
+
+
 # ── Prompt Template ───────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
@@ -363,6 +378,110 @@ def call_judge(
 
             # Non-retriable or max retries exhausted — bubble up
             raise
+
+
+# ── Active Calibrated API Caller (Dual A/B Swap) ──────────────────────────────
+
+def call_calibrated_judge(
+    client,
+    question: str,
+    answer_a: str,
+    answer_b: str,
+    model_name: str = "gpt-4o-mini",
+    temperature: float = 0.0,
+    max_retries: int = 5,
+    initial_backoff: float = 2.0,
+) -> CalibratedJudgeResult:
+    """
+    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
+
+    Invokes the evaluator twice:
+      1. Original Order: (Answer A, Answer B)
+      2. Swapped Order:  (Answer B, Answer A)
+
+    Maps the swapped verdict back to Candidate A/B IDs and compares:
+      - If both orders agree on the same candidate -> High confidence consensus.
+      - If the orders diverge (exposing position bias) -> Neutralizes bias by setting final verdict to TIE.
+    """
+    # Pass 1: Original Order (Answer A in Position A, Answer B in Position B)
+    res1 = call_judge(
+        client=client,
+        question=question,
+        answer_a=answer_a,
+        answer_b=answer_b,
+        model_name=model_name,
+        temperature=temperature,
+        max_retries=max_retries,
+        initial_backoff=initial_backoff,
+    )
+    cand_winner_1 = res1.verdict  # "A", "B", "TIE", "UNKNOWN"
+
+    # Pass 2: Swapped Order (Answer B in Position A, Answer A in Position B)
+    res2 = call_judge(
+        client=client,
+        question=question,
+        answer_a=answer_b,
+        answer_b=answer_a,
+        model_name=model_name,
+        temperature=temperature,
+        max_retries=max_retries,
+        initial_backoff=initial_backoff,
+    )
+    verdict2 = res2.verdict
+
+    # Map Pass 2 verdict back to original Candidate A/B IDs
+    # In Pass 2: Position A = Answer B, Position B = Answer A
+    if verdict2 == "A":
+        cand_winner_2 = "B"
+    elif verdict2 == "B":
+        cand_winner_2 = "A"
+    elif verdict2 == "TIE":
+        cand_winner_2 = "TIE"
+    else:
+        cand_winner_2 = "UNKNOWN"
+
+    # Consensus & Mitigation Logic
+    if cand_winner_1 == cand_winner_2:
+        position_bias_detected = False
+        final_calibrated_winner = cand_winner_1
+    else:
+        position_bias_detected = True
+        # Contradiction / Positional Distortion -> Trigger active in-flight mitigation
+        final_calibrated_winner = "TIE"
+
+    log.info(
+        "Dual A/B Swap Evaluation completed: Pass 1 Winner=%s | Pass 2 Mapped Winner=%s | Bias Detected=%s | Final Winner=%s",
+        cand_winner_1, cand_winner_2, position_bias_detected, final_calibrated_winner
+    )
+
+    detailed_reasoning = (
+        f"=== PASS 1 EVALUATION (Original Order: A vs B) ===\n"
+        f"Position A: Candidate A | Position B: Candidate B\n"
+        f"Raw Verdict: WINNER: {res1.verdict}\n"
+        f"Step-by-Step Reasoning:\n{res1.reasoning}\n\n"
+        f"=== PASS 2 EVALUATION (Swapped Order: B vs A) ===\n"
+        f"Position A: Candidate B | Position B: Candidate A\n"
+        f"Raw Verdict: WINNER: {res2.verdict} (Mapped Candidate ID: {cand_winner_2})\n"
+        f"Step-by-Step Reasoning:\n{res2.reasoning}\n\n"
+        f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
+        f"Position Order Bias Detected: {position_bias_detected}\n"
+        f"Pass 1 Choice: Candidate {cand_winner_1}\n"
+        f"Pass 2 Choice: Candidate {cand_winner_2}\n"
+        f"Final Calibrated Verdict: WINNER: {final_calibrated_winner}"
+    )
+
+    return CalibratedJudgeResult(
+        original_order_winner=cand_winner_1,
+        swapped_order_winner=cand_winner_2,
+        final_calibrated_winner=final_calibrated_winner,
+        position_bias_detected=position_bias_detected,
+        reasoning_original=res1.reasoning,
+        reasoning_swapped=res2.reasoning,
+        detailed_reasoning=detailed_reasoning,
+        model_name=model_name,
+        total_input_tokens=res1.input_tokens + res2.input_tokens,
+        total_output_tokens=res1.output_tokens + res2.output_tokens,
+    )
 
 
 # ── Ollama Local Model Caller ──────────────────────────────────────────────────

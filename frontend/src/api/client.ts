@@ -7,6 +7,8 @@ import type {
   QualitativeBucket,
   EvaluateRequest,
   EvaluateResponse,
+  CalibratedEvaluateRequest,
+  CalibratedEvaluateResponse,
 } from './types';
 
 // Axios instance targeting backend FastAPI dev server
@@ -51,6 +53,16 @@ export async function executeLiveEvaluation(
   payload: EvaluateRequest
 ): Promise<EvaluateResponse> {
   const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload);
+  return response.data;
+}
+
+/**
+ * Execute active real-time in-flight bias mitigated evaluation (Dual A/B Swap)
+ */
+export async function executeCalibratedEvaluation(
+  payload: CalibratedEvaluateRequest
+): Promise<CalibratedEvaluateResponse> {
+  const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload);
   return response.data;
 }
 

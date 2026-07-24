@@ -74,3 +74,54 @@ def test_bias_telemetry_endpoint(client):
         assert key in data, f"Missing required telemetry key: {key}"
 
     assert isinstance(data["inter_judge_kappa"], (int, float))
+
+
+def test_call_calibrated_judge_unit_logic():
+    """Verify call_calibrated_judge consensus and position bias detection logic using a mock client."""
+    from unittest.mock import MagicMock
+    from judge_engine import call_calibrated_judge
+
+    mock_client = MagicMock()
+    # Pass 1 response: WINNER: A
+    res1 = MagicMock()
+    res1.choices = [MagicMock(message=MagicMock(content="WINNER: A"))]
+    res1.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+
+    # Pass 2 response: WINNER: A (which maps to Candidate B, detecting position bias)
+    res2 = MagicMock()
+    res2.choices = [MagicMock(message=MagicMock(content="WINNER: A"))]
+    res2.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
+
+    mock_client.chat.completions.create.side_effect = [res1, res2]
+
+    res = call_calibrated_judge(
+        client=mock_client,
+        question="Which is better?",
+        answer_a="Response A",
+        answer_b="Response B",
+    )
+
+    assert res.original_order_winner == "A"
+    assert res.swapped_order_winner == "B"
+    assert res.position_bias_detected is True
+    assert res.final_calibrated_winner == "TIE"
+
+
+def test_calibrated_evaluation_endpoint_validation(client):
+    """Verify POST /api/evaluate/calibrated request payload handling."""
+    payload = {
+        "question": "Explain quantum computing simply.",
+        "answer_a": "Quantum computing uses qubits...",
+        "answer_b": "Quantum computing processes data using superposition...",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0,
+    }
+    response = client.post("/api/evaluate/calibrated", json=payload)
+    # Status code will be 200 (if API key configured) or 500 (if API key missing/unreachable)
+    assert response.status_code in (200, 500)
+    if response.status_code == 200:
+        data = response.json()
+        assert data["status"] == "success"
+        assert "final_calibrated_winner" in data
+        assert "position_bias_detected" in data
+

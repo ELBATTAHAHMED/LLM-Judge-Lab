@@ -62,3 +62,23 @@ export interface EvaluateResponse {
   verbatim_reasoning: string;
   model_name: string;
 }
+
+export interface CalibratedEvaluateRequest {
+  question: string;
+  answer_a: string;
+  answer_b: string;
+  model_name?: string;
+  temperature?: number;
+}
+
+export interface CalibratedEvaluateResponse {
+  status: string;
+  original_order_winner: string;
+  swapped_order_winner: string;
+  final_calibrated_winner: string;
+  position_bias_detected: boolean;
+  detailed_reasoning: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  model_name: string;
+}
