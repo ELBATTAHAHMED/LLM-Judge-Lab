@@ -559,7 +559,7 @@ class CalibratedEvaluationRequest(BaseModel):
 
 
 @app.post("/api/evaluate/calibrated")
-async def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
+def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.

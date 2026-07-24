@@ -358,6 +358,11 @@ def call_judge(
     """
     Call the OpenAI or local Ollama API and return a structured JudgeResult.
     """
+    if is_local_model(model_name):
+        # Cap retries and backoff for local Ollama models to prevent hanging wait cascades
+        max_retries = min(max_retries, 2)
+        initial_backoff = min(initial_backoff, 0.5)
+
     resolved_client, effective_model = get_evaluator_client(model_name, client)
     messages = build_judge_prompt(question, answer_a, answer_b)
     backoff = initial_backoff
@@ -426,30 +431,40 @@ def call_calibrated_judge(
     """
     resolved_client, effective_model = get_evaluator_client(model_name, client)
 
-    # Pass 1: Original Order (Answer A in Position A, Answer B in Position B)
-    res1 = call_judge(
-        client=resolved_client,
-        question=question,
-        answer_a=answer_a,
-        answer_b=answer_b,
-        model_name=effective_model,
-        temperature=temperature,
-        max_retries=max_retries,
-        initial_backoff=initial_backoff,
-    )
-    cand_winner_1 = res1.verdict  # "A", "B", "TIE", "UNKNOWN"
+    import concurrent.futures
 
-    # Pass 2: Swapped Order (Answer B in Position A, Answer A in Position B)
-    res2 = call_judge(
-        client=resolved_client,
-        question=question,
-        answer_a=answer_b,
-        answer_b=answer_a,
-        model_name=effective_model,
-        temperature=temperature,
-        max_retries=max_retries,
-        initial_backoff=initial_backoff,
-    )
+    def _eval_pass_1():
+        return call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_a,
+            answer_b=answer_b,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+        )
+
+    def _eval_pass_2():
+        return call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_b,
+            answer_b=answer_a,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+        )
+
+    # Dispatch Pass 1 and Pass 2 concurrently in parallel threads
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        f1 = executor.submit(_eval_pass_1)
+        f2 = executor.submit(_eval_pass_2)
+        res1 = f1.result()
+        res2 = f2.result()
+
+    cand_winner_1 = res1.verdict  # "A", "B", "TIE", "UNKNOWN"
     verdict2 = res2.verdict
 
     # Map Pass 2 verdict back to original Candidate A/B IDs
