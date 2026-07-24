@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { executeLiveEvaluation, executeCalibratedEvaluation } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
+import { ModelIcon, formatModelName } from '../components/ModelIcons';
 import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers } from 'lucide-react';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
@@ -112,15 +113,9 @@ export const LiveLabPage: React.FC = () => {
                   onChange={(e) => setModelName(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 cursor-pointer"
                 >
-                  <option value="gpt-4o-mini">GPT-4o-Mini (Cloud / OpenAI - Recommended)</option>
-                  <option value="gpt-4o">GPT-4o (Cloud / OpenAI)</option>
+                  <option value="gpt-4o-mini">GPT-4o-Mini (Cloud / OpenAI)</option>
                   <option value="llama3">Llama-3 8B (Local / Ollama)</option>
                 </select>
-                {modelName === 'llama3' && (
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-mono mt-1">
-                    Routes to local Ollama (localhost:11434). Automatically falls back to GPT-4o-Mini if Ollama is offline.
-                  </p>
-                )}
               </div>
 
               <div>
@@ -248,8 +243,9 @@ export const LiveLabPage: React.FC = () => {
                   <span>{evalMode === 'calibrated' ? 'Calibrated Telemetry Output' : 'Standard Evaluation Output'}</span>
                 </span>
                 {(calibratedResult || standardResult) && (
-                  <span className="text-[10px] font-mono text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded">
-                    {calibratedResult ? calibratedResult.model_name : standardResult?.model_name}
+                  <span className="text-[10px] font-mono text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded inline-flex items-center gap-1.5">
+                    <ModelIcon modelName={calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || '')} className="w-3.5 h-3.5 shrink-0" />
+                    <span>{formatModelName(calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || ''))}</span>
                   </span>
                 )}
               </div>

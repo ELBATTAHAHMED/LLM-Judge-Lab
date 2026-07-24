@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { LeaderboardItem } from '../api/types';
 import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Download, Award, Activity, Minus } from 'lucide-react';
+import { ModelIcon, formatModelName } from './ModelIcons';
 
 interface Props {
   data: LeaderboardItem[] | null;
@@ -298,8 +299,9 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
                       <td className="py-3 px-3 font-mono text-[13px] tabular-nums tracking-tight font-semibold text-neutral-700 dark:text-neutral-300">
                         #{idx + 1}
                       </td>
-                      <td className="py-3 px-3 font-sans font-medium text-neutral-900 dark:text-neutral-100">
-                        {item.model}
+                      <td className="py-3 px-3 font-sans font-medium text-neutral-900 dark:text-neutral-100 flex items-center space-x-2">
+                        <ModelIcon modelName={item.model} className="w-4 h-4 shrink-0" />
+                        <span>{formatModelName(item.model)}</span>
                       </td>
                       <td className="py-3 px-3 text-center text-neutral-600 dark:text-neutral-400 font-sans text-[11px]">
                         {provider}

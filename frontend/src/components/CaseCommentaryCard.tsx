@@ -1,5 +1,6 @@
 import React from 'react';
 import type { QualitativeBucket, QualitativeRecord } from '../api/types';
+import { formatModelName } from './ModelIcons';
 
 interface Props {
   bucket: QualitativeBucket;
@@ -64,7 +65,7 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
 
       <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-[11px] font-mono text-neutral-500">
         <span>Prompt #{record.prompt_id}</span>
-        <span>Models: {record.model_names}</span>
+        <span>Models: {formatModelName(record.model_names)}</span>
       </div>
     </div>
   );

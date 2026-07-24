@@ -3,6 +3,7 @@ import { useQualitativeBucket } from '../api/client';
 import type { QualitativeBucket, QualitativeRecord } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { CaseCommentaryCard } from '../components/CaseCommentaryCard';
+import { ModelIcon, formatModelName } from '../components/ModelIcons';
 import { RefreshCw, Download, Copy, Check } from 'lucide-react';
 
 export const QualitativeExplorerPage: React.FC = () => {
@@ -227,8 +228,9 @@ export const QualitativeExplorerPage: React.FC = () => {
                         </span>
                       </div>
 
-                      <p className="text-xs font-medium text-neutral-900 dark:text-white truncate font-sans">
-                        {record.model_names}
+                      <p className="text-xs font-medium text-neutral-900 dark:text-white truncate font-sans flex items-center gap-1.5">
+                        <ModelIcon modelName={record.model_names} className="w-3.5 h-3.5 shrink-0" />
+                        <span>{formatModelName(record.model_names)}</span>
                       </p>
 
                       <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500">
@@ -270,8 +272,9 @@ export const QualitativeExplorerPage: React.FC = () => {
                       {activeRecord.human_winner === activeRecord.ai_winner ? 'Human Match' : 'Human Mismatch'}
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-white font-sans mt-1">
-                    {activeRecord.model_names}
+                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-white font-sans mt-1 flex items-center gap-2">
+                    <ModelIcon modelName={activeRecord.model_names} className="w-4 h-4 shrink-0" />
+                    <span>{formatModelName(activeRecord.model_names)}</span>
                   </h3>
                 </div>
 
