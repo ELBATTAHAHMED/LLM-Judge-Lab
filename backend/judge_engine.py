@@ -33,13 +33,12 @@ The explicit reasoning is stored verbatim in JudgeDecision.reasoning so that
 every decision is fully auditable and reproducible for your thesis.
 """
 
-from __future__ import annotations
-
+import os
 import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Any
 
 log = logging.getLogger(__name__)
 
@@ -299,96 +298,105 @@ def call_judge_multiturn(
             raise
 
 
+# ── Client & Local Model Resolver ──────────────────────────────────────────────
+
+def is_local_model(model_name: str) -> bool:
+    """
+    Detect whether model_name indicates a local Ollama model instance.
+    """
+    if not model_name:
+        return False
+    m = model_name.lower().strip()
+    return any(k in m for k in ("llama", "ollama", "vicuna", "mistral-local", "local"))
+
+
+def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
+    """
+    Resolve and return an appropriate OpenAI-compatible client instance and target model name.
+
+    If model_name is a local model (Ollama):
+      - Configures OpenAI client with base_url="http://localhost:11434/v1", api_key="ollama".
+      - Sanitizes model identifier to "llama3" (or matching local tag).
+
+    If model_name is a cloud OpenAI model:
+      - Uses provided client or instantiates OpenAI(api_key=os.getenv("OPENAI_API_KEY")).
+    """
+    import openai
+
+    if is_local_model(model_name):
+        target_model = "llama3" if ("llama" in model_name.lower() or "ollama" in model_name.lower()) else model_name
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        local_client = openai.OpenAI(
+            base_url=base_url,
+            api_key="ollama",
+        )
+        return local_client, target_model
+
+    if client is not None:
+        return client, model_name
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise ValueError("OPENAI_API_KEY environment variable is not properly configured in .env.")
+
+    return openai.OpenAI(api_key=api_key), model_name
+
+
 # ── API Caller ────────────────────────────────────────────────────────────────
 
 def call_judge(
-    client,          # openai.OpenAI instance (passed in to avoid import coupling)
-    question: str,
-    answer_a: str,
-    answer_b: str,
-    model_name: str = "gpt-4o",
+    client=None,       # openai.OpenAI instance or None (auto-resolved if None)
+    question: str = "",
+    answer_a: str = "",
+    answer_b: str = "",
+    model_name: str = "gpt-4o-mini",
     temperature: float = 0.0,
     max_retries: int = 5,
     initial_backoff: float = 2.0,
 ) -> JudgeResult:
     """
-    Call the OpenAI API and return a structured JudgeResult.
-
-    Implements exponential back-off for rate-limit (429) and server-error
-    (5xx) responses.  All other exceptions are re-raised so the caller
-    (run_evaluation.py) can decide how to handle them per-item.
-
-    Parameters
-    ----------
-    client          : openai.OpenAI instance.
-    question        : Original prompt text.
-    answer_a        : Text of the answer shown in Position A.
-    answer_b        : Text of the answer shown in Position B.
-    model_name      : OpenAI model identifier.
-    temperature     : Sampling temperature (0 = deterministic for reproducibility).
-    max_retries     : Maximum number of retry attempts on retriable errors.
-    initial_backoff : Initial wait time in seconds before the first retry.
-
-    Returns
-    -------
-    JudgeResult with verdict, full reasoning, model name, and token usage.
-
-    Raises
-    ------
-    Exception : Any non-retriable API error or exhausted retries.
+    Call the OpenAI or local Ollama API and return a structured JudgeResult.
     """
+    resolved_client, effective_model = get_evaluator_client(model_name, client)
     messages = build_judge_prompt(question, answer_a, answer_b)
     backoff = initial_backoff
 
-    # Model routing: check if user selected a local Ollama model (e.g. llama3)
-    target_client = client
-    target_model = model_name
-
-    if model_name.lower().startswith(("llama", "ollama", "mistral", "vicuna")):
-        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-        try:
-            target_client = OpenAI(base_url=ollama_url, api_key="ollama")
-        except Exception as exc:
-            log.warning("Could not initialize Ollama client at %s: %s. Falling back to gpt-4o-mini.", ollama_url, exc)
-            target_client = client
-            target_model = "gpt-4o-mini"
-
     for attempt in range(1, max_retries + 1):
         try:
-            response = target_client.chat.completions.create(
-                model=target_model,
+            response = resolved_client.chat.completions.create(
+                model=effective_model,
                 messages=messages,
                 temperature=temperature,
             )
             raw_text: str = response.choices[0].message.content or ""
             verdict = parse_winner(raw_text)
 
+            input_toks = response.usage.prompt_tokens if response.usage else 0
+            output_toks = response.usage.completion_tokens if response.usage else 0
+
             return JudgeResult(
                 verdict=verdict,
                 reasoning=raw_text,
-                model_name=target_model,
-                input_tokens=getattr(response.usage, "prompt_tokens", 0) if hasattr(response, "usage") and response.usage else 0,
-                output_tokens=getattr(response.usage, "completion_tokens", 0) if hasattr(response, "usage") and response.usage else 0,
+                model_name=model_name,
+                input_tokens=input_toks,
+                output_tokens=output_toks,
             )
 
         except Exception as exc:
             exc_str = str(exc)
+            if is_local_model(model_name) and any(err in exc_str.lower() for err in ("connection", "connect", "11434", "refused", "unreachable")):
+                raise RuntimeError(
+                    "Local Ollama server is offline or unreachable at http://localhost:11434. "
+                    "Please run 'ollama serve' and ensure the model 'llama3' is pulled."
+                ) from exc
 
-            # If llama3 fails on OpenAI client (e.g., model_not_found), fallback to gpt-4o-mini
-            if "model_not_found" in exc_str and target_model != "gpt-4o-mini":
-                log.warning("Model '%s' not found on endpoint. Retrying with 'gpt-4o-mini'...", target_model)
-                target_client = client
-                target_model = "gpt-4o-mini"
-                continue
-
-            # Detect retriable errors by inspecting the exception type/message
             is_rate_limit   = "429" in exc_str or "rate_limit" in exc_str.lower()
             is_server_error = any(
                 code in exc_str for code in ("500", "502", "503", "504")
             )
 
             if (is_rate_limit or is_server_error) and attempt < max_retries:
-                wait = backoff * (2 ** (attempt - 1))   # exponential back-off
+                wait = backoff * (2 ** (attempt - 1))
                 log.warning(
                     "Retriable API error (attempt %d/%d): %s. Retrying in %.1fs …",
                     attempt, max_retries, exc_str[:120], wait,
@@ -396,17 +404,16 @@ def call_judge(
                 time.sleep(wait)
                 continue
 
-            # Non-retriable or max retries exhausted — bubble up
             raise
 
 
 # ── Active Calibrated API Caller (Dual A/B Swap) ──────────────────────────────
 
 def call_calibrated_judge(
-    client,
-    question: str,
-    answer_a: str,
-    answer_b: str,
+    client=None,
+    question: str = "",
+    answer_a: str = "",
+    answer_b: str = "",
     model_name: str = "gpt-4o-mini",
     temperature: float = 0.0,
     max_retries: int = 5,
@@ -414,22 +421,17 @@ def call_calibrated_judge(
 ) -> CalibratedJudgeResult:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
-
-    Invokes the evaluator twice:
-      1. Original Order: (Answer A, Answer B)
-      2. Swapped Order:  (Answer B, Answer A)
-
-    Maps the swapped verdict back to Candidate A/B IDs and compares:
-      - If both orders agree on the same candidate -> High confidence consensus.
-      - If the orders diverge (exposing position bias) -> Neutralizes bias by setting final verdict to TIE.
+    Supports both OpenAI Cloud and Local Ollama models natively.
     """
+    resolved_client, effective_model = get_evaluator_client(model_name, client)
+
     # Pass 1: Original Order (Answer A in Position A, Answer B in Position B)
     res1 = call_judge(
-        client=client,
+        client=resolved_client,
         question=question,
         answer_a=answer_a,
         answer_b=answer_b,
-        model_name=model_name,
+        model_name=effective_model,
         temperature=temperature,
         max_retries=max_retries,
         initial_backoff=initial_backoff,
@@ -438,11 +440,11 @@ def call_calibrated_judge(
 
     # Pass 2: Swapped Order (Answer B in Position A, Answer A in Position B)
     res2 = call_judge(
-        client=client,
+        client=resolved_client,
         question=question,
         answer_a=answer_b,
         answer_b=answer_a,
-        model_name=model_name,
+        model_name=effective_model,
         temperature=temperature,
         max_retries=max_retries,
         initial_backoff=initial_backoff,
@@ -450,7 +452,6 @@ def call_calibrated_judge(
     verdict2 = res2.verdict
 
     # Map Pass 2 verdict back to original Candidate A/B IDs
-    # In Pass 2: Position A = Answer B, Position B = Answer A
     if verdict2 == "A":
         cand_winner_2 = "B"
     elif verdict2 == "B":
@@ -466,7 +467,6 @@ def call_calibrated_judge(
         final_calibrated_winner = cand_winner_1
     else:
         position_bias_detected = True
-        # Contradiction / Positional Distortion -> Trigger active in-flight mitigation
         final_calibrated_winner = "TIE"
 
     log.info(
