@@ -329,6 +329,7 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
         local_client = openai.OpenAI(
             base_url=base_url,
             api_key="ollama",
+            timeout=240.0,  # 4 minutes timeout for local Ollama model inference
         )
         return local_client, target_model
 
@@ -339,7 +340,7 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
     if not api_key or api_key.startswith("your_"):
         raise ValueError("OPENAI_API_KEY environment variable is not properly configured in .env.")
 
-    return openai.OpenAI(api_key=api_key), model_name
+    return openai.OpenAI(api_key=api_key, timeout=120.0), model_name
 
 
 # ── API Caller ────────────────────────────────────────────────────────────────

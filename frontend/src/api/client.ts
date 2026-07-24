@@ -17,7 +17,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 180000, // 180,000ms (3 minutes) base timeout
 });
 
 /**
@@ -52,7 +52,10 @@ export async function getQualitativeBucket(
 export async function executeLiveEvaluation(
   payload: EvaluateRequest
 ): Promise<EvaluateResponse> {
-  const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload);
+  const m = (payload.model_name || '').toLowerCase();
+  const isLocal = m.includes('llama') || m.includes('ollama') || m.includes('local');
+  const timeoutMs = isLocal ? 180000 : 120000; // 3 mins for local single-pass, 2 mins for cloud
+  const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload, { timeout: timeoutMs });
   return response.data;
 }
 
@@ -62,7 +65,10 @@ export async function executeLiveEvaluation(
 export async function executeCalibratedEvaluation(
   payload: CalibratedEvaluateRequest
 ): Promise<CalibratedEvaluateResponse> {
-  const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload);
+  const m = (payload.model_name || '').toLowerCase();
+  const isLocal = m.includes('llama') || m.includes('ollama') || m.includes('local');
+  const timeoutMs = isLocal ? 240000 : 180000; // 4 mins for local Dual A/B Swap, 3 mins for cloud
+  const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, { timeout: timeoutMs });
   return response.data;
 }
 
