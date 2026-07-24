@@ -340,13 +340,25 @@ def call_judge(
     messages = build_judge_prompt(question, answer_a, answer_b)
     backoff = initial_backoff
 
+    # Model routing: check if user selected a local Ollama model (e.g. llama3)
+    target_client = client
+    target_model = model_name
+
+    if model_name.lower().startswith(("llama", "ollama", "mistral", "vicuna")):
+        ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        try:
+            target_client = OpenAI(base_url=ollama_url, api_key="ollama")
+        except Exception as exc:
+            log.warning("Could not initialize Ollama client at %s: %s. Falling back to gpt-4o-mini.", ollama_url, exc)
+            target_client = client
+            target_model = "gpt-4o-mini"
+
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.chat.completions.create(
-                model=model_name,
+            response = target_client.chat.completions.create(
+                model=target_model,
                 messages=messages,
                 temperature=temperature,
-                # max_tokens left unset — let the model reason at full length
             )
             raw_text: str = response.choices[0].message.content or ""
             verdict = parse_winner(raw_text)
@@ -354,14 +366,22 @@ def call_judge(
             return JudgeResult(
                 verdict=verdict,
                 reasoning=raw_text,
-                model_name=model_name,
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
+                model_name=target_model,
+                input_tokens=getattr(response.usage, "prompt_tokens", 0) if hasattr(response, "usage") and response.usage else 0,
+                output_tokens=getattr(response.usage, "completion_tokens", 0) if hasattr(response, "usage") and response.usage else 0,
             )
 
         except Exception as exc:
-            # Detect retriable errors by inspecting the exception type/message
             exc_str = str(exc)
+
+            # If llama3 fails on OpenAI client (e.g., model_not_found), fallback to gpt-4o-mini
+            if "model_not_found" in exc_str and target_model != "gpt-4o-mini":
+                log.warning("Model '%s' not found on endpoint. Retrying with 'gpt-4o-mini'...", target_model)
+                target_client = client
+                target_model = "gpt-4o-mini"
+                continue
+
+            # Detect retriable errors by inspecting the exception type/message
             is_rate_limit   = "429" in exc_str or "rate_limit" in exc_str.lower()
             is_server_error = any(
                 code in exc_str for code in ("500", "502", "503", "504")

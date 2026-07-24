@@ -112,9 +112,15 @@ export const LiveLabPage: React.FC = () => {
                   onChange={(e) => setModelName(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 cursor-pointer"
                 >
-                  <option value="gpt-4o-mini">GPT-4o-Mini (Cloud / OpenAI)</option>
+                  <option value="gpt-4o-mini">GPT-4o-Mini (Cloud / OpenAI - Recommended)</option>
+                  <option value="gpt-4o">GPT-4o (Cloud / OpenAI)</option>
                   <option value="llama3">Llama-3 8B (Local / Ollama)</option>
                 </select>
+                {modelName === 'llama3' && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-mono mt-1">
+                    Routes to local Ollama (localhost:11434). Automatically falls back to GPT-4o-Mini if Ollama is offline.
+                  </p>
+                )}
               </div>
 
               <div>
