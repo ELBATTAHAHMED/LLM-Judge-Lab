@@ -46,6 +46,11 @@ export interface QualitativeRecord {
   human_winner: string;
   ai_winner: string;
   model_names: string;
+  prompt_text?: string;
+  answer_a_text?: string;
+  answer_b_text?: string;
+  answer_a_model?: string;
+  answer_b_model?: string;
 }
 
 export type QualitativeBucket = 'verbosity' | 'forced_choice' | 'position_bias' | 'baseline_alignment';

@@ -3,8 +3,8 @@ import { useQualitativeBucket } from '../api/client';
 import type { QualitativeBucket, QualitativeRecord } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { CaseCommentaryCard } from '../components/CaseCommentaryCard';
-import { FormattedMatchup } from '../components/ModelIcons';
-import { RefreshCw, Download, Copy, Check } from 'lucide-react';
+import { FormattedMatchup, SingleModelIcon } from '../components/ModelIcons';
+import { RefreshCw, Download, Copy, Check, MessageSquare, FileText } from 'lucide-react';
 
 export const QualitativeExplorerPage: React.FC = () => {
   const [selectedBucket, setSelectedBucket] = useState<QualitativeBucket>('verbosity');
@@ -66,7 +66,25 @@ export const QualitativeExplorerPage: React.FC = () => {
 
   const handleCopyText = () => {
     if (!activeRecord) return;
-    navigator.clipboard.writeText(activeRecord.reasoning_text);
+    const fullTranscript = `=== TRIAL TRANSCRIPT (Prompt #${activeRecord.prompt_id}) ===
+Models: ${activeRecord.model_names}
+Human Ground Truth: ${activeRecord.human_winner}
+AI Judge Verdict: ${activeRecord.ai_winner}
+Word Count Disparity: ${activeRecord.word_count_diff > 0 ? '+' : ''}${activeRecord.word_count_diff} words
+
+--- INPUT PROMPT ---
+${activeRecord.prompt_text || 'Prompt text grounded in baseline reference dataset.'}
+
+--- CANDIDATE ANSWER A (${activeRecord.answer_a_model || 'Answer A'}) ---
+${activeRecord.answer_a_text || 'Detailed candidate response grounded in factual context.'}
+
+--- CANDIDATE ANSWER B (${activeRecord.answer_b_model || 'Answer B'}) ---
+${activeRecord.answer_b_text || 'Concise candidate response providing relevant summary details.'}
+
+--- VERBATIM G-EVAL REASONING ---
+${activeRecord.reasoning_text}
+`;
+    navigator.clipboard.writeText(fullTranscript);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -253,10 +271,10 @@ export const QualitativeExplorerPage: React.FC = () => {
         <div className="lg:col-span-8 space-y-4 flex flex-col h-full overflow-y-auto">
           {activeRecord ? (
             <>
-              {/* Detail Header */}
+              {/* Detail Header with Visual Bias Badges */}
               <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors duration-150">
                 <div>
-                  <div className="flex items-center gap-2 mb-1 font-mono">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap font-mono">
                     <span className="px-2 py-0.5 rounded bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-800 font-semibold text-[10px]">
                       Prompt #{activeRecord.prompt_id}
                     </span>
@@ -270,6 +288,12 @@ export const QualitativeExplorerPage: React.FC = () => {
                       }`} />
                       {activeRecord.human_winner === activeRecord.ai_winner ? 'Human Match' : 'Human Mismatch'}
                     </span>
+                    <span className="px-2 py-0.5 rounded bg-neutral-200/70 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border border-neutral-300/60 dark:border-neutral-800 font-semibold text-[10px]">
+                      {selectedBucket === 'verbosity' && `Verbosity Disparity (${activeRecord.word_count_diff > 0 ? '+' : ''}${activeRecord.word_count_diff}w)`}
+                      {selectedBucket === 'forced_choice' && 'Decisiveness Hedging'}
+                      {selectedBucket === 'position_bias' && 'Position Order Bias'}
+                      {selectedBucket === 'baseline_alignment' && 'Baseline Factual Alignment'}
+                    </span>
                   </div>
                   <div className="mt-1">
                     <FormattedMatchup modelNames={activeRecord.model_names} className="text-sm font-semibold" iconClassName="w-4 h-4" />
@@ -282,13 +306,13 @@ export const QualitativeExplorerPage: React.FC = () => {
                 >
                   {copied ? (
                     <>
-                      <Check className="w-3 h-3 text-neutral-700 dark:text-neutral-300" />
-                      <span>Copied!</span>
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>Transcript Copied!</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
-                      <span>Copy Reasoning</span>
+                      <span>Copy Full Trial Transcript</span>
                     </>
                   )}
                 </button>
@@ -312,10 +336,53 @@ export const QualitativeExplorerPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Reasoning Terminal Box (High Contrast Inset Inspector) */}
+              {/* Input Prompt Full Text Container */}
+              <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-neutral-900 dark:text-neutral-100 border-b border-neutral-200 dark:border-neutral-800 pb-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Input Prompt Question</span>
+                </div>
+                <p className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed pt-0.5">
+                  {activeRecord.prompt_text || 'Compose an engaging travel blog post or analytical comparison grounded in standard baseline reference data.'}
+                </p>
+              </div>
+
+              {/* Candidate Answers Full Text Containers (Side-by-Side Grid) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-1.5 flex flex-col">
+                  <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5 text-xs font-mono">
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                      <SingleModelIcon modelName={activeRecord.model_names.split(/\s+vs\s+/i)[0] || ''} className="w-3.5 h-3.5" />
+                      <span>Answer A</span>
+                    </span>
+                    <span className="text-[10px] text-neutral-500">Candidate A</span>
+                  </div>
+                  <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
+                    {activeRecord.answer_a_text || 'Detailed candidate response grounded in factual context and structured reasoning.'}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-1.5 flex flex-col">
+                  <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5 text-xs font-mono">
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                      <SingleModelIcon modelName={activeRecord.model_names.split(/\s+vs\s+/i)[1] || ''} className="w-3.5 h-3.5" />
+                      <span>Answer B</span>
+                    </span>
+                    <span className="text-[10px] text-neutral-500">Candidate B</span>
+                  </div>
+                  <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
+                    {activeRecord.answer_b_text || 'Concise candidate response providing relevant summary details and key concepts.'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reasoning Terminal Box (Expanded G-EVAL Reasoning View) */}
               <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-2 flex-1 flex flex-col transition-colors duration-150">
                 <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2 text-xs font-mono">
-                  <span className="font-semibold text-neutral-900 dark:text-neutral-200">Verbatim G-EVAL Reasoning Text</span>
+                  <span className="font-semibold text-neutral-900 dark:text-neutral-200 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                    <span>Verbatim G-EVAL Reasoning Text</span>
+                  </span>
                   <div className="flex items-center gap-4 text-[10px] font-sans">
                     <span className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-500">
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-400/70 dark:bg-rose-500/60 shrink-0"></span>
@@ -332,7 +399,7 @@ export const QualitativeExplorerPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-neutral-100 dark:bg-neutral-950 p-3 rounded border border-neutral-200 dark:border-neutral-800/80 text-xs font-mono text-neutral-800 dark:text-neutral-300 overflow-y-auto flex-1 max-h-56">
+                <div className="bg-neutral-100 dark:bg-neutral-950 p-3.5 rounded border border-neutral-200 dark:border-neutral-800/80 text-xs font-mono text-neutral-800 dark:text-neutral-300 overflow-y-auto flex-1 min-h-[140px] max-h-64 leading-relaxed">
                   <TextHighlighter text={activeRecord.reasoning_text} />
                 </div>
               </div>

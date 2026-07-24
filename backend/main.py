@@ -464,6 +464,37 @@ def get_qualitative_bucket(bucket: str) -> list[dict]:
     # Replace NaN values with empty strings so JSON serialization is clean
     df = df.fillna("")
 
+    # Enrich with full prompt and candidate answer texts from database
+    records = []
+    try:
+        from database import engine
+        from sqlalchemy import text as sa_text
+        with engine.connect() as conn:
+            for row in df.to_dict(orient="records"):
+                pid = row.get("prompt_id")
+                if pid is not None and str(pid).isdigit():
+                    try:
+                        pid_int = int(pid)
+                        p_res = conn.execute(sa_text("SELECT text FROM prompts WHERE id = :pid"), {"pid": pid_int}).fetchone()
+                        if p_res:
+                            row["prompt_text"] = p_res[0]
+
+                        a_res = conn.execute(sa_text("SELECT model_name, text FROM answers WHERE prompt_id = :pid ORDER BY id ASC LIMIT 2"), {"pid": pid_int}).fetchall()
+                        if len(a_res) >= 2:
+                            row["answer_a_model"] = a_res[0][0]
+                            row["answer_a_text"] = a_res[0][1]
+                            row["answer_b_model"] = a_res[1][0]
+                            row["answer_b_text"] = a_res[1][1]
+                        elif len(a_res) == 1:
+                            row["answer_a_model"] = a_res[0][0]
+                            row["answer_a_text"] = a_res[0][1]
+                    except Exception as e:
+                        print(f"Error enriching prompt #{pid}: {e}")
+                records.append(row)
+            return records
+    except Exception as exc:
+        print(f"Database lookup notice during qualitative enrichment: {exc}")
+
     return _df_to_records(df)
 
 
