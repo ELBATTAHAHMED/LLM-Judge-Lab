@@ -480,12 +480,20 @@ class EvaluateRequest(BaseModel):
 def evaluate_judge(req: EvaluateRequest) -> dict:
     """
     Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
-    Supports OpenAI API models (e.g. gpt-4o-mini) and local Ollama models (e.g. llama3).
+    Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
     """
     if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
         raise HTTPException(status_code=400, detail="Prompt, Answer A, and Answer B are required.")
 
     from judge_engine import call_judge, is_local_model
+
+    if not is_local_model(req.model_name):
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key or api_key.startswith("your_"):
+            raise HTTPException(
+                status_code=500,
+                detail="OPENAI_API_KEY environment variable is not properly configured in .env."
+            )
 
     try:
         result = call_judge(
@@ -503,40 +511,10 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
             "model_name": req.model_name if not is_local_model(req.model_name) else "Llama-3 (Local / Ollama)",
         }
     except Exception as exc:
-        exc_str = str(exc)
-        if is_local_model(req.model_name):
-            print(f"Local Ollama evaluation notice: {exc_str}. Using sandbox fallback.")
-            len_a = len(req.answer_a.split())
-            len_b = len(req.answer_b.split())
-            diff = len_a - len_b
-            verdict = "A" if diff >= 0 else "B"
-            return {
-                "winner": verdict,
-                "verbatim_reasoning": (
-                    "Factual Accuracy:\n"
-                    f"• Candidate A ({len_a} words) provides specific details grounded in standard reference knowledge.\n"
-                    f"• Candidate B ({len_b} words) provides concise relevant context.\n\n"
-                    "Notice: Local Ollama server (http://localhost:11434) is offline or unreachable. Displaying heuristic evaluation.\n\n"
-                    f"WINNER: {verdict}"
-                ),
-                "model_name": "Llama-3 8B (Local / Ollama Sandbox)",
-            }
-
-        # Cloud model fallback
-        len_a = len(req.answer_a.split())
-        len_b = len(req.answer_b.split())
-        diff = len_a - len_b
-        verdict = "A" if diff >= 0 else "B"
-        return {
-            "winner": verdict,
-            "verbatim_reasoning": (
-                "Factual Accuracy:\n"
-                "• Answer A provides specific details grounded in standard reference knowledge.\n"
-                "• Answer B mentions key concepts but lacks detailed elaboration.\n\n"
-                f"WINNER: {verdict}"
-            ),
-            "model_name": f"{req.model_name} (Simulated Sandbox)",
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Standard evaluation failed: {str(exc)}"
+        )
 
 
 # ── POST /api/evaluate/calibrated (Active Real-Time In-Flight Mitigation) ───
@@ -553,7 +531,7 @@ class CalibratedEvaluationRequest(BaseModel):
 async def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
-    Supports both OpenAI Cloud models and Local Ollama models seamlessly.
+    Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
     """
     from judge_engine import call_calibrated_judge, is_local_model
 
@@ -587,36 +565,7 @@ async def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any
             "model_name": res.model_name,
         }
     except Exception as exc:
-        exc_str = str(exc)
-        if is_local_model(req.model_name):
-            print(f"Local Ollama calibrated call notice: {exc_str}. Using offline fallback.")
-            len_a = len(req.answer_a.split())
-            len_b = len(req.answer_b.split())
-            diff = len_a - len_b
-            verdict = "A" if diff >= 0 else "B"
-            return {
-                "status": "success",
-                "original_order_winner": verdict,
-                "swapped_order_winner": verdict,
-                "final_calibrated_winner": verdict,
-                "position_bias_detected": False,
-                "detailed_reasoning": (
-                    "=== PASS 1 EVALUATION (Original Order: A vs B) ===\n"
-                    "Position A: Candidate A | Position B: Candidate B\n"
-                    f"Raw Verdict: WINNER: {verdict}\n\n"
-                    "=== PASS 2 EVALUATION (Swapped Order: B vs A) ===\n"
-                    "Position A: Candidate B | Position B: Candidate A\n"
-                    f"Raw Verdict: WINNER: {verdict}\n\n"
-                    "=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
-                    "Position Order Bias Detected: False\n"
-                    f"Final Calibrated Verdict: WINNER: {verdict}\n"
-                    "(Notice: Local Ollama server at http://localhost:11434 was unreachable; executed fallback calibration)."
-                ),
-                "total_input_tokens": 120,
-                "total_output_tokens": 80,
-                "model_name": f"{req.model_name} (Local / Offline Sandbox)",
-            }
         raise HTTPException(
             status_code=500,
-            detail=f"Calibrated evaluation failed: {exc_str}"
+            detail=f"Calibrated evaluation failed: {str(exc)}"
         )
