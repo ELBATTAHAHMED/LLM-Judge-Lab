@@ -66,28 +66,45 @@ export const formatModelName = (modelName: string): string => {
     .join(' vs ');
 };
 
-export const ModelIcon: React.FC<ModelIconProps> = ({ modelName, className = "w-4 h-4" }) => {
-  const m = (modelName || '').toLowerCase();
-
-  if (m.includes('gpt') || m.includes('openai')) {
-    return <OpenAIIcon className={`${className} text-neutral-900 dark:text-white transition-colors`} />;
-  }
+export const SingleModelIcon: React.FC<ModelIconProps> = ({ modelName, className = "w-4 h-4" }) => {
+  const m = (modelName || '').toLowerCase().trim();
 
   if (m.includes('claude') || m.includes('anthropic')) {
-    return <ClaudeIcon className={`${className} text-[#D97757] transition-colors`} />;
+    return <ClaudeIcon className={`${className} text-[#D97757] shrink-0 transition-colors`} />;
   }
 
   if (m.includes('vicuna')) {
-    return <VicunaIcon className={className} />;
+    return <VicunaIcon className={`${className} shrink-0`} />;
   }
 
   if (m.includes('alpaca')) {
-    return <AlpacaIcon className={className} />;
+    return <AlpacaIcon className={`${className} shrink-0`} />;
   }
 
   if (m.includes('llama') || m.includes('ollama') || m.includes('meta')) {
-    return <MetaLlamaIcon className={`${className} text-sky-500 dark:text-sky-400 transition-colors`} />;
+    return <MetaLlamaIcon className={`${className} text-sky-500 dark:text-sky-400 shrink-0 transition-colors`} />;
   }
 
-  return <Bot className={`${className} text-neutral-400`} />;
+  if (m.includes('gpt') || m.includes('openai')) {
+    return <OpenAIIcon className={`${className} text-neutral-900 dark:text-white shrink-0 transition-colors`} />;
+  }
+
+  return <Bot className={`${className} text-neutral-400 shrink-0`} />;
+};
+
+export const ModelIcon: React.FC<ModelIconProps> = ({ modelName, className = "w-4 h-4" }) => {
+  if (!modelName) return <Bot className={`${className} text-neutral-400 shrink-0`} />;
+
+  const parts = modelName.split(/\s+vs\s+/i);
+  if (parts.length > 1) {
+    return (
+      <span className="inline-flex items-center gap-1 shrink-0">
+        <SingleModelIcon modelName={parts[0]} className={className} />
+        <span className="text-[9px] text-neutral-400 font-mono">v</span>
+        <SingleModelIcon modelName={parts[1]} className={className} />
+      </span>
+    );
+  }
+
+  return <SingleModelIcon modelName={modelName} className={className} />;
 };

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { executeLiveEvaluation, executeCalibratedEvaluation } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
-import { ModelIcon, formatModelName } from '../components/ModelIcons';
-import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers } from 'lucide-react';
+import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
+import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check } from 'lucide-react';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
 
@@ -16,12 +16,18 @@ These attractions provide comprehensive cultural and historical experiences acro
 
 const DEFAULT_ANSWER_B = `Hawaii has nice beaches, Pearl Harbor, and the Polynesian Cultural Center. However, it lacks specific details about volcanic parks, making it slightly less informative.`;
 
+const EVALUATOR_MODELS = [
+  { value: 'gpt-4o-mini', label: 'GPT-4o-Mini (Cloud / OpenAI)', icon: 'gpt-4o-mini' },
+  { value: 'llama3', label: 'Llama-3 8B (Local / Ollama)', icon: 'llama3' },
+];
+
 export const LiveLabPage: React.FC = () => {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
   const [modelName, setModelName] = useState('gpt-4o-mini');
   const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('calibrated');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,18 +110,45 @@ export const LiveLabPage: React.FC = () => {
           <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-4">
             {/* Evaluation Engine Mode & Model Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <div>
+              <div className="relative">
                 <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
                   Evaluator Model
                 </label>
-                <select
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-teal-500/60"
                 >
-                  <option value="gpt-4o-mini">GPT-4o-Mini (Cloud / OpenAI)</option>
-                  <option value="llama3">Llama-3 8B (Local / Ollama)</option>
-                </select>
+                  <span className="flex items-center gap-2">
+                    <SingleModelIcon modelName={modelName} className="w-4 h-4 shrink-0" />
+                    <span>{EVALUATOR_MODELS.find(m => m.value === modelName)?.label || modelName}</span>
+                  </span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-full z-30 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 font-mono text-xs">
+                    {EVALUATOR_MODELS.map((item) => (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => {
+                          setModelName(item.value);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer ${
+                          modelName === item.value ? 'bg-neutral-100 dark:bg-neutral-900 font-semibold' : ''
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <SingleModelIcon modelName={item.icon} className="w-4 h-4 shrink-0" />
+                          <span>{item.label}</span>
+                        </span>
+                        {modelName === item.value && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
