@@ -6,6 +6,7 @@ import {
   triggerStochasticRun,
 } from '../api/client';
 import { useExperimentProgress } from '../hooks/useExperimentProgress';
+import { SingleModelIcon } from '../components/ModelIcons';
 import {
   Terminal,
   Play,
@@ -17,12 +18,68 @@ import {
   AlertTriangle,
   Sliders,
   ArrowRight,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 
 const MODEL_OPTIONS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o-Mini (Cloud / OpenAI)', icon: 'openai' },
   { value: 'llama3', label: 'Llama-3 8B (Local / Ollama)', icon: 'llama3' },
 ];
+
+interface CustomModelSelectProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const CustomModelSelect: React.FC<CustomModelSelectProps> = ({ label, value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = MODEL_OPTIONS.find((m) => m.value === value) || MODEL_OPTIONS[0];
+
+  return (
+    <div className="relative">
+      <label className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
+        {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-teal-500/60"
+      >
+        <span className="flex items-center gap-2">
+          <SingleModelIcon modelName={selectedOption.icon} className="w-4 h-4 shrink-0" />
+          <span>{selectedOption.label}</span>
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-full z-30 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 font-mono text-xs">
+          {MODEL_OPTIONS.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              onClick={() => {
+                onChange(item.value);
+                setIsOpen(false);
+              }}
+              className={`w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer ${
+                value === item.value ? 'bg-neutral-100 dark:bg-neutral-900 font-semibold' : ''
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <SingleModelIcon modelName={item.icon} className="w-4 h-4 shrink-0" />
+                <span>{item.label}</span>
+              </span>
+              {value === item.value && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ExperimentControlCenter: React.FC = () => {
   // Batch Engine State
@@ -135,22 +192,11 @@ export const ExperimentControlCenter: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
-                  Evaluator Model
-                </label>
-                <select
-                  value={batchModel}
-                  onChange={(e) => setBatchModel(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-900 dark:text-neutral-100"
-                >
-                  {MODEL_OPTIONS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CustomModelSelect
+                label="Evaluator Model"
+                value={batchModel}
+                onChange={setBatchModel}
+              />
 
               <div>
                 <label className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
@@ -159,7 +205,7 @@ export const ExperimentControlCenter: React.FC = () => {
                 <select
                   value={batchStrategy}
                   onChange={(e: any) => setBatchStrategy(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-900 dark:text-neutral-100"
+                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100"
                 >
                   <option value="dual_ab">Dual A/B Swap (Position Bias)</option>
                   <option value="verbosity_penalized">Length Penalization (Verbosity Bias)</option>
@@ -255,22 +301,11 @@ export const ExperimentControlCenter: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
-                  Target Model
-                </label>
-                <select
-                  value={stochasticModel}
-                  onChange={(e) => setStochasticModel(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-900 dark:text-neutral-100"
-                >
-                  {MODEL_OPTIONS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <CustomModelSelect
+                label="Target Model"
+                value={stochasticModel}
+                onChange={setStochasticModel}
+              />
             </div>
           </div>
 
