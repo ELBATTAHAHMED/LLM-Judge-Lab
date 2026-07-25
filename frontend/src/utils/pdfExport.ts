@@ -11,11 +11,19 @@ export const generateThesisReport = async (elementId: string, title = 'JudgeLab_
     throw new Error(`Target container element with id '${elementId}' not found.`);
   }
 
+  // Wait 500ms for Recharts & animations to complete painting
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const isDarkMode = document.documentElement.classList.contains('dark');
+  const bgColor = isDarkMode ? '#171717' : '#ffffff';
+
   // Render high-resolution canvas snapshot
   const canvas = await html2canvas(element, {
     scale: 2,
     useCORS: true,
-    logging: false,
+    allowTaint: true,
+    logging: true,
+    backgroundColor: bgColor,
     windowWidth: element.scrollWidth,
     windowHeight: element.scrollHeight,
   });

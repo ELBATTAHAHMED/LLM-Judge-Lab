@@ -33,7 +33,7 @@ export const DiagnosticsPage: React.FC = () => {
       await fetchReportSummary();
       await generateThesisReport('diagnostics-report-container', 'JudgeLab_Thesis_Appendix');
     } catch (err: any) {
-      console.error('PDF Export Error:', err);
+      console.error('PDF Generation Error:', err);
     } finally {
       setIsExporting(false);
     }
