@@ -16,7 +16,6 @@ import {
   XCircle,
   AlertTriangle,
   Sliders,
-  Cpu,
   ArrowRight,
 } from 'lucide-react';
 
@@ -98,13 +97,6 @@ export const ExperimentControlCenter: React.FC = () => {
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-mono">
             Autonomous Batch Evaluator, Synthetic Perturbation Engine, & Stochastic Benchmarks
           </p>
-        </div>
-
-        <div className="flex items-center space-x-2 text-xs font-mono text-neutral-500">
-          <span className="px-2.5 py-1 rounded bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-teal-500" />
-            <span>Worker Pool: Active</span>
-          </span>
         </div>
       </div>
 
