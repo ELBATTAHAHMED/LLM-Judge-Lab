@@ -776,7 +776,7 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
 
         for i, pair in enumerate(pairs, start=1):
             if use_mock_judge and not is_local_model(model_name):
-                time.sleep(0.04)
+                time.sleep(0.2)  # Realistic pace for offline mock evaluation
                 len_a = len(pair["answer_a"])
                 len_b = len(pair["answer_b"])
                 verdict = "A" if len_a >= len_b else "B"
@@ -847,7 +847,7 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
         flips = 0
 
         for i, pair in enumerate(pairs, start=1):
-            time.sleep(0.04)
+            time.sleep(0.2)  # Realistic pace for perturbation suite execution
             padded_text = pair["answer_a"] + ("\n\n### Detailed Elaboration\n" + " Additional explanatory context." * int(padding_factor * 10))
             if inject_markdown:
                 padded_text = f"**Key Takeaway:** {padded_text}"
@@ -899,7 +899,7 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
         for trial in range(1, n_trials + 1):
             _log_job(job_id, f"Executing Trial Pass #{trial} / {n_trials} across 10 prompt benchmark pairs...")
             for pair in pairs:
-                time.sleep(0.04)
+                time.sleep(0.15)  # Realistic pace per trial pair
                 step += 1
                 verdict = "A" if (hash(pair["question"] + str(trial)) % 2 == 0) else "B"
                 if verdict == "A":
