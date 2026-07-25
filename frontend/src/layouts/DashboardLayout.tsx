@@ -10,6 +10,7 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Terminal,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -38,6 +39,11 @@ export const DashboardLayout: React.FC = () => {
       path: '/live-lab',
       label: 'Live Evaluation',
       icon: FlaskConical,
+    },
+    {
+      path: '/experiments',
+      label: 'Experiment Controls',
+      icon: Terminal,
     },
   ];
 

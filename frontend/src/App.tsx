@@ -6,6 +6,7 @@ import { LeaderboardPage } from './pages/LeaderboardPage';
 import { DiagnosticsPage } from './pages/DiagnosticsPage';
 import { QualitativeExplorerPage } from './pages/QualitativeExplorerPage';
 import { LiveLabPage } from './pages/LiveLabPage';
+import { ExperimentControlCenter } from './pages/ExperimentControlCenter';
 
 export const App: React.FC = () => {
   return (
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
             <Route path="diagnostics" element={<DiagnosticsPage />} />
             <Route path="qualitative-explorer" element={<QualitativeExplorerPage />} />
             <Route path="live-lab" element={<LiveLabPage />} />
+            <Route path="experiments" element={<ExperimentControlCenter />} />
             {/* Catch-all redirect to home */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

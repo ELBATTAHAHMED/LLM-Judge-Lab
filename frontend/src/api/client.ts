@@ -9,6 +9,10 @@ import type {
   EvaluateResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
+  BatchRunRequest,
+  PerturbationRunRequest,
+  StochasticRunRequest,
+  ExperimentJobStatus,
 } from './types';
 
 // Axios instance targeting backend FastAPI dev server
@@ -70,6 +74,26 @@ export async function executeCalibratedEvaluation(
   const timeoutMs = isLocal ? 240000 : 180000; // 4 mins for local Dual A/B Swap, 3 mins for cloud
   const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, { timeout: timeoutMs });
   return response.data;
+}
+
+export async function triggerBatchRun(payload: BatchRunRequest): Promise<{ status: string; job_id: string; message: string }> {
+  const res = await apiClient.post('/api/experiments/run-batch', payload);
+  return res.data;
+}
+
+export async function triggerPerturbationRun(payload: PerturbationRunRequest): Promise<{ status: string; job_id: string; message: string }> {
+  const res = await apiClient.post('/api/experiments/perturbations', payload);
+  return res.data;
+}
+
+export async function triggerStochasticRun(payload: StochasticRunRequest): Promise<{ status: string; job_id: string; message: string }> {
+  const res = await apiClient.post('/api/experiments/stochastic', payload);
+  return res.data;
+}
+
+export async function getJobStatus(jobId: string): Promise<ExperimentJobStatus> {
+  const res = await apiClient.get<ExperimentJobStatus>(`/api/experiments/status/${jobId}`);
+  return res.data;
 }
 
 // ── Custom React Hooks for UI Components ──────────────────────────────────────

@@ -88,3 +88,31 @@ export interface CalibratedEvaluateResponse {
   total_output_tokens: number;
   model_name: string;
 }
+
+export interface ExperimentJobStatus {
+  job_id: string;
+  job_type?: 'batch' | 'perturbations' | 'stochastic';
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  progress: number;
+  total: number;
+  percentage: number;
+  message: string;
+  logs: string[];
+}
+
+export interface BatchRunRequest {
+  sample_size?: number;
+  model_name?: string;
+  temperature?: number;
+  mitigation_strategy?: 'dual_ab' | 'verbosity_penalized' | 'none';
+}
+
+export interface PerturbationRunRequest {
+  padding_factor?: number;
+  inject_markdown?: boolean;
+}
+
+export interface StochasticRunRequest {
+  n_trials?: number;
+  model_name?: string;
+}

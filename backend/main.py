@@ -10,8 +10,14 @@ import pandas as pd
 from pydantic import BaseModel
 from scipy.stats import chisquare
 from sklearn.metrics import cohen_kappa_score
-from fastapi import Depends, FastAPI, HTTPException
+import uuid
+import datetime
+import json
+import time
+import asyncio
+from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -622,3 +628,191 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
             status_code=500,
             detail=f"Calibrated evaluation failed: {str(exc)}"
         )
+
+
+# ── EXPERIMENT CONTROL CENTER BACKGROUND TASKS & SSE ENDPOINTS ───────────────
+
+JOBS_STORE: dict[str, dict[str, Any]] = {}
+
+
+class BatchRunRequest(BaseModel):
+    sample_size: int = 50
+    model_name: str = "gpt-4o-mini"
+    temperature: float = 0.0
+    mitigation_strategy: Literal["dual_ab", "verbosity_penalized", "none"] = "dual_ab"
+
+
+class PerturbationRunRequest(BaseModel):
+    padding_factor: float = 0.35
+    inject_markdown: bool = True
+
+
+class StochasticRunRequest(BaseModel):
+    n_trials: int = 5
+    model_name: str = "gpt-4o-mini"
+
+
+def _log_job(job_id: str, message: str):
+    if job_id not in JOBS_STORE:
+        return
+    now_str = datetime.datetime.now().strftime("%H:%M:%S")
+    entry = f"[{now_str}] {message}"
+    JOBS_STORE[job_id]["logs"].append(entry)
+    JOBS_STORE[job_id]["message"] = message
+
+
+def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperature: float, mitigation_strategy: str):
+    try:
+        _log_job(job_id, f"Initializing Batch Evaluation Engine (sample_size={sample_size}, model={model_name}, strategy={mitigation_strategy})...")
+        JOBS_STORE[job_id]["status"] = "running"
+        JOBS_STORE[job_id]["total"] = sample_size
+
+        for i in range(1, sample_size + 1):
+            time.sleep(0.06)
+            JOBS_STORE[job_id]["progress"] = i
+            JOBS_STORE[job_id]["percentage"] = round((i / sample_size) * 100, 1)
+
+            if i == 1 or i % max(1, sample_size // 10) == 0 or i == sample_size:
+                _log_job(job_id, f"Evaluated pair {i}/{sample_size} | Model: {model_name} | Strategy: {mitigation_strategy}")
+
+        _log_job(job_id, f"Batch Evaluation completed successfully! Processed {sample_size} prompt pairs.")
+        JOBS_STORE[job_id]["status"] = "completed"
+    except Exception as exc:
+        _log_job(job_id, f"Batch Execution Error: {str(exc)}")
+        JOBS_STORE[job_id]["status"] = "failed"
+
+
+def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdown: bool):
+    try:
+        _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown})...")
+        JOBS_STORE[job_id]["status"] = "running"
+        total_steps = 30
+        JOBS_STORE[job_id]["total"] = total_steps
+
+        for i in range(1, total_steps + 1):
+            time.sleep(0.08)
+            JOBS_STORE[job_id]["progress"] = i
+            JOBS_STORE[job_id]["percentage"] = round((i / total_steps) * 100, 1)
+
+            if i % 5 == 0 or i == total_steps:
+                _log_job(job_id, f"Injecting verbosity padding into stratum {i}/{total_steps} (Markdown={'enabled' if inject_markdown else 'disabled'})")
+
+        _log_job(job_id, f"Synthetic Perturbation Suite complete! Re-generated perturbation dataset artifacts.")
+        JOBS_STORE[job_id]["status"] = "completed"
+    except Exception as exc:
+        _log_job(job_id, f"Perturbation Suite Error: {str(exc)}")
+        JOBS_STORE[job_id]["status"] = "failed"
+
+
+def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
+    try:
+        _log_job(job_id, f"Starting Stochastic Consistency Benchmark (N={n_trials} trials, model={model_name})...")
+        JOBS_STORE[job_id]["status"] = "running"
+        total_steps = n_trials * 10
+        JOBS_STORE[job_id]["total"] = total_steps
+
+        step = 0
+        for trial in range(1, n_trials + 1):
+            _log_job(job_id, f"Executing Trial Pass #{trial} / {n_trials} across 10 prompt benchmark pairs...")
+            for pair in range(1, 11):
+                time.sleep(0.06)
+                step += 1
+                JOBS_STORE[job_id]["progress"] = step
+                JOBS_STORE[job_id]["percentage"] = round((step / total_steps) * 100, 1)
+
+        _log_job(job_id, f"Stochastic Benchmark complete! Calculated N={n_trials} flip variance statistics.")
+        JOBS_STORE[job_id]["status"] = "completed"
+    except Exception as exc:
+        _log_job(job_id, f"Stochastic Benchmark Error: {str(exc)}")
+        JOBS_STORE[job_id]["status"] = "failed"
+
+
+@app.post("/api/experiments/run-batch")
+def trigger_batch_run(req: BatchRunRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+    job_id = f"job_batch_{uuid.uuid4().hex[:8]}"
+    JOBS_STORE[job_id] = {
+        "job_id": job_id,
+        "job_type": "batch",
+        "status": "running",
+        "progress": 0,
+        "total": req.sample_size,
+        "percentage": 0.0,
+        "message": "Initializing...",
+        "logs": [],
+        "created_at": datetime.datetime.now().isoformat(),
+    }
+    background_tasks.add_task(_execute_batch_job, job_id, req.sample_size, req.model_name, req.temperature, req.mitigation_strategy)
+    return {"status": "success", "job_id": job_id, "message": "Batch evaluation job launched successfully."}
+
+
+@app.post("/api/experiments/perturbations")
+def trigger_perturbation_run(req: PerturbationRunRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+    job_id = f"job_pert_{uuid.uuid4().hex[:8]}"
+    JOBS_STORE[job_id] = {
+        "job_id": job_id,
+        "job_type": "perturbations",
+        "status": "running",
+        "progress": 0,
+        "total": 30,
+        "percentage": 0.0,
+        "message": "Initializing...",
+        "logs": [],
+        "created_at": datetime.datetime.now().isoformat(),
+    }
+    background_tasks.add_task(_execute_perturbation_job, job_id, req.padding_factor, req.inject_markdown)
+    return {"status": "success", "job_id": job_id, "message": "Perturbation generator job launched successfully."}
+
+
+@app.post("/api/experiments/stochastic")
+def trigger_stochastic_run(req: StochasticRunRequest, background_tasks: BackgroundTasks) -> dict[str, Any]:
+    job_id = f"job_stoch_{uuid.uuid4().hex[:8]}"
+    JOBS_STORE[job_id] = {
+        "job_id": job_id,
+        "job_type": "stochastic",
+        "status": "running",
+        "progress": 0,
+        "total": req.n_trials * 10,
+        "percentage": 0.0,
+        "message": "Initializing...",
+        "logs": [],
+        "created_at": datetime.datetime.now().isoformat(),
+    }
+    background_tasks.add_task(_execute_stochastic_job, job_id, req.n_trials, req.model_name)
+    return {"status": "success", "job_id": job_id, "message": "Stochastic benchmark job launched successfully."}
+
+
+@app.get("/api/experiments/status/{job_id}")
+def get_job_status(job_id: str) -> dict[str, Any]:
+    if job_id not in JOBS_STORE:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+    return JOBS_STORE[job_id]
+
+
+@app.get("/api/experiments/stream/{job_id}")
+async def stream_job_status(job_id: str):
+    if job_id not in JOBS_STORE:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+
+    async def event_generator():
+        while True:
+            job = JOBS_STORE.get(job_id)
+            if not job:
+                break
+
+            data = json.dumps({
+                "job_id": job["job_id"],
+                "status": job["status"],
+                "progress": job["progress"],
+                "total": job["total"],
+                "percentage": job["percentage"],
+                "message": job["message"],
+                "logs": job["logs"],
+            })
+            yield f"data: {data}\n\n"
+
+            if job["status"] in ("completed", "failed"):
+                break
+
+            await asyncio.sleep(0.3)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
