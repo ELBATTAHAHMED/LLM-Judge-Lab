@@ -89,6 +89,16 @@ export interface CalibratedEvaluateResponse {
   model_name: string;
 }
 
+export interface ResultSummary {
+  total_evaluated: number;
+  winner_a_count: number;
+  winner_b_count: number;
+  tie_count: number;
+  position_bias_flips: number;
+  overall_accuracy_vs_human: number;
+  mitigation_strategy: string;
+}
+
 export interface ExperimentJobStatus {
   job_id: string;
   job_type?: 'batch' | 'perturbations' | 'stochastic';
@@ -98,6 +108,7 @@ export interface ExperimentJobStatus {
   percentage: number;
   message: string;
   logs: string[];
+  result_summary?: ResultSummary;
 }
 
 export interface BatchRunRequest {

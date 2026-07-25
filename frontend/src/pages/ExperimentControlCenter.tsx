@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   triggerBatchRun,
   triggerPerturbationRun,
@@ -16,6 +17,7 @@ import {
   AlertTriangle,
   Sliders,
   Cpu,
+  ArrowRight,
 } from 'lucide-react';
 
 const MODEL_OPTIONS = [
@@ -371,6 +373,59 @@ export const ExperimentControlCenter: React.FC = () => {
               No active job running. Select an experiment above and click Launch to observe real-time telemetry streaming.
             </div>
           )}
+        </div>
+
+        {/* Completed Job Results Summary Card */}
+        {jobStatus?.status === 'completed' && jobStatus.result_summary && (
+          <JobSummaryCard summary={jobStatus.result_summary} />
+        )}
+      </div>
+    </div>
+  );
+};
+
+const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').ExperimentJobStatus['result_summary']> }> = ({ summary }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/30 space-y-3 transition-all duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
+        <div className="flex items-center space-x-2 font-mono">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+            Experiment Results Summary
+          </h3>
+        </div>
+
+        <button
+          onClick={() => navigate('/diagnostics')}
+          className="flex items-center space-x-1.5 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-semibold cursor-pointer transition-colors self-start sm:self-auto"
+        >
+          <span>View Full Diagnostics</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono text-center">
+        <div className="p-2 rounded bg-white/60 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+          <span className="text-[10px] text-neutral-500">Evaluated Pairs</span>
+          <p className="font-bold text-sm text-neutral-900 dark:text-white mt-0.5">{summary.total_evaluated}</p>
+        </div>
+        <div className="p-2 rounded bg-white/60 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+          <span className="text-[10px] text-neutral-500">Winner A / B</span>
+          <p className="font-bold text-sm text-neutral-900 dark:text-white mt-0.5">{summary.winner_a_count} / {summary.winner_b_count}</p>
+        </div>
+        <div className="p-2 rounded bg-white/60 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+          <span className="text-[10px] text-neutral-500">Ties / Hedged</span>
+          <p className="font-bold text-sm text-neutral-900 dark:text-white mt-0.5">{summary.tie_count}</p>
+        </div>
+        <div className="p-2 rounded bg-white/60 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800">
+          <span className="text-[10px] text-neutral-500">Mitigated Flips</span>
+          <p className="font-bold text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">{summary.position_bias_flips}</p>
+        </div>
+        <div className="p-2 rounded bg-white/60 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 col-span-2 sm:col-span-1">
+          <span className="text-[10px] text-neutral-500">Human Match Rate</span>
+          <p className="font-bold text-sm text-teal-600 dark:text-teal-400 mt-0.5">{summary.overall_accuracy_vs_human}%</p>
         </div>
       </div>
     </div>
