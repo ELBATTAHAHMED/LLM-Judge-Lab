@@ -50,7 +50,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
   }, [data, sampleSize]);
 
   const combinedData = useMemo(() => {
-    const map = new Map<number, any>();
+    const map = new Map<number, { x: number; y?: number; outcome?: string; trendY?: number }>();
     chartData.trend.forEach((t) => map.set(t.x, { x: t.x, trendY: t.trendY }));
     chartData.scatter.forEach((s) => {
       const existing = map.get(s.x);
@@ -64,7 +64,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
     return Array.from(map.values()).sort((a, b) => a.x - b.x);
   }, [chartData]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { x: number; y: number; outcome: string } }> }) => {
     if (active && payload && payload.length) {
       const dataPoint = payload[0].payload;
       const diff = dataPoint.x;
@@ -97,7 +97,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             <span className="text-[11px] text-neutral-500">Sample:</span>
             <select
               value={sampleSize}
-              onChange={(e) => setSampleSize(e.target.value as any)}
+              onChange={(e) => setSampleSize(e.target.value as '100' | '250' | 'All')}
               className="text-xs font-mono bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded px-1.5 py-0.5 text-neutral-800 dark:text-neutral-200 cursor-pointer focus:outline-none"
             >
               <option value="100">100</option>

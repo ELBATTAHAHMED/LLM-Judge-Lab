@@ -74,7 +74,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
                     }}
                     itemStyle={{ color: isDark ? '#e5e5e5' : '#171717' }}
                     labelStyle={{ color: isDark ? '#ffffff' : '#171717', fontWeight: 600 }}
-                    formatter={(val: any) => [`${val} decisions`, 'Count']}
+                    formatter={(val: unknown) => [`${val} decisions`, 'Count']}
                   />
                   <Bar dataKey="count" radius={[2, 2, 0, 0]}>
                     {chartData.map((entry, index) => (

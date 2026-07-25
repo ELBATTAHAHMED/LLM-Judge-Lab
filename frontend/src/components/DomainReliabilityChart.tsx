@@ -112,7 +112,7 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
                   }}
                   itemStyle={{ color: isDark ? '#e5e5e5' : '#171717' }}
                   labelStyle={{ color: isDark ? '#ffffff' : '#171717', fontWeight: 600 }}
-                  formatter={(val: any) => [`κ = ${Number(val).toFixed(3)}`, 'Cohen’s Kappa']}
+                  formatter={(val: unknown) => [`κ = ${Number(val).toFixed(3)}`, 'Cohen’s Kappa']}
                 />
                 <Bar dataKey="kappa" radius={[0, 2, 2, 0]}>
                   {chartData.map((entry, index) => (

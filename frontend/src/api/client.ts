@@ -109,8 +109,11 @@ export function useLeaderboard() {
     try {
       const result = await getLeaderboard();
       setData(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || 'Failed to fetch leaderboard data');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch leaderboard data');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -134,8 +137,11 @@ export function useBiasStats() {
     try {
       const result = await getBiasStats();
       setData(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || 'Failed to fetch bias diagnostics data');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch bias diagnostics data');
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -159,8 +165,11 @@ export function useQualitativeBucket(bucket: QualitativeBucket) {
     try {
       const result = await getQualitativeBucket(bucket);
       setData(result);
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || 'Failed to fetch qualitative records');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch qualitative records');
+      setError(msg);
     } finally {
       setLoading(false);
     }

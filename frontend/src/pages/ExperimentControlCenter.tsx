@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
   triggerBatchRun,
@@ -112,8 +113,11 @@ export const ExperimentControlCenter: React.FC = () => {
         mitigation_strategy: batchStrategy,
       });
       setActiveJobId(res.job_id);
-    } catch (err: any) {
-      setActionError(err?.response?.data?.detail || err.message || 'Failed to launch batch execution');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to launch batch execution');
+      setActionError(msg);
     }
   };
 
@@ -125,8 +129,11 @@ export const ExperimentControlCenter: React.FC = () => {
         inject_markdown: injectMarkdown,
       });
       setActiveJobId(res.job_id);
-    } catch (err: any) {
-      setActionError(err?.response?.data?.detail || err.message || 'Failed to launch perturbation generator');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to launch perturbation generator');
+      setActionError(msg);
     }
   };
 
@@ -138,8 +145,11 @@ export const ExperimentControlCenter: React.FC = () => {
         model_name: stochasticModel,
       });
       setActiveJobId(res.job_id);
-    } catch (err: any) {
-      setActionError(err?.response?.data?.detail || err.message || 'Failed to launch stochastic benchmark');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to launch stochastic benchmark');
+      setActionError(msg);
     }
   };
 
@@ -204,7 +214,7 @@ export const ExperimentControlCenter: React.FC = () => {
                 </label>
                 <select
                   value={batchStrategy}
-                  onChange={(e: any) => setBatchStrategy(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBatchStrategy(e.target.value as 'dual_ab' | 'verbosity_penalized' | 'none')}
                   className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100"
                 >
                   <option value="dual_ab">Dual A/B Swap (Position Bias)</option>

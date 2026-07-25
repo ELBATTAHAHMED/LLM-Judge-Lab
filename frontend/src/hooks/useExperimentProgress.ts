@@ -57,8 +57,8 @@ export function useExperimentProgress(jobId: string | null) {
           if (statusData.status === 'completed' || statusData.status === 'failed') {
             if (pollInterval) clearInterval(pollInterval);
           }
-        } catch (pollErr: any) {
-          setError(pollErr?.message || 'Failed to fetch job status');
+        } catch (pollErr: unknown) {
+          setError(pollErr instanceof Error ? pollErr.message : 'Failed to fetch job status');
           if (pollInterval) clearInterval(pollInterval);
         }
       }, 500);
