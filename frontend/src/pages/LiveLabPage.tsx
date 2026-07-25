@@ -184,19 +184,6 @@ export const LiveLabPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-1 p-0.5 rounded bg-neutral-200/60 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs font-mono">
                   <button
                     type="button"
-                    onClick={() => setEvalMode('calibrated')}
-                    className={`py-1 px-2 rounded text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
-                      evalMode === 'calibrated'
-                        ? 'bg-white dark:bg-neutral-950 text-teal-700 dark:text-teal-400 font-semibold shadow-xs'
-                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-                    <span>Calibrated</span>
-                  </button>
-
-                  <button
-                    type="button"
                     onClick={() => setEvalMode('standard')}
                     className={`py-1 px-2 rounded text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
                       evalMode === 'standard'
@@ -206,6 +193,19 @@ export const LiveLabPage: React.FC = () => {
                   >
                     <Layers className="w-3 h-3" />
                     <span>Standard</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEvalMode('calibrated')}
+                    className={`py-1 px-2 rounded text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
+                      evalMode === 'calibrated'
+                        ? 'bg-white dark:bg-neutral-950 text-teal-700 dark:text-teal-400 font-semibold shadow-xs'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                    <span>Calibrated</span>
                   </button>
                 </div>
               </div>
