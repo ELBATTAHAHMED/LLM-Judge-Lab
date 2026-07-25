@@ -21,18 +21,35 @@ const EVALUATOR_MODELS = [
   { value: 'llama3', label: 'Llama-3 8B (Local / Ollama)', icon: 'llama3' },
 ];
 
+const estimateTokens = (text: string) => {
+  if (!text) return 0;
+  const words = text.trim().split(/\s+/).length;
+  return Math.ceil(words * 1.3);
+};
+
 export const LiveLabPage: React.FC = () => {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
   const [modelName, setModelName] = useState('gpt-4o-mini');
   const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('calibrated');
+  const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [executionStep, setExecutionStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [standardResult, setStandardResult] = useState<EvaluateResponse | null>(null);
   const [calibratedResult, setCalibratedResult] = useState<CalibratedEvaluateResponse | null>(null);
+
+  // Calculated Token Telemetry
+  const promptTokens = estimateTokens(prompt);
+  const answerATokens = estimateTokens(answerA);
+  const answerBTokens = estimateTokens(answerB);
+  const totalInputTokensEst = promptTokens + answerATokens + answerBTokens;
+  const isLocal = modelName.includes('llama') || modelName.includes('ollama') || modelName.includes('local');
+  const maxContextTokens = isLocal ? 8192 : 128000;
+  const isContextWarning = totalInputTokensEst > (isLocal ? 2000 : 32000);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +59,13 @@ export const LiveLabPage: React.FC = () => {
     }
 
     setLoading(true);
+    setExecutionStep(1);
     setError(null);
+
+    const stepInterval = setInterval(() => {
+      setExecutionStep((prev) => (prev < 3 ? prev + 1 : prev));
+    }, evalMode === 'calibrated' ? 1200 : 800);
+
     try {
       if (evalMode === 'calibrated') {
         const res = await executeCalibratedEvaluation({
@@ -51,6 +74,7 @@ export const LiveLabPage: React.FC = () => {
           answer_b: answerB.trim(),
           model_name: modelName,
           temperature: 0.0,
+          mitigation_strategy: mitigationStrategy,
         });
         setCalibratedResult(res);
         setStandardResult(null);
@@ -67,7 +91,9 @@ export const LiveLabPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.response?.data?.detail || err.message || 'Failed to execute evaluation');
     } finally {
+      clearInterval(stepInterval);
       setLoading(false);
+      setExecutionStep(0);
     }
   };
 
@@ -185,11 +211,58 @@ export const LiveLabPage: React.FC = () => {
               </div>
             </div>
 
+            {evalMode === 'calibrated' && (
+              <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-1">
+                <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                  Active Mitigation Strategy
+                </label>
+                <select
+                  value={mitigationStrategy}
+                  onChange={(e: any) => setMitigationStrategy(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 cursor-pointer"
+                >
+                  <option value="dual_ab">Dual A/B Swap (Position Bias Mitigation)</option>
+                  <option value="verbosity_penalized">Length Penalization (Verbosity Bias Mitigation)</option>
+                  <option value="none">None (Uncalibrated Baseline)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Context Budget & Token Telemetry Bar */}
+            <div className="p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 font-mono text-[11px] space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-500 flex items-center gap-1.5">
+                  <span>Target Context Limit:</span>
+                  <strong className="text-neutral-800 dark:text-neutral-200">{maxContextTokens.toLocaleString()} tokens</strong>
+                </span>
+                <span className="text-neutral-500">
+                  Est. Prompt Payload: <strong className={isContextWarning ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-teal-600 dark:text-teal-400 font-semibold'}>{totalInputTokensEst.toLocaleString()} tokens</strong>
+                </span>
+              </div>
+              <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    isContextWarning ? 'bg-amber-500' : 'bg-teal-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (totalInputTokensEst / maxContextTokens) * 100)}%` }}
+                />
+              </div>
+              {isContextWarning && (
+                <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 pt-0.5">
+                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                  <span>High Token Payload: Long essay input approaches local inference context bounds.</span>
+                </div>
+              )}
+            </div>
+
             {/* Prompt Input */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                Question / Prompt
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                  Question / Prompt
+                </label>
+                <span className="text-[10px] font-mono text-neutral-500">~{promptTokens} tokens</span>
+              </div>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -202,9 +275,12 @@ export const LiveLabPage: React.FC = () => {
             {/* Candidate Answers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                  Candidate Answer A
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                    Candidate Answer A
+                  </label>
+                  <span className="text-[10px] font-mono text-neutral-500">~{answerATokens} tokens</span>
+                </div>
                 <textarea
                   value={answerA}
                   onChange={(e) => setAnswerA(e.target.value)}
@@ -215,9 +291,12 @@ export const LiveLabPage: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                  Candidate Answer B
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                    Candidate Answer B
+                  </label>
+                  <span className="text-[10px] font-mono text-neutral-500">~{answerBTokens} tokens</span>
+                </div>
                 <textarea
                   value={answerB}
                   onChange={(e) => setAnswerB(e.target.value)}
@@ -243,9 +322,17 @@ export const LiveLabPage: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
                   <span>
-                    {evalMode === 'calibrated' ? 'Executing Dual A/B Swap Calibration...' : 'Executing G-EVAL Verdict...'}
+                    {evalMode === 'calibrated'
+                      ? `[Step ${executionStep || 1}/3] ${
+                          executionStep === 1
+                            ? 'Pass 1 (Order A vs B) In-Flight...'
+                            : executionStep === 2
+                            ? 'Pass 2 (Order B vs A) In-Flight...'
+                            : 'Debiasing Consensus Synthesis...'
+                        }`
+                      : 'Executing G-EVAL Verdict...'}
                   </span>
                 </>
               ) : (

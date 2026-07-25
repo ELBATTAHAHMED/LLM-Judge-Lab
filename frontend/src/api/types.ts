@@ -74,6 +74,7 @@ export interface CalibratedEvaluateRequest {
   answer_b: string;
   model_name?: string;
   temperature?: number;
+  mitigation_strategy?: 'dual_ab' | 'verbosity_penalized' | 'none';
 }
 
 export interface CalibratedEvaluateResponse {

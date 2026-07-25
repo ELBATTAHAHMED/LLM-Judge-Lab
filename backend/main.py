@@ -464,34 +464,53 @@ def get_qualitative_bucket(bucket: str) -> list[dict]:
     # Replace NaN values with empty strings so JSON serialization is clean
     df = df.fillna("")
 
-    # Enrich with full prompt and candidate answer texts from database
-    records = []
+    # Enrich with full prompt and candidate answer texts from database in a single batch query
+    records = df.to_dict(orient="records")
     try:
         from database import engine
-        from sqlalchemy import text as sa_text
-        with engine.connect() as conn:
-            for row in df.to_dict(orient="records"):
-                pid = row.get("prompt_id")
-                if pid is not None and str(pid).isdigit():
-                    try:
-                        pid_int = int(pid)
-                        p_res = conn.execute(sa_text("SELECT text FROM prompts WHERE id = :pid"), {"pid": pid_int}).fetchone()
-                        if p_res:
-                            row["prompt_text"] = p_res[0]
+        from sqlalchemy import text as sa_text, bindparam
 
-                        a_res = conn.execute(sa_text("SELECT model_name, text FROM answers WHERE prompt_id = :pid ORDER BY id ASC LIMIT 2"), {"pid": pid_int}).fetchall()
-                        if len(a_res) >= 2:
-                            row["answer_a_model"] = a_res[0][0]
-                            row["answer_a_text"] = a_res[0][1]
-                            row["answer_b_model"] = a_res[1][0]
-                            row["answer_b_text"] = a_res[1][1]
-                        elif len(a_res) == 1:
-                            row["answer_a_model"] = a_res[0][0]
-                            row["answer_a_text"] = a_res[0][1]
-                    except Exception as e:
-                        print(f"Error enriching prompt #{pid}: {e}")
-                records.append(row)
-            return records
+        pids = list({
+            int(r["prompt_id"])
+            for r in records
+            if r.get("prompt_id") is not None and str(r.get("prompt_id")).isdigit()
+        })
+
+        if pids:
+            with engine.connect() as conn:
+                # Batch query prompts
+                p_stmt = sa_text("SELECT id, text FROM prompts WHERE id IN :pids").bindparams(
+                    bindparam("pids", expanding=True)
+                )
+                prompts_map = {row[0]: row[1] for row in conn.execute(p_stmt, {"pids": pids}).fetchall()}
+
+                # Batch query answers
+                a_stmt = sa_text(
+                    "SELECT id, prompt_id, model_name, text FROM answers WHERE prompt_id IN :pids ORDER BY id ASC"
+                ).bindparams(bindparam("pids", expanding=True))
+
+                answers_map: dict[int, list[tuple[str, str]]] = {}
+                for row in conn.execute(a_stmt, {"pids": pids}).fetchall():
+                    answers_map.setdefault(row[1], []).append((row[2], row[3]))
+
+                for row in records:
+                    pid = row.get("prompt_id")
+                    if pid is not None and str(pid).isdigit():
+                        pid_int = int(pid)
+                        if pid_int in prompts_map:
+                            row["prompt_text"] = prompts_map[pid_int]
+
+                        a_list = answers_map.get(pid_int, [])
+                        if len(a_list) >= 2:
+                            row["answer_a_model"] = a_list[0][0]
+                            row["answer_a_text"] = a_list[0][1]
+                            row["answer_b_model"] = a_list[1][0]
+                            row["answer_b_text"] = a_list[1][1]
+                        elif len(a_list) == 1:
+                            row["answer_a_model"] = a_list[0][0]
+                            row["answer_a_text"] = a_list[0][1]
+
+        return records
     except Exception as exc:
         print(f"Database lookup notice during qualitative enrichment: {exc}")
 
@@ -535,11 +554,11 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
             model_name=req.model_name,
             temperature=0.0,
         )
-        verdict = result.verdict if result.verdict in ["A", "B", "TIE"] else "Tie"
+        verdict = result.verdict if result.verdict in ["A", "B", "TIE", "UNKNOWN"] else "UNKNOWN"
         return {
             "winner": verdict,
             "verbatim_reasoning": result.reasoning,
-            "model_name": req.model_name if not is_local_model(req.model_name) else "Llama-3 (Local / Ollama)",
+            "model_name": req.model_name if not is_local_model(req.model_name) else f"{req.model_name} (Local / Ollama)",
         }
     except Exception as exc:
         raise HTTPException(
@@ -548,7 +567,8 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
         )
 
 
-# ── POST /api/evaluate/calibrated (Active Real-Time In-Flight Mitigation) ───
+from typing import Any, Literal
+
 
 class CalibratedEvaluationRequest(BaseModel):
     question: str
@@ -556,12 +576,13 @@ class CalibratedEvaluationRequest(BaseModel):
     answer_b: str
     model_name: str = "gpt-4o-mini"
     temperature: float = 0.0
+    mitigation_strategy: Literal["dual_ab", "verbosity_penalized", "none"] = "dual_ab"
 
 
 @app.post("/api/evaluate/calibrated")
 def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
     """
-    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping.
+    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
     """
     from judge_engine import call_calibrated_judge, is_local_model
@@ -582,6 +603,7 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
             answer_b=req.answer_b,
             model_name=req.model_name,
             temperature=req.temperature,
+            mitigation_strategy=req.mitigation_strategy,
         )
 
         return {
