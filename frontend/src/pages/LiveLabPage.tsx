@@ -32,7 +32,7 @@ export const LiveLabPage: React.FC = () => {
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
   const [modelName, setModelName] = useState('gpt-4o-mini');
-  const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('calibrated');
+  const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('standard');
   const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
