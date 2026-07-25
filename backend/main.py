@@ -759,8 +759,18 @@ def _get_eval_dataset(sample_size: int) -> list[dict[str, str]]:
     return dataset[:sample_size]
 
 
+def _validate_api_key_or_raise(model_name: str):
+    """Enforce strict API key presence for cloud models. Disables mock fallbacks in production."""
+    if is_local_model(model_name):
+        return
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise ValueError("OPENAI_API_KEY is missing or unconfigured in .env. Mock execution is strictly disabled for production.")
+
+
 def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperature: float, mitigation_strategy: str):
     try:
+        _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Initializing Batch Evaluation Engine (sample_size={sample_size}, model={model_name}, strategy={mitigation_strategy})...")
         JOBS_STORE[job_id]["status"] = "running"
         JOBS_STORE[job_id]["total"] = sample_size
@@ -771,35 +781,18 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
         ties = 0
         flips = 0
 
-        api_key = os.getenv("OPENAI_API_KEY")
-        use_mock_judge = not api_key or api_key.startswith("your_")
-
         for i, pair in enumerate(pairs, start=1):
-            if use_mock_judge and not is_local_model(model_name):
-                time.sleep(0.2)  # Realistic pace for offline mock evaluation
-                len_a = len(pair["answer_a"])
-                len_b = len(pair["answer_b"])
-                verdict = "A" if len_a >= len_b else "B"
-                if abs(len_a - len_b) < 15:
-                    verdict = "TIE"
-                if mitigation_strategy == "dual_ab" and i % 7 == 0:
-                    flips += 1
-            else:
-                try:
-                    res = call_calibrated_judge(
-                        question=pair["question"],
-                        answer_a=pair["answer_a"],
-                        answer_b=pair["answer_b"],
-                        model_name=model_name,
-                        temperature=temperature,
-                        mitigation_strategy=mitigation_strategy,
-                    )
-                    verdict = res.final_calibrated_winner
-                    if res.position_bias_detected:
-                        flips += 1
-                except Exception as eval_err:
-                    _log_job(job_id, f"Evaluation notice on pair {i}: {eval_err}. Fallback to baseline verdict.")
-                    verdict = "A"
+            res = call_calibrated_judge(
+                question=pair["question"],
+                answer_a=pair["answer_a"],
+                answer_b=pair["answer_b"],
+                model_name=model_name,
+                temperature=temperature,
+                mitigation_strategy=mitigation_strategy,
+            )
+            verdict = res.final_calibrated_winner
+            if res.position_bias_detected:
+                flips += 1
 
             if verdict == "A":
                 win_a += 1
@@ -828,13 +821,16 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
         _log_job(job_id, f"Batch Evaluation completed successfully! Processed {sample_size} prompt pairs.")
         JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
-        _log_job(job_id, f"Batch Execution Error: {str(exc)}")
+        err_msg = f"Batch Execution Error: {str(exc)}"
+        _log_job(job_id, err_msg)
         JOBS_STORE[job_id]["status"] = "failed"
-        raise
+        raise RuntimeError(err_msg) from exc
 
 
 def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdown: bool):
     try:
+        model_name = "gpt-4o-mini"
+        _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown})...")
         JOBS_STORE[job_id]["status"] = "running"
         total_steps = 30
@@ -847,23 +843,33 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
         flips = 0
 
         for i, pair in enumerate(pairs, start=1):
-            time.sleep(0.2)  # Realistic pace for perturbation suite execution
             padded_text = pair["answer_a"] + ("\n\n### Detailed Elaboration\n" + " Additional explanatory context." * int(padding_factor * 10))
             if inject_markdown:
                 padded_text = f"**Key Takeaway:** {padded_text}"
 
-            if len(padded_text) > len(pair["answer_b"]):
+            res = call_judge(
+                question=pair["question"],
+                answer_a=padded_text,
+                answer_b=pair["answer_b"],
+                model_name=model_name,
+                temperature=0.0,
+            )
+            verdict = res.verdict
+
+            if verdict == "A":
                 win_a += 1
                 if i % 6 == 0:
                     flips += 1
-            else:
+            elif verdict == "B":
                 win_b += 1
+            else:
+                ties += 1
 
             JOBS_STORE[job_id]["progress"] = i
             JOBS_STORE[job_id]["percentage"] = round((i / total_steps) * 100, 1)
 
             if i % 5 == 0 or i == total_steps:
-                _log_job(job_id, f"Injected verbosity padding into stratum {i}/{total_steps} (Markdown={'enabled' if inject_markdown else 'disabled'})")
+                _log_job(job_id, f"Injected verbosity padding into stratum {i}/{total_steps} (Markdown={'enabled' if inject_markdown else 'disabled'}) | Verdict: {verdict}")
 
         JOBS_STORE[job_id]["result_summary"] = {
             "total_evaluated": total_steps,
@@ -877,13 +883,15 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
         _log_job(job_id, f"Synthetic Perturbation Suite complete! Re-generated perturbation dataset artifacts.")
         JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
-        _log_job(job_id, f"Perturbation Suite Error: {str(exc)}")
+        err_msg = f"Perturbation Suite Error: {str(exc)}"
+        _log_job(job_id, err_msg)
         JOBS_STORE[job_id]["status"] = "failed"
-        raise
+        raise RuntimeError(err_msg) from exc
 
 
 def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
     try:
+        _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Starting Stochastic Consistency Benchmark (N={n_trials} trials, model={model_name})...")
         JOBS_STORE[job_id]["status"] = "running"
         total_steps = n_trials * 10
@@ -899,13 +907,22 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
         for trial in range(1, n_trials + 1):
             _log_job(job_id, f"Executing Trial Pass #{trial} / {n_trials} across 10 prompt benchmark pairs...")
             for pair in pairs:
-                time.sleep(0.15)  # Realistic pace per trial pair
+                res = call_judge(
+                    question=pair["question"],
+                    answer_a=pair["answer_a"],
+                    answer_b=pair["answer_b"],
+                    model_name=model_name,
+                    temperature=0.0,
+                )
+                verdict = res.verdict
                 step += 1
-                verdict = "A" if (hash(pair["question"] + str(trial)) % 2 == 0) else "B"
                 if verdict == "A":
                     win_a += 1
-                else:
+                elif verdict == "B":
                     win_b += 1
+                else:
+                    ties += 1
+
                 if step % 8 == 0:
                     flips += 1
 
@@ -924,9 +941,10 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
         _log_job(job_id, f"Stochastic Benchmark complete! Calculated N={n_trials} flip variance statistics.")
         JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
-        _log_job(job_id, f"Stochastic Benchmark Error: {str(exc)}")
+        err_msg = f"Stochastic Benchmark Error: {str(exc)}"
+        _log_job(job_id, err_msg)
         JOBS_STORE[job_id]["status"] = "failed"
-        raise
+        raise RuntimeError(err_msg) from exc
 
 
 @app.post("/api/experiments/run-batch", response_model=JobTriggerResponse)
