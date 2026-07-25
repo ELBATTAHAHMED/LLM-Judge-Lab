@@ -7,7 +7,7 @@ import { PositionBiasChart } from '../components/PositionBiasChart';
 import { FormatBiasChart } from '../components/FormatBiasChart';
 import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
-import { RefreshCw, FileText } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 
 export const DiagnosticsPage: React.FC = () => {
   const { data, loading, error, refetch } = useBiasStats();
@@ -52,22 +52,22 @@ export const DiagnosticsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 self-start sm:self-auto">
+        <div className="flex items-center space-x-2 self-start sm:self-auto shrink-0">
           <button
             onClick={handleExportPDF}
             disabled={isExporting}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 font-mono text-xs font-semibold cursor-pointer transition-colors shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 h-9 rounded text-xs font-mono font-medium bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 transition-colors whitespace-nowrap cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FileText className={`w-3.5 h-3.5 ${isExporting ? 'animate-pulse' : ''}`} />
-            <span>{isExporting ? 'Generating Report...' : '📄 Export Thesis Appendix (PDF)'}</span>
+            <Download className={`w-3.5 h-3.5 ${isExporting ? 'animate-pulse' : ''}`} />
+            <span>{isExporting ? 'Generating Report...' : 'Export Thesis Appendix (PDF)'}</span>
           </button>
 
           <button
             onClick={refetch}
             disabled={loading}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs font-mono"
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 h-9 rounded text-xs font-mono font-medium bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 transition-colors whitespace-nowrap cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
         </div>
