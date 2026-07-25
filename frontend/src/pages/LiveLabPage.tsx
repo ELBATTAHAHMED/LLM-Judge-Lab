@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { executeLiveEvaluation, executeCalibratedEvaluation } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
@@ -59,37 +60,39 @@ export const LiveLabPage: React.FC = () => {
     }
 
     setLoading(true);
-    setExecutionStep(1);
     setError(null);
+    setExecutionStep(1);
 
     const stepInterval = setInterval(() => {
       setExecutionStep((prev) => (prev < 3 ? prev + 1 : prev));
-    }, evalMode === 'calibrated' ? 1200 : 800);
+    }, 1200);
 
     try {
       if (evalMode === 'calibrated') {
         const res = await executeCalibratedEvaluation({
-          question: prompt.trim(),
-          answer_a: answerA.trim(),
-          answer_b: answerB.trim(),
+          question: prompt,
+          answer_a: answerA,
+          answer_b: answerB,
           model_name: modelName,
-          temperature: 0.0,
           mitigation_strategy: mitigationStrategy,
         });
         setCalibratedResult(res);
         setStandardResult(null);
       } else {
         const res = await executeLiveEvaluation({
-          prompt: prompt.trim(),
-          answer_a: answerA.trim(),
-          answer_b: answerB.trim(),
+          prompt: prompt,
+          answer_a: answerA,
+          answer_b: answerB,
           model_name: modelName,
         });
         setStandardResult(res);
         setCalibratedResult(null);
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.detail || err.message || 'Failed to execute evaluation');
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to execute evaluation');
+      setError(msg);
     } finally {
       clearInterval(stepInterval);
       setLoading(false);
@@ -103,22 +106,20 @@ export const LiveLabPage: React.FC = () => {
     setAnswerB(DEFAULT_ANSWER_B);
     setStandardResult(null);
     setCalibratedResult(null);
-    setError(null);
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 py-2 font-sans">
+    <div className="max-w-[1400px] mx-auto space-y-6 py-2 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <div>
-          <h1 className="text-2xl font-serif text-neutral-900 dark:text-white tracking-tight">
-            Live G-EVAL Research Sandbox
-          </h1>
-          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            Execute real-time pairwise evaluation trials using <span className="font-mono text-neutral-800 dark:text-neutral-200 font-medium">gpt-4o-mini (Temp=0.0)</span> with verbatim G-EVAL reasoning highlights
+          <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100">
+            Live Evaluation Sandbox
+          </h2>
+          <p className="text-xs text-neutral-500 mt-1">
+            Test prompt pairs in real-time with standard G-EVAL or active bias mitigation protocols.
           </p>
         </div>
-
         <button
           type="button"
           onClick={handleReset}
