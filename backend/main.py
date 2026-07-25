@@ -34,6 +34,7 @@ if str(BACKEND_DIR) not in sys.path:
 from database import engine, Base, get_db  # noqa: E402
 import models  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa  # noqa: E402
+from judge_engine import call_judge, call_calibrated_judge, is_local_model  # noqa: E402
 
 BT_CSV_PATH          = ROOT_DIR / "bradley_terry_scores.csv"
 NEUTRALIZED_CSV_PATH = ROOT_DIR / "neutralized_scores.csv"
