@@ -96,6 +96,11 @@ export async function getJobStatus(jobId: string): Promise<ExperimentJobStatus> 
   return res.data;
 }
 
+export async function fetchReportSummary(): Promise<any> {
+  const res = await apiClient.get('/api/report/summary');
+  return res.data;
+}
+
 // ── Custom React Hooks for UI Components ──────────────────────────────────────
 
 export function useLeaderboard() {
