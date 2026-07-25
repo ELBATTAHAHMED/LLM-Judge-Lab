@@ -45,7 +45,7 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({ label, value, onC
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-teal-500/60"
+        className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-neutral-500"
       >
         <span className="flex items-center gap-2">
           <SingleModelIcon modelName={selectedOption.icon} className="w-4 h-4 shrink-0" />
@@ -72,7 +72,7 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({ label, value, onC
                 <SingleModelIcon modelName={item.icon} className="w-4 h-4 shrink-0" />
                 <span>{item.label}</span>
               </span>
-              {value === item.value && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />}
+              {value === item.value && <Check className="w-3.5 h-3.5 text-neutral-900 dark:text-neutral-100 shrink-0" />}
             </button>
           ))}
         </div>
@@ -170,7 +170,7 @@ export const ExperimentControlCenter: React.FC = () => {
         <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center space-x-2 border-b border-neutral-200 dark:border-neutral-800 pb-2">
-              <FlaskConical className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <FlaskConical className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                 Batch Evaluation Engine
               </h2>
@@ -188,7 +188,7 @@ export const ExperimentControlCenter: React.FC = () => {
                   step="10"
                   value={batchSampleSize}
                   onChange={(e) => setBatchSampleSize(Number(e.target.value))}
-                  className="w-full accent-teal-600 dark:accent-teal-500 cursor-pointer"
+                  className="w-full accent-neutral-800 dark:accent-neutral-200 cursor-pointer"
                 />
               </div>
 
@@ -218,7 +218,7 @@ export const ExperimentControlCenter: React.FC = () => {
           <button
             onClick={handleLaunchBatch}
             disabled={jobStatus?.status === 'running'}
-            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
+            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Launch Batch Run</span>
@@ -229,7 +229,7 @@ export const ExperimentControlCenter: React.FC = () => {
         <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center space-x-2 border-b border-neutral-200 dark:border-neutral-800 pb-2">
-              <Sliders className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Sliders className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                 Synthetic Perturbation Engine
               </h2>
@@ -247,7 +247,7 @@ export const ExperimentControlCenter: React.FC = () => {
                   step="0.05"
                   value={paddingFactor}
                   onChange={(e) => setPaddingFactor(Number(e.target.value))}
-                  className="w-full accent-teal-600 dark:accent-teal-500 cursor-pointer"
+                  className="w-full accent-neutral-800 dark:accent-neutral-200 cursor-pointer"
                 />
               </div>
 
@@ -259,7 +259,7 @@ export const ExperimentControlCenter: React.FC = () => {
                   type="checkbox"
                   checked={injectMarkdown}
                   onChange={(e) => setInjectMarkdown(e.target.checked)}
-                  className="w-4 h-4 accent-teal-600 rounded cursor-pointer"
+                  className="w-4 h-4 accent-neutral-800 dark:accent-neutral-200 rounded cursor-pointer"
                 />
               </div>
             </div>
@@ -268,7 +268,7 @@ export const ExperimentControlCenter: React.FC = () => {
           <button
             onClick={handleLaunchPerturbations}
             disabled={jobStatus?.status === 'running'}
-            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
+            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Run Perturbation Suite</span>
@@ -279,7 +279,7 @@ export const ExperimentControlCenter: React.FC = () => {
         <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center space-x-2 border-b border-neutral-200 dark:border-neutral-800 pb-2">
-              <RefreshCw className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <RefreshCw className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
                 Stochastic Consistency Benchmark
               </h2>
@@ -297,7 +297,7 @@ export const ExperimentControlCenter: React.FC = () => {
                   step="1"
                   value={stochasticNTrials}
                   onChange={(e) => setStochasticNTrials(Number(e.target.value))}
-                  className="w-full accent-teal-600 dark:accent-teal-500 cursor-pointer"
+                  className="w-full accent-neutral-800 dark:accent-neutral-200 cursor-pointer"
                 />
               </div>
 
@@ -312,7 +312,7 @@ export const ExperimentControlCenter: React.FC = () => {
           <button
             onClick={handleLaunchStochastic}
             disabled={jobStatus?.status === 'running'}
-            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
+            className="w-full py-2 px-3 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-1.5 cursor-pointer transition-colors shadow-xs"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Run Stochastic Benchmark</span>
@@ -325,7 +325,7 @@ export const ExperimentControlCenter: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200 dark:border-neutral-800 pb-3">
           <div className="flex items-center space-x-3 font-mono">
             <span className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Terminal className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
               <span>Live Telemetry & Execution Progress</span>
             </span>
             {activeJobId && (
@@ -377,7 +377,7 @@ export const ExperimentControlCenter: React.FC = () => {
                   ? 'bg-emerald-500'
                   : jobStatus?.status === 'failed'
                   ? 'bg-rose-500'
-                  : 'bg-teal-600 dark:bg-teal-500'
+                  : 'bg-neutral-800 dark:bg-neutral-200'
               }`}
               style={{ width: `${jobStatus?.percentage || 0}%` }}
             />
@@ -428,7 +428,7 @@ const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').Exp
     <div className="p-4 rounded-lg bg-neutral-100/70 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 space-y-3 transition-all duration-300">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200 dark:border-neutral-800 pb-2">
         <div className="flex items-center space-x-2 font-mono">
-          <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-neutral-700 dark:text-neutral-300 shrink-0" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100">
             Experiment Results Summary
           </h3>
@@ -436,7 +436,7 @@ const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').Exp
 
         <button
           onClick={handleNavigateToDiagnostics}
-          className="flex items-center space-x-1.5 px-3 py-1 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white text-white dark:text-neutral-900 font-mono text-xs font-semibold cursor-pointer transition-colors self-start sm:self-auto shadow-xs"
+          className="flex items-center space-x-1.5 px-3 py-1 rounded bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 font-mono text-xs font-semibold cursor-pointer transition-colors self-start sm:self-auto shadow-xs"
         >
           <span>View Full Diagnostics</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -458,11 +458,11 @@ const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').Exp
         </div>
         <div className="p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
           <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Mitigated Flips</span>
-          <p className="font-bold text-sm text-teal-600 dark:text-teal-400 mt-0.5">{summary.position_bias_flips}</p>
+          <p className="font-bold text-sm text-neutral-900 dark:text-neutral-100 mt-0.5">{summary.position_bias_flips}</p>
         </div>
         <div className="p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 col-span-2 sm:col-span-1">
           <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Human Match Rate</span>
-          <p className="font-bold text-sm text-teal-600 dark:text-teal-400 mt-0.5">{summary.overall_accuracy_vs_human}%</p>
+          <p className="font-bold text-sm text-neutral-900 dark:text-neutral-100 mt-0.5">{summary.overall_accuracy_vs_human}%</p>
         </div>
       </div>
     </div>
