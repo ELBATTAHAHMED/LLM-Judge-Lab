@@ -377,15 +377,25 @@ export const ExperimentControlCenter: React.FC = () => {
 
         {/* Completed Job Results Summary Card */}
         {jobStatus?.status === 'completed' && jobStatus.result_summary && (
-          <JobSummaryCard summary={jobStatus.result_summary} />
+          <JobSummaryCard summary={jobStatus.result_summary} jobType={jobStatus.job_type} />
         )}
       </div>
     </div>
   );
 };
 
-const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').ExperimentJobStatus['result_summary']> }> = ({ summary }) => {
+const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').ExperimentJobStatus['result_summary']>; jobType?: string }> = ({ summary, jobType }) => {
   const navigate = useNavigate();
+
+  const handleNavigateToDiagnostics = () => {
+    let hash = '#position-bias';
+    if (jobType === 'perturbations' || summary.mitigation_strategy === 'synthetic_perturbation') {
+      hash = '#verbosity-bias';
+    } else if (jobType === 'stochastic' || summary.mitigation_strategy.startsWith('stochastic')) {
+      hash = '#reliability-metrics';
+    }
+    navigate(`/diagnostics${hash}`);
+  };
 
   return (
     <div className="p-4 rounded-lg bg-emerald-500/5 border border-emerald-500/30 space-y-3 transition-all duration-300">
@@ -398,7 +408,7 @@ const JobSummaryCard: React.FC<{ summary: NonNullable<import('../api/types').Exp
         </div>
 
         <button
-          onClick={() => navigate('/diagnostics')}
+          onClick={handleNavigateToDiagnostics}
           className="flex items-center space-x-1.5 px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-semibold cursor-pointer transition-colors self-start sm:self-auto"
         >
           <span>View Full Diagnostics</span>

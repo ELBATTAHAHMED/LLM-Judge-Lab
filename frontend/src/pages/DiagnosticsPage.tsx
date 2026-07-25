@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useBiasStats } from '../api/client';
 import { VerbosityBiasChart } from '../components/VerbosityBiasChart';
 import { PositionBiasChart } from '../components/PositionBiasChart';
@@ -9,6 +10,20 @@ import { RefreshCw } from 'lucide-react';
 
 export const DiagnosticsPage: React.FC = () => {
   const { data, loading, error, refetch } = useBiasStats();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const elementId = location.hash.replace('#', '');
+      const timer = setTimeout(() => {
+        const elem = document.getElementById(elementId);
+        if (elem) {
+          elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash]);
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 py-2 font-sans">
@@ -35,11 +50,13 @@ export const DiagnosticsPage: React.FC = () => {
 
       {/* Primary Bias Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <PositionBiasChart
-          data={data ? data.position_data : null}
-          loading={loading}
-          error={error}
-        />
+        <div id="position-bias" className="scroll-mt-6">
+          <PositionBiasChart
+            data={data ? data.position_data : null}
+            loading={loading}
+            error={error}
+          />
+        </div>
 
         <FormatBiasChart
           data={data ? data.format_bias : null}
@@ -49,21 +66,25 @@ export const DiagnosticsPage: React.FC = () => {
       </div>
 
       {/* Full-Width Verbosity Bias Scatter Chart */}
-      <VerbosityBiasChart
-        data={data ? data.verbosity_data : []}
-        loading={loading}
-        error={error}
-      />
+      <div id="verbosity-bias" className="scroll-mt-6">
+        <VerbosityBiasChart
+          data={data ? data.verbosity_data : []}
+          loading={loading}
+          error={error}
+        />
+      </div>
 
       {/* Domain-Stratified Reliability Bar Chart */}
-      <DomainReliabilityChart
-        data={data ? data.domain_kappa : []}
-        loading={loading}
-        error={error}
-      />
+      <div id="reliability-metrics" className="scroll-mt-6 space-y-8">
+        <DomainReliabilityChart
+          data={data ? data.domain_kappa : []}
+          loading={loading}
+          error={error}
+        />
 
-      {/* Academic Synthesis Callouts */}
-      <DiagnosticScientificCallouts />
+        {/* Academic Synthesis Callouts */}
+        <DiagnosticScientificCallouts />
+      </div>
     </div>
   );
 };
