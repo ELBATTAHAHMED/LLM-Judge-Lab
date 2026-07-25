@@ -34,6 +34,8 @@ export const DiagnosticsPage: React.FC = () => {
       await generateThesisReport('diagnostics-report-container', 'JudgeLab_Thesis_Appendix');
     } catch (err: any) {
       console.error('PDF Generation Error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      alert('PDF Generation Failed: ' + msg);
     } finally {
       setIsExporting(false);
     }
