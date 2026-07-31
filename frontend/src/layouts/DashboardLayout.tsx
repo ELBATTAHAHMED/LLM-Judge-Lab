@@ -11,12 +11,15 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Terminal,
+  Cpu,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useJudge } from '../context/JudgeContext';
 
 export const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { judgeModel, setJudgeModel } = useJudge();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const navItems = [
@@ -191,8 +194,37 @@ export const DashboardLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Workspace Area */}
-      <main className="flex-1 bg-white dark:bg-[#171717] min-h-screen p-6 md:p-10 lg:p-12 overflow-y-auto transition-colors duration-150">
-        <Outlet />
+      <main className="flex-1 bg-white dark:bg-[#171717] min-h-screen p-6 md:p-10 lg:p-12 overflow-y-auto transition-colors duration-150 flex flex-col space-y-6">
+        {/* Top Workspace Header Bar */}
+        <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
+          <div className="flex items-center space-x-2 text-xs font-mono text-neutral-500">
+            <Cpu className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
+            <span className="font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider text-[11px]">
+              Evaluator Model Context
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <label htmlFor="global-judge-select" className="text-xs font-mono text-neutral-500 dark:text-neutral-400 shrink-0">
+              Active Judge:
+            </label>
+            <select
+              id="global-judge-select"
+              value={judgeModel}
+              onChange={(e) => setJudgeModel(e.target.value)}
+              className="px-2.5 py-1.5 rounded bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs font-mono font-medium text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 cursor-pointer shadow-xs"
+            >
+              <option value="gpt-4o-mini">gpt-4o-mini (OpenAI Baseline)</option>
+              <option value="deepseek/deepseek-chat">deepseek/deepseek-chat (DeepSeek V3)</option>
+              <option value="anthropic/claude-3.5-haiku">anthropic/claude-3.5-haiku (Claude 3.5 Haiku)</option>
+              <option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct (Llama 3.3 70B)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

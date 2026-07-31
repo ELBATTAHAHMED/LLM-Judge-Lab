@@ -27,16 +27,20 @@ export const apiClient = axios.create({
 /**
  * Fetch unified leaderboard data (Bradley-Terry + Residual Neutralized scores)
  */
-export async function getLeaderboard(): Promise<LeaderboardItem[]> {
-  const response = await apiClient.get<LeaderboardItem[]>('/api/leaderboard');
+export async function getLeaderboard(judgeModel?: string): Promise<LeaderboardItem[]> {
+  const response = await apiClient.get<LeaderboardItem[]>('/api/leaderboard', {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
   return response.data;
 }
 
 /**
  * Fetch raw bias data for telemetry & visualization (verbosity + position counts)
  */
-export async function getBiasStats(): Promise<BiasStatsResponse> {
-  const response = await apiClient.get<BiasStatsResponse>('/api/stats/bias');
+export async function getBiasStats(judgeModel?: string): Promise<BiasStatsResponse> {
+  const response = await apiClient.get<BiasStatsResponse>('/api/stats/bias', {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
   return response.data;
 }
 
@@ -98,7 +102,7 @@ export async function getJobStatus(jobId: string): Promise<ExperimentJobStatus> 
 
 // ── Custom React Hooks for UI Components ──────────────────────────────────────
 
-export function useLeaderboard() {
+export function useLeaderboard(judgeModel?: string) {
   const [data, setData] = useState<LeaderboardItem[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +111,7 @@ export function useLeaderboard() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getLeaderboard();
+      const result = await getLeaderboard(judgeModel);
       setData(result);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -117,7 +121,7 @@ export function useLeaderboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [judgeModel]);
 
   useEffect(() => {
     fetch();
@@ -126,7 +130,7 @@ export function useLeaderboard() {
   return { data, loading, error, refetch: fetch };
 }
 
-export function useBiasStats() {
+export function useBiasStats(judgeModel?: string) {
   const [data, setData] = useState<BiasStatsResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +139,7 @@ export function useBiasStats() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getBiasStats();
+      const result = await getBiasStats(judgeModel);
       setData(result);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -145,7 +149,7 @@ export function useBiasStats() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [judgeModel]);
 
   useEffect(() => {
     fetch();
