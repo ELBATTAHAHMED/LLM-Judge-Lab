@@ -10,12 +10,15 @@ Populates the PostgreSQL evaluation database across 4 target judge models:
 
 Evaluates 3 technical topics across 3 experimental variations (Baseline, Position Swap, Verbosity Padding)
 for a total of 36 live evaluations.
+
+Uses Python standard library (urllib.request, json) to guarantee 100% dependency-free execution.
 """
 
 import sys
 import time
-import requests
 import json
+import urllib.request
+import urllib.error
 
 BACKEND_URL = "http://localhost:8000"
 
@@ -110,6 +113,41 @@ def generate_variations(topic_item: dict) -> list[dict]:
     ]
 
 
+def http_post(url: str, json_data: dict, timeout: float = 120.0) -> tuple[int, dict | str]:
+    body_bytes = json.dumps(json_data).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body_bytes,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            status = response.status
+            res_body = response.read().decode("utf-8")
+            try:
+                return status, json.loads(res_body)
+            except Exception:
+                return status, res_body
+    except urllib.error.HTTPError as http_err:
+        err_body = http_err.read().decode("utf-8")
+        try:
+            return http_err.code, json.loads(err_body)
+        except Exception:
+            return http_err.code, err_body
+    except Exception as exc:
+        return 500, str(exc)
+
+
+def http_get(url: str, timeout: float = 5.0) -> tuple[int, str]:
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            return response.status, response.read().decode("utf-8")
+    except Exception as exc:
+        return 500, str(exc)
+
+
 def run_seeder():
     print("=" * 80)
     print("🚀 JUDGELAB AUTOMATED SEEDER — Populating PostgreSQL Evaluation Database")
@@ -120,11 +158,13 @@ def run_seeder():
     print("=" * 80 + "\n")
 
     # Health check
-    try:
-        resp = requests.get(f"{BACKEND_URL}/health", timeout=5)
-        print(f"✅ Backend connection verified: HTTP {resp.status_code}\n")
-    except Exception as err:
-        print(f"❌ Failed to connect to FastAPI backend at {BACKEND_URL}. Ensure server is running (`uvicorn main:app`). Error: {err}")
+    status, body = http_get(f"{BACKEND_URL}/health")
+    if status == 200:
+        print("✅ Backend connection verified: HTTP 200 OK\n")
+    else:
+        print(f"❌ Failed to connect to FastAPI backend at {BACKEND_URL}.")
+        print("   Please start the backend server from the project root using:")
+        print("   .venv\\Scripts\\python.exe -m uvicorn backend.main:app --reload\n")
         sys.exit(1)
 
     total_runs = len(MODELS) * len(TOPICS) * 3
@@ -152,21 +192,18 @@ def run_seeder():
 
                 print(f"[{run_count:02d}/{total_runs:02d}] Model: {model[:25]:<25} | Topic: {topic['id']:<12} | Var: {var['variation_type']:<13} ... ", end="", flush=True)
 
-                try:
-                    t0 = time.time()
-                    res = requests.post(f"{BACKEND_URL}/api/evaluate/calibrated", json=payload, timeout=120)
-                    elapsed = round(time.time() - t0, 2)
+                t0 = time.time()
+                status, data = http_post(f"{BACKEND_URL}/api/evaluate/calibrated", payload, timeout=120.0)
+                elapsed = round(time.time() - t0, 2)
 
-                    if res.status_code == 200:
-                        data = res.json()
-                        winner = data.get("final_calibrated_winner", "UNKNOWN")
-                        bias_flipped = data.get("position_bias_detected", False)
-                        success_count += 1
-                        print(f"DONE ({elapsed}s) | Winner: {winner} | Flip: {bias_flipped}")
-                    else:
-                        print(f"FAILED (HTTP {res.status_code}): {res.text[:80]}")
-                except Exception as req_err:
-                    print(f"ERROR: {str(req_err)[:80]}")
+                if status == 200 and isinstance(data, dict):
+                    winner = data.get("final_calibrated_winner", "UNKNOWN")
+                    bias_flipped = data.get("position_bias_detected", False)
+                    success_count += 1
+                    print(f"DONE ({elapsed}s) | Winner: {winner} | Flip: {bias_flipped}")
+                else:
+                    err_msg = data.get("detail", str(data)) if isinstance(data, dict) else str(data)
+                    print(f"FAILED (HTTP {status}): {err_msg[:80]}")
 
                 time.sleep(0.1)
 
