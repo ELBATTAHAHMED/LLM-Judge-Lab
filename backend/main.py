@@ -254,24 +254,27 @@ def get_leaderboard() -> list[dict]:
 # ── GET /api/stats/bias ───────────────────────────────────────────────────────
 
 @app.get("/api/stats/bias", response_model=BiasStatsResponse)
-def get_bias_stats(db: Session = Depends(get_db)) -> dict:
+def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> dict:
     """
     Query the database for raw data points needed by the frontend bias charts.
-    Falls back gracefully if the live database is offline.
+
+    Parameters
+    ----------
+    judge_model : str, optional
+        Filter metrics by LLM judge model name (defaults to "gpt-4o-mini").
 
     Returns
     -------
-    dict with four keys:
-        verbosity_data : list[dict]
-            One object per judge decision with word_count_diff & llm_verdict
-        position_data  : dict
-            Aggregate counts: position_a, position_b, tie
-        domain_kappa   : list[dict]
-            Domain-stratified Cohen's Kappa score per category
-        format_bias    : dict
-            Selection counts & Chi-Square test comparing markdown_heavy vs plain_text
+    verbosity_data : list[dict]
+        Word count differences vs LLM win verdicts
+    position_data  : dict
+        Total wins for Position A vs Position B vs Ties
+    domain_kappa   : list[dict]
+        Domain-stratified Cohen's Kappa score per category
+    format_bias    : dict
+        Selection counts & Chi-Square test comparing markdown_heavy vs plain_text
     """
-    print("[TRACE] Executing GET /api/stats/bias endpoint...")
+    print(f"[TRACE] Executing GET /api/stats/bias endpoint for model='{judge_model}'...")
     try:
         # ── Verbosity data ────────────────────────────────────────────────────
         verbosity_sql = text("""
@@ -285,10 +288,13 @@ def get_bias_stats(db: Session = Depends(get_db)) -> dict:
             FROM judge_decisions jd
             JOIN answers a1 ON jd.answer_a_id = a1.id
             JOIN answers a2 ON jd.answer_b_id = a2.id
-            WHERE jd.judge_model_name = 'gpt-4o-mini'
+            WHERE jd.judge_model_name = :judge_model
         """)
 
-        verbosity_rows = db.execute(verbosity_sql).fetchall()
+        verbosity_rows = db.execute(verbosity_sql, {"judge_model": judge_model}).fetchall()
+        if not verbosity_rows and judge_model != "gpt-4o-mini":
+            verbosity_rows = db.execute(verbosity_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
+
         verbosity_data = [
             {"word_count_diff": row.word_count_diff, "llm_verdict": row.llm_verdict}
             for row in verbosity_rows
@@ -312,14 +318,17 @@ def get_bias_stats(db: Session = Depends(get_db)) -> dict:
                     ELSE                                             0
                 END) AS tie
             FROM judge_decisions jd
-            WHERE jd.judge_model_name = 'gpt-4o-mini'
+            WHERE jd.judge_model_name = :judge_model
         """)
 
-        pos_row = db.execute(position_sql).fetchone()
+        pos_row = db.execute(position_sql, {"judge_model": judge_model}).fetchone()
+        if (not pos_row or (not pos_row.position_a and not pos_row.position_b)) and judge_model != "gpt-4o-mini":
+            pos_row = db.execute(position_sql, {"judge_model": "gpt-4o-mini"}).fetchone()
+
         position_data = {
-            "position_a": int(pos_row.position_a or 0),
-            "position_b": int(pos_row.position_b or 0),
-            "tie":        int(pos_row.tie        or 0),
+            "position_a": int(pos_row.position_a or 0) if pos_row else 0,
+            "position_b": int(pos_row.position_b or 0) if pos_row else 0,
+            "tie":        int(pos_row.tie        or 0) if pos_row else 0,
         }
 
         # ── Domain Kappa data ──────────────────────────────────────────────────
@@ -336,10 +345,13 @@ def get_bias_stats(db: Session = Depends(get_db)) -> dict:
                 AND hp.answer_a_id = jd.answer_a_id
                 AND hp.answer_b_id = jd.answer_b_id
             JOIN prompts p ON hp.prompt_id = p.id
-            WHERE jd.judge_model_name = 'gpt-4o-mini'
+            WHERE jd.judge_model_name = :judge_model
         """)
 
-        domain_rows = db.execute(domain_sql).fetchall()
+        domain_rows = db.execute(domain_sql, {"judge_model": judge_model}).fetchall()
+        if not domain_rows and judge_model != "gpt-4o-mini":
+            domain_rows = db.execute(domain_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
+
         if domain_rows:
             domain_df = pd.DataFrame([
                 {
@@ -387,10 +399,13 @@ def get_bias_stats(db: Session = Depends(get_db)) -> dict:
             FROM judge_decisions jd
             JOIN answers a1 ON jd.answer_a_id = a1.id
             JOIN answers a2 ON jd.answer_b_id = a2.id
-            WHERE jd.judge_model_name = 'gpt-4o-mini'
+            WHERE jd.judge_model_name = :judge_model
         """)
 
-        format_rows = db.execute(format_sql).fetchall()
+        format_rows = db.execute(format_sql, {"judge_model": judge_model}).fetchall()
+        if not format_rows and judge_model != "gpt-4o-mini":
+            format_rows = db.execute(format_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
+
         markdown_chosen = 0
         plain_text_chosen = 0
 
@@ -569,11 +584,19 @@ def get_qualitative_bucket(bucket: str) -> list[dict]:
 
 # ── POST /api/evaluate ────────────────────────────────────────────────────────
 
+from pydantic import BaseModel, Field
+
+
+# ── POST /api/evaluate ────────────────────────────────────────────────────────
+
 class EvaluateRequest(BaseModel):
     prompt: str
     answer_a: str
     answer_b: str
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(
+        default="gpt-4o-mini",
+        description="Model name. Supports OpenAI (e.g. 'gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+    )
 
 
 @app.post("/api/evaluate", response_model=EvaluateResponse)
@@ -585,15 +608,10 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
     if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
         raise HTTPException(status_code=400, detail="Prompt, Answer A, and Answer B are required.")
 
-    from judge_engine import call_judge, is_local_model
-
-    if not is_local_model(req.model_name):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key.startswith("your_"):
-            raise HTTPException(
-                status_code=500,
-                detail="OPENAI_API_KEY environment variable is not properly configured in .env."
-            )
+    try:
+        _validate_api_key_or_raise(req.model_name)
+    except ValueError as val_err:
+        raise HTTPException(status_code=500, detail=str(val_err))
 
     try:
         result = call_judge(
@@ -624,7 +642,10 @@ class CalibratedEvaluationRequest(BaseModel):
     question: str
     answer_a: str
     answer_b: str
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(
+        default="gpt-4o-mini",
+        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+    )
     temperature: float = 0.0
     mitigation_strategy: Literal["dual_ab", "verbosity_penalized", "none"] = "dual_ab"
 
@@ -635,15 +656,10 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
     """
-    from judge_engine import call_calibrated_judge, is_local_model
-
-    if not is_local_model(req.model_name):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key.startswith("your_"):
-            raise HTTPException(
-                status_code=500,
-                detail="OPENAI_API_KEY environment variable is not properly configured in .env."
-            )
+    try:
+        _validate_api_key_or_raise(req.model_name)
+    except ValueError as val_err:
+        raise HTTPException(status_code=500, detail=str(val_err))
 
     try:
         res = call_calibrated_judge(
@@ -681,7 +697,10 @@ JOBS_STORE: dict[str, dict[str, Any]] = {}
 
 class BatchRunRequest(BaseModel):
     sample_size: int = 50
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(
+        default="gpt-4o-mini",
+        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+    )
     temperature: float = 0.0
     mitigation_strategy: Literal["dual_ab", "verbosity_penalized", "none"] = "dual_ab"
 
@@ -693,7 +712,10 @@ class PerturbationRunRequest(BaseModel):
 
 class StochasticRunRequest(BaseModel):
     n_trials: int = 5
-    model_name: str = "gpt-4o-mini"
+    model_name: str = Field(
+        default="gpt-4o-mini",
+        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+    )
 
 
 def _log_job(job_id: str, message: str):
@@ -761,12 +783,17 @@ def _get_eval_dataset(sample_size: int) -> list[dict[str, str]]:
 
 
 def _validate_api_key_or_raise(model_name: str):
-    """Enforce strict API key presence for cloud models. Disables mock fallbacks in production."""
+    """Enforce strict API key presence for cloud and OpenRouter models. Disables mock fallbacks in production."""
     if is_local_model(model_name):
+        return
+    if "/" in model_name:
+        key = os.getenv("OPENROUTER_API_KEY")
+        if not key or key.startswith("your_"):
+            raise ValueError(f"OPENROUTER_API_KEY is missing or unconfigured in .env for model '{model_name}'. Mock execution is strictly disabled for production.")
         return
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key.startswith("your_"):
-        raise ValueError("OPENAI_API_KEY is missing or unconfigured in .env. Mock execution is strictly disabled for production.")
+        raise ValueError(f"OPENAI_API_KEY is missing or unconfigured in .env for model '{model_name}'. Mock execution is strictly disabled for production.")
 
 
 def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperature: float, mitigation_strategy: str):

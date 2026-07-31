@@ -316,6 +316,17 @@ def call_judge_multiturn(
 
 # ── Client & Local Model Resolver ──────────────────────────────────────────────
 
+def is_openrouter_model(model_name: str) -> bool:
+    """
+    Detect whether model_name refers to an OpenRouter model tag (e.g. 'deepseek/deepseek-chat').
+    Local models labeled with '(Local / Ollama)' are excluded.
+    """
+    if not model_name:
+        return False
+    m = model_name.lower().strip()
+    return ("/" in m) and not any(k in m for k in ("ollama", "local"))
+
+
 def is_local_model(model_name: str) -> bool:
     """
     Detect whether model_name indicates a local Ollama model instance.
@@ -323,25 +334,49 @@ def is_local_model(model_name: str) -> bool:
     if not model_name:
         return False
     m = model_name.lower().strip()
-    return any(k in m for k in ("llama", "ollama", "vicuna", "mistral", "qwen", "gemma", "phi", "local"))
+    if any(k in m for k in ("ollama", "local")):
+        return True
+    if "/" in m:
+        return False
+    return any(k in m for k in ("llama", "vicuna", "mistral", "qwen", "gemma", "phi"))
 
 
 def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
     """
     Resolve and return an appropriate OpenAI-compatible client instance and target model name.
 
-    If model_name is a local model (Ollama):
-      - Configures OpenAI client with base_url="http://localhost:11434/v1", api_key="ollama".
-      - Extracts target model identifier tag (e.g. "llama3", "mistral").
+    Routing branches:
+      1. Explicit client passed in parameter -> returned directly.
+      2. OpenRouter model -> OpenRouter API endpoint client.
+      3. Local model (Ollama) -> Local Ollama client.
+      4. Native OpenAI model -> Standard OpenAI API client.
     """
     import openai
 
+    if client is not None:
+        return client, model_name
+
+    # OpenRouter API Routing
+    if is_openrouter_model(model_name):
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if not openrouter_key or openrouter_key.startswith("your_"):
+            raise ValueError("OPENROUTER_API_KEY environment variable is not properly configured in .env.")
+        openrouter_client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=openrouter_key,
+            timeout=120.0,
+            default_headers={
+                "HTTP-Referer": "https://judgelab.research",
+                "X-Title": "JudgeLab Research Bench",
+            },
+        )
+        return openrouter_client, model_name
+
+    # Local Ollama Routing
     if is_local_model(model_name):
         m = model_name.lower()
-        if "llama" in m or "ollama" in m and "/" not in model_name:
+        if "llama" in m or "ollama" in m:
             target_model = "llama3"
-        elif "/" in model_name:
-            target_model = model_name.split("/")[-1].strip()
         else:
             target_model = model_name.strip()
 
@@ -356,9 +391,7 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
         )
         return local_client, target_model
 
-    if client is not None:
-        return client, model_name
-
+    # Native OpenAI Routing
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key or api_key.startswith("your_"):
         raise ValueError("OPENAI_API_KEY environment variable is not properly configured in .env.")
