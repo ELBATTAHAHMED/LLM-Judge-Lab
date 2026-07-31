@@ -158,11 +158,14 @@ def run_seeder():
     print("=" * 80 + "\n")
 
     # Health check
-    status, body = http_get(f"{BACKEND_URL}/health")
+    status, body = http_get(f"{BACKEND_URL}/")
+    if status != 200:
+        status, body = http_get(f"{BACKEND_URL}/health")
+
     if status == 200:
         print("✅ Backend connection verified: HTTP 200 OK\n")
     else:
-        print(f"❌ Failed to connect to FastAPI backend at {BACKEND_URL}.")
+        print(f"❌ Failed to connect to FastAPI backend at {BACKEND_URL} (HTTP status {status}).")
         print("   Please start the backend server from the project root using:")
         print("   .venv\\Scripts\\python.exe -m uvicorn backend.main:app --reload\n")
         sys.exit(1)

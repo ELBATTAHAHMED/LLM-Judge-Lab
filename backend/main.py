@@ -195,9 +195,10 @@ class JobTriggerResponse(BaseModel):
     message: str
 
 
-# ── GET / (Health Check) ──────────────────────────────────────────────────────
+# ── GET / & GET /health (Health Check) ───────────────────────────────────────
 
 @app.get("/", response_model=HealthCheckResponse)
+@app.get("/health", response_model=HealthCheckResponse)
 def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
     """Simple health check endpoint verifying application and database status."""
     try:
