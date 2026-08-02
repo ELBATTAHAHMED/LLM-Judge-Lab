@@ -7,7 +7,6 @@ import { PositionBiasChart } from '../components/PositionBiasChart';
 import { FormatBiasChart } from '../components/FormatBiasChart';
 import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
-import { SingleModelIcon, formatModelName } from '../components/ModelIcons';
 import { RefreshCw } from 'lucide-react';
 
 export const DiagnosticsPage: React.FC = () => {
@@ -39,13 +38,6 @@ export const DiagnosticsPage: React.FC = () => {
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
             Real-time diagnostic telemetry evaluating Position-Order Bias (&chi;&sup2;), Verbosity Bias (&rho;), Format Bias (&chi;&sup2;), Inter-Rater Reliability (&kappa;), and Decisiveness Hallucinations
           </p>
-          <div className="flex items-center gap-1.5 mt-2 text-xs font-mono text-neutral-500">
-            <span>Analyzing:</span>
-            <span className="flex items-center gap-1.5 text-neutral-800 dark:text-neutral-200 font-medium">
-              <SingleModelIcon modelName={judgeModel} className="w-3.5 h-3.5" />
-              <span>{formatModelName(judgeModel)}</span>
-            </span>
-          </div>
         </div>
 
         <button

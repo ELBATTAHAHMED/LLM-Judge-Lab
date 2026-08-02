@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Landmark,
@@ -11,16 +11,73 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Terminal,
-  Cpu,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useJudge } from '../context/JudgeContext';
+import {
+  OpenAIIcon,
+  DeepSeekIcon,
+  MetaLlamaIcon,
+  ClaudeIcon,
+} from '../components/ModelIcons';
+
+const JUDGE_OPTIONS = [
+  {
+    id: 'gpt-4o-mini',
+    name: 'GPT-4o-Mini',
+    provider: 'OpenAI',
+    badge: 'Baseline',
+    color: '#10a37f',
+    Icon: OpenAIIcon,
+  },
+  {
+    id: 'deepseek/deepseek-chat',
+    name: 'DeepSeek V3',
+    provider: 'DeepSeek',
+    badge: 'Reasoning',
+    color: '#2563eb',
+    Icon: DeepSeekIcon,
+  },
+  {
+    id: 'meta-llama/llama-3.3-70b-instruct',
+    name: 'Llama 3.3 70B',
+    provider: 'Meta AI',
+    badge: '70B Instruct',
+    color: '#0668E1',
+    Icon: MetaLlamaIcon,
+  },
+  {
+    id: 'anthropic/claude-3-haiku',
+    name: 'Claude 3 Haiku',
+    provider: 'Anthropic',
+    badge: 'Fast',
+    color: '#cc785c',
+    Icon: ClaudeIcon,
+  },
+];
 
 export const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { judgeModel, setJudgeModel } = useJudge();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isJudgeOpen, setIsJudgeOpen] = useState(false);
+  const judgeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        judgeDropdownRef.current &&
+        !judgeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsJudgeOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const navItems = [
     {
@@ -49,6 +106,27 @@ export const DashboardLayout: React.FC = () => {
       icon: Terminal,
     },
   ];
+
+  const getPageTitle = (pathname: string) => {
+    switch (pathname) {
+      case '/':
+      case '/leaderboard':
+        return 'Leaderboard';
+      case '/diagnostics':
+        return 'Bias Diagnostics';
+      case '/qualitative-explorer':
+        return 'Qualitative Explorer';
+      case '/live-lab':
+        return 'Live Evaluation';
+      case '/experiments':
+        return 'Experiment Controls';
+      default:
+        return 'Overview';
+    }
+  };
+
+  const currentJudge =
+    JUDGE_OPTIONS.find((opt) => opt.id === judgeModel) || JUDGE_OPTIONS[0];
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#171717] text-neutral-900 dark:text-neutral-100 flex font-sans antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800 transition-colors duration-150">
@@ -143,7 +221,9 @@ export const DashboardLayout: React.FC = () => {
                   to={item.path}
                   title={isCollapsed ? item.label : undefined}
                   className={`flex items-center ${
-                    isCollapsed ? 'justify-center px-0 py-3' : 'space-x-3 px-3.5 py-3'
+                    isCollapsed
+                      ? 'justify-center px-0 py-3'
+                      : 'space-x-3 px-3.5 py-3'
                   } rounded-md transition-colors ${
                     isActive
                       ? 'bg-neutral-200/35 text-neutral-900 font-semibold dark:bg-neutral-800/35 dark:text-neutral-100'
@@ -175,7 +255,10 @@ export const DashboardLayout: React.FC = () => {
                 <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 truncate">
                   Ahmed El Battah
                 </span>
-                <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate" title="M2 Intelligent Processing Systems">
+                <span
+                  className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate"
+                  title="M2 Intelligent Processing Systems"
+                >
                   M2 Intelligent Processing Systems
                 </span>
               </div>
@@ -197,28 +280,89 @@ export const DashboardLayout: React.FC = () => {
       <main className="flex-1 bg-white dark:bg-[#171717] min-h-screen p-6 md:p-10 lg:p-12 overflow-y-auto transition-colors duration-150 flex flex-col space-y-6">
         {/* Top Workspace Header Bar */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
-          <div className="flex items-center space-x-2 text-xs font-mono text-neutral-500">
-            <Cpu className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
-            <span className="font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider text-[11px]">
-              Evaluator Model Context
+          <div className="flex items-center space-x-2 text-xs font-mono text-neutral-500 dark:text-neutral-400">
+            <span className="text-neutral-400 dark:text-neutral-500">Workspace</span>
+            <span>/</span>
+            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+              {getPageTitle(location.pathname)}
             </span>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <label htmlFor="global-judge-select" className="text-xs font-mono text-neutral-500 dark:text-neutral-400 shrink-0">
-              Active Judge:
-            </label>
-            <select
-              id="global-judge-select"
-              value={judgeModel}
-              onChange={(e) => setJudgeModel(e.target.value)}
-              className="px-2.5 py-1.5 rounded bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs font-mono font-medium text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 cursor-pointer shadow-xs"
+          {/* Sleek Matte Status Chip Judge Selector */}
+          <div className="relative" ref={judgeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsJudgeOpen(!isJudgeOpen)}
+              className="flex items-center space-x-2.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-zinc-900/90 border border-neutral-200 dark:border-zinc-800 text-xs font-mono text-neutral-900 dark:text-zinc-100 shadow-xs hover:border-neutral-300 dark:hover:border-zinc-700 transition-all duration-150 ease-out cursor-pointer select-none"
             >
-              <option value="gpt-4o-mini">gpt-4o-mini (OpenAI Baseline)</option>
-              <option value="deepseek/deepseek-chat">deepseek/deepseek-chat (DeepSeek V3)</option>
-              <option value="anthropic/claude-3-haiku">anthropic/claude-3-haiku (Claude 3 Haiku)</option>
-              <option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct (Llama 3.3 70B)</option>
-            </select>
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: currentJudge.color }}
+              />
+              <currentJudge.Icon
+                className="w-3.5 h-3.5 shrink-0"
+                style={{ color: currentJudge.color }}
+              />
+              <span className="font-semibold">{currentJudge.name}</span>
+              <span className="text-[10px] text-neutral-500 dark:text-zinc-400 font-normal">
+                ({currentJudge.provider})
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-150 ${
+                  isJudgeOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {isJudgeOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 rounded-xl bg-white dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 shadow-xl shadow-black/40 p-1.5 z-50 font-mono text-xs space-y-0.5">
+                <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-neutral-400 dark:text-zinc-500 font-semibold border-b border-neutral-100 dark:border-zinc-800/60 mb-1">
+                  Evaluator Judge
+                </div>
+                {JUDGE_OPTIONS.map((opt) => {
+                  const isActive = opt.id === judgeModel;
+                  const OptionIcon = opt.Icon;
+
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setJudgeModel(opt.id);
+                        setIsJudgeOpen(false);
+                      }}
+                      className={`w-full px-2.5 py-2 rounded-lg flex items-center justify-between text-left cursor-pointer transition-colors duration-150 ${
+                        isActive
+                          ? 'bg-neutral-100 dark:bg-zinc-900 font-semibold text-neutral-900 dark:text-zinc-100'
+                          : 'text-neutral-600 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200 hover:bg-neutral-50 dark:hover:bg-zinc-900/60'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-2.5 min-w-0">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: opt.color }}
+                        />
+                        <OptionIcon
+                          className="w-4 h-4 shrink-0"
+                          style={{ color: opt.color }}
+                        />
+                        <span className="flex flex-col min-w-0">
+                          <span className="truncate text-xs leading-none mb-0.5">
+                            {opt.name}
+                          </span>
+                          <span className="text-[10px] text-neutral-500 dark:text-zinc-500 font-normal truncate">
+                            {opt.provider} &bull; {opt.badge}
+                          </span>
+                        </span>
+                      </span>
+                      {isActive && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 ml-2" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
@@ -229,3 +373,4 @@ export const DashboardLayout: React.FC = () => {
     </div>
   );
 };
+
