@@ -121,6 +121,7 @@ export interface BatchRunRequest {
 export interface PerturbationRunRequest {
   padding_factor?: number;
   inject_markdown?: boolean;
+  model_name?: string;
 }
 
 export interface StochasticRunRequest {

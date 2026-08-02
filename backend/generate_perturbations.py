@@ -218,9 +218,13 @@ def run_controlled_perturbation_experiments(
         print(f"  Perturbation Flip Rate     : {flip_rate:.2f}%")
         print(f"  Mean Delta Word Count      : +{avg_delta_len:.1f} words")
 
-    print("---------------------------------------------------------")
-    print(f" Saved structured perturbation dataset to: {out_csv_path}")
-
+import argparse
 
 if __name__ == "__main__":
-    run_controlled_perturbation_experiments()
+    parser = argparse.ArgumentParser(description="Controlled Synthetic Perturbation Generator")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Evaluator model name")
+    parser.add_argument("--sample-size", type=int, default=20, help="Number of base pairs")
+    args = parser.parse_args()
+
+    run_controlled_perturbation_experiments(sample_size=args.sample_size, model_name=args.model)
+

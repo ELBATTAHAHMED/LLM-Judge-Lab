@@ -66,9 +66,10 @@ def get_connection_engine():
 # ── data retrieval and processing ───────────────────────────────────────────
 
 
-def fetch_and_process_data(engine) -> pd.DataFrame:
-    """Fetch matched human vs LLM evaluations and classify choices."""
-    sql_query = """
+def fetch_and_process_data(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
+    """Fetch matched human vs LLM evaluations for a specific judge model and classify choices."""
+    from sqlalchemy import text
+    sql_query = text("""
     SELECT 
         hp.winner_id as human_winner_id,
         hp.answer_a_id,
@@ -88,15 +89,15 @@ def fetch_and_process_data(engine) -> pd.DataFrame:
     JOIN prompts p ON hp.prompt_id = p.id
     JOIN answers a1 ON hp.answer_a_id = a1.id
     JOIN answers a2 ON hp.answer_b_id = a2.id
-    WHERE jd.judge_model_name = 'gpt-4o-mini';
-    """
+    WHERE jd.judge_model_name = :judge_model_name;
+    """)
 
     with engine.connect() as conn:
-        df = pd.read_sql_query(sql_query, conn)
+        df = pd.read_sql_query(sql_query, conn, params={"judge_model_name": judge_model_name})
 
     if df.empty:
-        print("Error: No data found in the database matching 'gpt-4o-mini'!")
-        sys.exit(1)
+        print(f"Warning: No data found in database for judge model '{judge_model_name}'!")
+        return pd.DataFrame()
 
     # Classify Human Choice
     def classify_human(row):
@@ -281,21 +282,21 @@ def print_formatted_results(df: pd.DataFrame, stats: dict) -> None:
     print("-" * 75)
 
     # Position Bias
-    print("2. POSITION BIAS TEST (CHI-SQUARE GOODNESS-OF-FIT)")
-    chi2_3, p_val_3 = stats["chi2_uniform"]
+    print("2. POSITION BIAS TEST (PRIMARY BINARY CHI-SQUARE TEST)")
     chi2_2, p_val_2 = stats["chi2_binary"]
-    print("   [Option A: 3-Way Test (Position A vs Position B vs Tie)]")
-    print(f"     * Chi2 Statistic : {chi2_3:.4f} (df=2)")
-    print(f"     * p-value        : {p_val_3:.4e}")
-    print("   [Option B: Binary Test (Position A vs Position B - Excluding Ties)]")
+    chi2_3, p_val_3 = stats["chi2_uniform"]
+    print("   [Primary Test: Binary Chi-Square Test (Position A vs Position B - Excluding Ties)]")
     print(f"     * Chi2 Statistic : {chi2_2:.4f} (df=1)")
-    print(f"     * p-value        : {p_val_2:.4f}")
+    print(f"     * p-value        : {p_val_2:.4e}")
     if p_val_2 < 0.05:
-        print("     * Thesis Interpretation: STATISTICALLY SIGNIFICANT bias. The judge has a")
-        print("                              systematic preference for the response in Position B.")
+        print("     * Thesis Interpretation: STATISTICALLY SIGNIFICANT position bias (p < 0.05). The judge exhibits a")
+        print("                              systematic, non-random preference between Position A and Position B.")
     else:
-        print("     * Thesis Interpretation: No statistically significant position bias detected.")
+        print("     * Thesis Interpretation: No statistically significant position bias detected (p >= 0.05).")
+    print("   [Secondary Exploratory: 3-Way Test (Position A vs Position B vs Tie)]")
+    print(f"     * Chi2 Statistic : {chi2_3:.4f} (df=2), p-value: {p_val_3:.4e}")
     print("-" * 75)
+
 
     # Verbosity Bias
     print("3. VERBOSITY BIAS ANALYSIS (SPEARMAN RANK CORRELATION)")
@@ -499,11 +500,17 @@ def generate_visualizations(df: pd.DataFrame, stats: dict) -> None:
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Analyze statistical bias metrics for LLM judge.")
+    parser.add_argument("--model", default="gpt-4o-mini", help="Judge model name to analyze.")
+    args = parser.parse_args()
+
     engine = get_connection_engine()
-    df = fetch_and_process_data(engine)
-    stats = perform_statistical_analysis(df)
-    print_formatted_results(df, stats)
-    generate_visualizations(df, stats)
+    df = fetch_and_process_data(engine, judge_model_name=args.model)
+    if not df.empty:
+        stats = perform_statistical_analysis(df)
+        print_formatted_results(df, stats)
+        generate_visualizations(df, stats)
 
 
 if __name__ == "__main__":

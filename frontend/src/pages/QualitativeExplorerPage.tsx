@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQualitativeBucket } from '../api/client';
+import { useJudge } from '../context/JudgeContext';
 import type { QualitativeBucket, QualitativeRecord } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { CaseCommentaryCard } from '../components/CaseCommentaryCard';
@@ -7,12 +8,14 @@ import { FormattedMatchup, SingleModelIcon } from '../components/ModelIcons';
 import { RefreshCw, Download, Copy, Check, MessageSquare, FileText } from 'lucide-react';
 
 export const QualitativeExplorerPage: React.FC = () => {
+  const { judgeModel } = useJudge();
   const [selectedBucket, setSelectedBucket] = useState<QualitativeBucket>('verbosity');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [copied, setCopied] = useState<boolean>(false);
 
-  const { data, loading, error, refetch } = useQualitativeBucket(selectedBucket);
+  const { data, loading, error, refetch } = useQualitativeBucket(selectedBucket, judgeModel);
+
 
   const bucketTabs: {
     id: QualitativeBucket;
@@ -23,28 +26,29 @@ export const QualitativeExplorerPage: React.FC = () => {
     {
       id: 'verbosity',
       label: 'Bucket A: Verbosity Bias',
-      countStr: '167 cases',
+      countStr: selectedBucket === 'verbosity' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'AI chose longer answer (>50w diff) while human chose shorter/tie',
     },
     {
       id: 'forced_choice',
       label: 'Bucket B: Forced Choice',
-      countStr: '262 cases',
+      countStr: selectedBucket === 'forced_choice' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'Human choice was a TIE, but AI judge forced a winner decision',
     },
     {
       id: 'position_bias',
       label: 'Bucket C: Position Bias',
-      countStr: '693 cases',
+      countStr: selectedBucket === 'position_bias' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'AI judge selected candidate response placed in Position B',
     },
     {
       id: 'baseline_alignment',
       label: 'Bucket D: Baseline Alignment',
-      countStr: '937 cases',
+      countStr: selectedBucket === 'baseline_alignment' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'Control group where AI judge verdict matches human preference',
     },
   ];
+
 
   const filteredData = useMemo(() => {
     if (!data) return [];
@@ -52,9 +56,9 @@ export const QualitativeExplorerPage: React.FC = () => {
     const q = searchQuery.toLowerCase();
     return data.filter(
       (item) =>
-        item.prompt_id.toString().toLowerCase().includes(q) ||
-        item.model_names.toLowerCase().includes(q) ||
-        item.reasoning_text.toLowerCase().includes(q)
+        (item.prompt_id != null ? item.prompt_id.toString() : '').toLowerCase().includes(q) ||
+        (item.model_names || '').toLowerCase().includes(q) ||
+        (item.reasoning_text || '').toLowerCase().includes(q)
     );
   }, [data, searchQuery]);
 

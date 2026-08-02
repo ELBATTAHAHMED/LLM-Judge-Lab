@@ -233,30 +233,8 @@ def run_evaluation(args: argparse.Namespace) -> None:
 
     random.seed(args.seed)
 
-    # ── OpenAI client setup ───────────────────────────────────────────────────
-    if not args.dry_run:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            log.error(
-                "OPENAI_API_KEY is not set. "
-                "Add it to your .env file or export it as an environment variable.\n"
-                "  echo OPENAI_API_KEY=sk-... >> .env\n"
-                "Use --dry-run to skip the API and just inspect pending items."
-            )
-            sys.exit(1)
-
-        try:
-            import openai
-            client = openai.OpenAI(api_key=api_key)
-            # Quick connectivity test — lists available models
-            client.models.list()
-            log.info("OpenAI connection: OK")
-        except Exception as exc:
-            log.error("Failed to initialise OpenAI client: %s", exc)
-            sys.exit(1)
-    else:
-        client = None
-        log.info("OpenAI connection: SKIPPED (dry-run)")
+    # ── Evaluation Client Setup ───────────────────────────────────────────────
+    log.info("Evaluation engine ready. Client will be resolved dynamically per model family.")
 
     # ── Fetch pending items ───────────────────────────────────────────────────
     with SessionLocal() as db:
@@ -318,7 +296,6 @@ def run_evaluation(args: argparse.Namespace) -> None:
             # ── Call the judge ────────────────────────────────────────────────
             try:
                 result: JudgeResult = call_judge(
-                    client=client,
                     question=prompt.text,
                     answer_a=judge_pos_a.text,
                     answer_b=judge_pos_b.text,

@@ -57,6 +57,11 @@ MODEL_FILES: dict[str, str] = {
     "alpaca-13b":     "alpaca-13b",
 }
 
+# Maps dataset string variants in human_judgment.jsonl to canonical model names in DB
+MODEL_ALIASES: dict[str, str] = {
+    "vicuna-13b-v1.2": "vicuna-13b",
+}
+
 BATCH_SIZE = 500   # rows flushed per SQLAlchemy bulk call
 
 
@@ -350,8 +355,8 @@ def ingest_human_preferences(
     with jsonlines.open(path) as reader:
         for record in tqdm(reader, total=total, desc="HumanPrefs", unit="row"):
             qid: int = record.get("question_id")
-            model_a: str = record.get("model_a", "")
-            model_b: str = record.get("model_b", "")
+            model_a: str = MODEL_ALIASES.get(record.get("model_a", ""), record.get("model_a", ""))
+            model_b: str = MODEL_ALIASES.get(record.get("model_b", ""), record.get("model_b", ""))
             winner_label: str = record.get("winner", "")
             # human_judgment turn is 1-indexed; convert to 0-indexed
             turn_idx: int = int(record.get("turn", 1)) - 1

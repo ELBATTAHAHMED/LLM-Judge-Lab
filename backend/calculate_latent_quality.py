@@ -42,9 +42,9 @@ Usage
 -----
     python backend/calculate_latent_quality.py
 """
-
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -53,7 +53,7 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 from scipy.optimize import minimize
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 # ── Path Setup ────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent.resolve()
@@ -66,11 +66,13 @@ DATABASE_URL = os.getenv(
 )
 
 
+
 # ── Database Fetch ────────────────────────────────────────────────────────────
 
-def fetch_pairwise_results(engine) -> pd.DataFrame:
-    """Fetch all judge decisions with model identities and outcomes."""
-    sql = """
+def fetch_pairwise_results(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
+    """Fetch all judge decisions with model identities and outcomes for a given judge model.
+    Excludes live-evaluation rows (category 'live' / 'live_calibrated') inserted by the API."""
+    sql = text("""
     SELECT
         a1.model_name  AS model_i,
         a2.model_name  AS model_j,
@@ -80,12 +82,14 @@ def fetch_pairwise_results(engine) -> pd.DataFrame:
             ELSE 'tie'
         END            AS outcome
     FROM judge_decisions jd
+    JOIN prompts p  ON jd.prompt_id   = p.id
     JOIN answers a1 ON jd.answer_a_id = a1.id
     JOIN answers a2 ON jd.answer_b_id = a2.id
-    WHERE jd.judge_model_name = 'gpt-4o-mini'
-    """
+    WHERE jd.judge_model_name = :judge_model_name
+      AND p.category NOT IN ('live', 'live_calibrated')
+    """)
     with engine.connect() as conn:
-        return pd.read_sql_query(sql, conn)
+        return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})
 
 
 # ── Bradley-Terry Implementation ──────────────────────────────────────────────
@@ -109,7 +113,13 @@ def compute_raw_win_rates(df: pd.DataFrame, models: list[str]) -> pd.Series:
 
 def fit_bradley_terry(df: pd.DataFrame, models: list[str]) -> tuple[np.ndarray, float]:
     """
-    Fit Bradley-Terry model via maximum likelihood estimation.
+    Fit Bradley-Terry model via maximum likelihood estimation using the Davidson (1970)
+    tie-likelihood formulation.
+
+    Model:
+      P(i beats j) = exp(theta_i) / (exp(theta_i) + exp(theta_j) + exp(gamma + 0.5*(theta_i + theta_j)))
+      P(j beats i) = exp(theta_j) / (exp(theta_i) + exp(theta_j) + exp(gamma + 0.5*(theta_i + theta_j)))
+      P(tie i, j)  = exp(gamma + 0.5*(theta_i + theta_j)) / (exp(theta_i) + exp(theta_j) + exp(gamma + 0.5*(theta_i + theta_j)))
 
     Parameters
     ----------
@@ -118,65 +128,62 @@ def fit_bradley_terry(df: pd.DataFrame, models: list[str]) -> tuple[np.ndarray, 
 
     Returns
     -------
-    theta      : Array of latent quality parameters (one per model).
+    theta          : Array of latent quality parameters (one per model).
     log_likelihood : Final log-likelihood of the fit.
-
-    Notes
-    -----
-    Ties are handled using the Rao-Kupper extension:
-      P(i beats j) = exp(theta_i) / (exp(theta_i) + exp(theta_j))
-      P(tie)       = (nu^2 * 1) / ((exp(theta_i) + nu)(exp(theta_j) + nu))
-    For simplicity we split ties as 0.5 wins each (Davidson approximation),
-    which is standard practice in Bradley-Terry implementations.
     """
     n = len(models)
     model_idx = {m: i for i, m in enumerate(models)}
 
-    # Build win matrix W[i,j] = number of times i beat j (ties = 0.5 each)
-    W = np.zeros((n, n))
+    W_win = np.zeros((n, n))
+    W_tie = np.zeros((n, n))
+
     for _, row in df.iterrows():
         i = model_idx.get(row["model_i"])
         j = model_idx.get(row["model_j"])
         if i is None or j is None:
             continue
         if row["outcome"] == "i":
-            W[i, j] += 1.0
+            W_win[i, j] += 1.0
         elif row["outcome"] == "j":
-            W[j, i] += 1.0
-        else:  # tie — split 0.5 each
-            W[i, j] += 0.5
-            W[j, i] += 0.5
+            W_win[j, i] += 1.0
+        else:  # tie
+            W_tie[i, j] += 1.0
+            W_tie[j, i] += 1.0
 
-    def neg_log_likelihood(theta: np.ndarray) -> float:
-        """Negative log-likelihood of the BT model (to minimize)."""
+    def neg_log_likelihood(theta: np.ndarray, gamma: float) -> float:
+        """Negative log-likelihood of Davidson model."""
         ll = 0.0
         for i in range(n):
             for j in range(i + 1, n):
-                if W[i, j] + W[j, i] == 0:
+                n_ij = W_win[i, j] + W_win[j, i] + W_tie[i, j]
+                if n_ij == 0:
                     continue
-                # P(i beats j) = sigmoid(theta_i - theta_j)
-                delta = theta[i] - theta[j]
-                ll += W[i, j] * delta - (W[i, j] + W[j, i]) * np.log(
-                    1 + np.exp(delta)
-                )
-        return -ll  # negate for minimization
+                exp_i = np.exp(theta[i])
+                exp_j = np.exp(theta[j])
+                exp_tie = np.exp(gamma + 0.5 * (theta[i] + theta[j]))
+                denom = exp_i + exp_j + exp_tie
 
-    # Identifiability constraint: fix theta[0] = 0 (anchor model)
-    # Optimise over theta[1..n-1] only
-    def neg_ll_constrained(free_theta: np.ndarray) -> float:
+                ll += W_win[i, j] * theta[i] + W_win[j, i] * theta[j] + W_tie[i, j] * (gamma + 0.5 * (theta[i] + theta[j])) - n_ij * np.log(denom)
+        return -ll
+
+    def neg_ll_constrained(params: np.ndarray) -> float:
+        # params[:-1] is free_theta (length n-1), params[-1] is gamma
+        free_theta = params[:-1]
+        gamma = params[-1]
         theta = np.concatenate([[0.0], free_theta])
-        return neg_log_likelihood(theta)
+        return neg_log_likelihood(theta, gamma)
 
-    x0 = np.zeros(n - 1)
+    x0 = np.zeros(n)  # (n-1) for free_theta + 1 for gamma
     result = minimize(neg_ll_constrained, x0, method="L-BFGS-B")
-    theta_full = np.concatenate([[0.0], result.x])
+    theta_full = np.concatenate([[0.0], result.x[:-1]])
 
     return theta_full, -result.fun
 
 
+
 # ── Report Generator ──────────────────────────────────────────────────────────
 
-def build_report(scores_df: pd.DataFrame, log_likelihood: float) -> str:
+def build_report(scores_df: pd.DataFrame, log_likelihood: float, total_decisions: int = 2271) -> str:
     """Compose the full academic Markdown report."""
     lines = []
     lines.append("# Experimental Module 2: Bradley-Terry Latent Quality Scores\n")
@@ -199,7 +206,7 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float) -> str:
     )
     lines.append("")
     lines.append(
-        r"Parameters are estimated via MLE over all $N = 1{,}530$ observed "
+        f"Parameters are estimated via MLE over all $N = {total_decisions:,}$ observed "
         "pairwise decisions. The anchor model (`alpaca-13b`) is fixed at "
         r"$\theta = 0$ for identifiability. All other $\theta$ values are "
         "relative latent quality scores.\n"
@@ -234,8 +241,8 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float) -> str:
         "opponents (`claude-v1`, `gpt-3.5-turbo`). Its BT score correctly accounts "
         "for this difficulty, whereas its raw win rate would be penalized by the "
         "tough schedule.\n"
-        "2. **Global Consistency**: The BT model finds a single parameter vector "
-        "that maximally explains ALL 1,530 decisions simultaneously. Raw win rates "
+        f"2. **Global Consistency**: The BT model finds a single parameter vector "
+        f"that maximally explains ALL {total_decisions:,} decisions simultaneously. Raw win rates "
         "can produce non-transitive rankings (A > B, B > C, but C > A), which BT "
         "resolves.\n"
         "3. **Quantified Uncertainty**: The curvature of the log-likelihood function "
@@ -245,6 +252,7 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float) -> str:
         "numbers of prompts or against different opponent sets are fairly compared "
         "because the MLE jointly calibrates all parameters.\n"
     )
+
 
     lines.append("## Thesis Interpretation\n")
     lines.append(
@@ -260,13 +268,19 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float) -> str:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Bradley-Terry Latent Quality Scoring")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Judge model name to evaluate")
+    args = parser.parse_args()
+
+    judge_model = args.model
+
     print("=" * 70)
-    print("  Module 2: Bradley-Terry Latent Quality Scoring")
+    print(f"  Module 2: Bradley-Terry Latent Quality Scoring ({judge_model})")
     print("=" * 70)
 
     engine = create_engine(DATABASE_URL)
-    df = fetch_pairwise_results(engine)
-    print(f"Loaded {len(df):,} pairwise decisions.")
+    df = fetch_pairwise_results(engine, judge_model_name=judge_model)
+    print(f"Loaded {len(df):,} pairwise decisions for judge model: {judge_model}")
 
     models = sorted(df["model_i"].unique().tolist())
     print(f"Models identified: {models}\n")
@@ -309,17 +323,24 @@ def main() -> None:
             f"{row['bt_score']:>+7.4f}  {row['quality_tier']}"
         )
 
-    # 5. Save CSV
-    csv_path = ROOT_DIR / "bradley_terry_scores.csv"
-    results.to_csv(csv_path, index=False)
-    print(f"\nSaved: 'bradley_terry_scores.csv' OK")
+    # 5. Save CSV (model specific)
+    sanitized_model = judge_model.replace("/", "_")
+    model_csv_path = ROOT_DIR / f"bradley_terry_scores_{sanitized_model}.csv"
+    results.to_csv(model_csv_path, index=False)
+    print(f"\nSaved: '{model_csv_path.name}' OK")
+
+    if judge_model == "gpt-4o-mini":
+        default_csv_path = ROOT_DIR / "bradley_terry_scores.csv"
+        results.to_csv(default_csv_path, index=False)
+        print(f"Saved: 'bradley_terry_scores.csv' OK (backwards compatibility)")
 
     # 6. Save Markdown report
-    report_md = build_report(results, log_likelihood)
+    report_md = build_report(results, log_likelihood, total_decisions=len(df))
     md_path = ROOT_DIR / "bradley_terry_report.md"
     md_path.write_text(report_md, encoding="utf-8")
     print(f"Saved: 'bradley_terry_report.md' OK")
     print("=" * 70)
+
 
 
 if __name__ == "__main__":

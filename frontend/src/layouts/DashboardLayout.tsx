@@ -216,7 +216,7 @@ export const DashboardLayout: React.FC = () => {
             >
               <option value="gpt-4o-mini">gpt-4o-mini (OpenAI Baseline)</option>
               <option value="deepseek/deepseek-chat">deepseek/deepseek-chat (DeepSeek V3)</option>
-              <option value="anthropic/claude-3.5-haiku">anthropic/claude-3.5-haiku (Claude 3.5 Haiku)</option>
+              <option value="anthropic/claude-3-haiku">anthropic/claude-3-haiku (Claude 3 Haiku)</option>
               <option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct (Llama 3.3 70B)</option>
             </select>
           </div>

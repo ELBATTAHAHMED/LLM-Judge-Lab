@@ -127,10 +127,10 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
         {highest && lowest && (
           <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400 font-mono flex justify-between">
             <span>
-              Highest Agreement: <strong className="text-teal-600 dark:text-teal-400 font-semibold">{highest.domain} (&kappa; = {highest.kappa.toFixed(3)})</strong>
+              Highest Agreement: <strong className="text-teal-600 dark:text-teal-400 font-semibold">{highest.domain} (&kappa; = {typeof highest.kappa === 'number' ? highest.kappa.toFixed(3) : '0.000'})</strong>
             </span>
             <span>
-              Lowest Agreement: <strong className="text-neutral-500 font-semibold">{lowest.domain} (&kappa; = {lowest.kappa.toFixed(3)})</strong>
+              Lowest Agreement: <strong className="text-neutral-500 font-semibold">{lowest.domain} (&kappa; = {typeof lowest.kappa === 'number' ? lowest.kappa.toFixed(3) : '0.000'})</strong>
             </span>
           </div>
         )}

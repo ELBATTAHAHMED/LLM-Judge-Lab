@@ -17,12 +17,14 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+
 
 # ── path setup ────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent.resolve()
@@ -39,18 +41,13 @@ DATABASE_URL = os.getenv(
 
 
 def get_connection_engine():
-    """Create database engine."""
-    try:
-        engine = create_engine(DATABASE_URL)
-        return engine
-    except Exception as e:
-        print(f"Error connecting to database: {e}")
-        sys.exit(1)
+    """Create database engine from DATABASE_URL env var."""
+    return create_engine(DATABASE_URL)
 
 
-def fetch_enriched_data(engine) -> pd.DataFrame:
-    """Fetch matched judgments joined with prompts and answers."""
-    sql_query = """
+def fetch_enriched_data(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
+    """Fetch matched judgments joined with prompts and answers for a given judge model."""
+    sql_query = text("""
     SELECT 
         hp.winner_id as human_winner_id,
         hp.answer_a_id,
@@ -71,10 +68,10 @@ def fetch_enriched_data(engine) -> pd.DataFrame:
     JOIN prompts p ON hp.prompt_id = p.id
     JOIN answers a1 ON hp.answer_a_id = a1.id
     JOIN answers a2 ON hp.answer_b_id = a2.id
-    WHERE jd.judge_model_name = 'gpt-4o-mini';
-    """
+    WHERE jd.judge_model_name = :judge_model_name;
+    """)
     with engine.connect() as conn:
-        df = pd.read_sql_query(sql_query, conn)
+        df = pd.read_sql_query(sql_query, conn, params={"judge_model_name": judge_model_name})
     return df
 
 
@@ -170,36 +167,56 @@ def stratify_data(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Qualitative Data Stratifier")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Judge model name to extract")
+    args = parser.parse_args()
+
+    judge_model = args.model
+
     print("=" * 65)
-    print("  LLM-as-a-Judge Reliability Lab - Qualitative Data Stratifier")
+    print(f"  LLM-as-a-Judge Reliability Lab - Qualitative Data Stratifier ({judge_model})")
     print("=" * 65)
 
     engine = get_connection_engine()
-    df = fetch_enriched_data(engine)
+    df = fetch_enriched_data(engine, judge_model_name=judge_model)
 
     if df.empty:
-        print("No evaluation records found matching 'gpt-4o-mini'.")
+        print(f"No evaluation records found matching '{judge_model}'.")
         return
+
 
     print(f"Total rows retrieved: {len(df)}")
     buckets = stratify_data(df)
 
-    # Ensure output folder exists at the root
+    # Ensure output folder exists at the root and model-specific subdir
     output_dir = ROOT_DIR / "qualitative_data"
     output_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Output directory: {output_dir.resolve()}\n")
 
-    # Export each bucket
+    sanitized_model = judge_model.replace("/", "_")
+    model_output_dir = output_dir / sanitized_model
+    model_output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output directory (model-specific): {model_output_dir.resolve()}\n")
+
+    # Export each bucket to the model-specific subdirectory
     print(f"{'CSV Filename':<30} | {'Rows Count':<12}")
     print(f"{'-'*30}-+-{'-'*12}")
     for name, b_df in buckets.items():
         filename = f"{name}.csv"
-        filepath = output_dir / filename
+        # Primary: model-specific subdir
+        filepath = model_output_dir / filename
         b_df.to_csv(filepath, index=False, encoding="utf-8")
         print(f"{filename:<30} | {len(b_df):<12,}")
 
+    # Backwards-compat: also write to root qualitative_data/ for gpt-4o-mini
+    # so existing /api/qualitative/{bucket} calls without judge_model still work
+    if judge_model == "gpt-4o-mini":
+        for name, b_df in buckets.items():
+            root_path = output_dir / f"{name}.csv"
+            b_df.to_csv(root_path, index=False, encoding="utf-8")
+
     print("\nExtraction complete! OK")
     print("=" * 65)
+
 
 
 if __name__ == "__main__":

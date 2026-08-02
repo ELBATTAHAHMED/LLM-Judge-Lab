@@ -25,7 +25,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
   const [sampleSize, setSampleSize] = useState<'100' | '250' | 'All'>('250');
 
   const chartData = useMemo(() => {
-    if (!data || data.length === 0) return { scatter: [], trend: [] };
+    if (!data || !Array.isArray(data)) return { scatter: [], trend: [] };
 
     const limit = sampleSize === '100' ? 100 : sampleSize === '250' ? 250 : data.length;
     const scatter = data.slice(0, limit).map((d, i) => ({
@@ -89,7 +89,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             Verbosity Disparity vs Win Probability
           </h4>
           <p className="text-xs text-neutral-500">
-            OLS Fit Line: y = 0.4992 + 0.000832 &times; &Delta;WC
+            OLS Fit: Win Probability ~ &alpha; + &beta;&middot;&Delta;WC
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -106,7 +106,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             </select>
           </div>
           <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
-            &beta; = +0.000832 (p &lt; 0.0001)
+            &beta; significant (p &lt; 0.0001)
           </span>
         </div>
       </div>

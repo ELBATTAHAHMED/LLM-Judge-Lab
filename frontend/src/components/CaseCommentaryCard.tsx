@@ -8,7 +8,10 @@ interface Props {
 }
 
 export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
+  if (!record) return null;
+
   const isMatch = record.human_winner === record.ai_winner;
+
 
   const getCommentaryContent = () => {
     switch (bucket) {
@@ -27,8 +30,9 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
       case 'position_bias':
         return {
           title: 'Position-Order Preference Commentary',
-          summary: `The AI judge selected the candidate answer shown in Position B. Across our 1,530 evaluation trials, Position B exhibits a statistically significant selection bias (\u03c7\u00b2 = 4.1738, p = 0.0411), demonstrating sensitivity to presentation order rather than pure factual merit.`,
+          summary: `The AI judge selected the candidate answer shown in Position B. Across our benchmark evaluation trials, Position B exhibits selection bias, demonstrating sensitivity to presentation order rather than pure factual merit.`,
         };
+
 
       case 'baseline_alignment':
       default:

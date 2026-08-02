@@ -353,10 +353,7 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
     """
     import openai
 
-    if client is not None:
-        return client, model_name
-
-    # OpenRouter API Routing
+    # OpenRouter API Routing (Always takes precedence for OpenRouter models)
     if is_openrouter_model(model_name):
         openrouter_key = os.getenv("OPENROUTER_API_KEY")
         if not openrouter_key or openrouter_key.startswith("your_"):
@@ -371,6 +368,9 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
             },
         )
         return openrouter_client, model_name
+
+    if client is not None:
+        return client, model_name
 
     # Local Ollama Routing
     if is_local_model(model_name):

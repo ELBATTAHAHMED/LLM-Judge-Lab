@@ -88,9 +88,10 @@ DATABASE_URL = os.getenv(
 
 # ── Database Fetch ────────────────────────────────────────────────────────────
 
-def fetch_decisions(engine) -> pd.DataFrame:
-    """Load all judge decisions with model names and category info."""
-    sql = """
+def fetch_decisions(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
+    """Load all judge decisions for a specific judge model with model names and category info."""
+    from sqlalchemy import text
+    sql = text("""
     SELECT
         jd.id                    AS decision_id,
         p.id                     AS prompt_id,
@@ -107,11 +108,11 @@ def fetch_decisions(engine) -> pd.DataFrame:
     JOIN answers a1     ON jd.answer_a_id = a1.id
     JOIN answers a2     ON jd.answer_b_id = a2.id
     LEFT JOIN answers a_win ON jd.winner_id = a_win.id
-    WHERE jd.judge_model_name = 'gpt-4o-mini'
+    WHERE jd.judge_model_name = :judge_model_name
     ORDER BY p.category, a1.model_name, a2.model_name
-    """
+    """)
     with engine.connect() as conn:
-        return pd.read_sql_query(sql, conn)
+        return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})
 
 
 # ── Analysis Functions ────────────────────────────────────────────────────────
@@ -229,14 +230,14 @@ def compute_cross_category_consistency(df: pd.DataFrame) -> pd.DataFrame:
         axis=1,
     )
 
-    # Count how many categories each pair has contradictions in
+    # Count how many categories each pair has domain variance in
     pair_flip_counts = (
         summary.groupby("canonical_pair")["category_winner"]
         .nunique()
         .reset_index()
         .rename(columns={"category_winner": "distinct_winners"})
     )
-    pair_flip_counts["has_contradiction"] = pair_flip_counts["distinct_winners"] > 1
+    pair_flip_counts["domain_specialization_variance"] = pair_flip_counts["distinct_winners"] > 1
 
     return summary, pair_flip_counts
 
@@ -244,23 +245,33 @@ def compute_cross_category_consistency(df: pd.DataFrame) -> pd.DataFrame:
 def compute_overall_consistency_score(
     position_results: dict,
     pair_flip_counts: pd.DataFrame,
-) -> float:
+) -> tuple[float, float, float]:
     """
     Compute the aggregate Logical Consistency Score (0 to 1).
     
-    Score = 0.5 * (Position Consistency Rate) 
-          + 0.5 * (Cross-Category Consistency Rate)
+    Logical Consistency is defined strictly by Position-Order Consistency (verdict
+    invariance under position swapping).
     
-    A score of 1.0 means the judge is perfectly consistent in both dimensions.
+    Domain Specialization Variance (distinct_winners > 1 across domains) is recorded
+    as a neutral descriptive metric representing domain-specific capabilities, NOT as an
+    inconsistency defect.
+    
+    Returns
+    -------
+    overall_score          : float  Position-Order Consistency Rate (0 to 1)
+    position_consistency   : float  Position-Order Consistency Rate (0 to 1)
+    domain_specialization  : float  Rate of model pairs with domain specialization (0 to 1)
     """
     pos_score = position_results["consistency_rate"]
 
     total_pairs = len(pair_flip_counts)
-    no_contradiction = (~pair_flip_counts["has_contradiction"]).sum()
-    cat_score = no_contradiction / total_pairs if total_pairs > 0 else 1.0
+    specialization_count = pair_flip_counts["domain_specialization_variance"].sum()
 
-    overall = 0.5 * pos_score + 0.5 * cat_score
-    return round(overall, 4), round(pos_score, 4), round(cat_score, 4)
+    domain_spec_rate = specialization_count / total_pairs if total_pairs > 0 else 0.0
+
+    # Overall Logical Consistency is defined by Position-Order Consistency
+    overall = pos_score
+    return round(overall, 4), round(pos_score, 4), round(domain_spec_rate, 4)
 
 
 def compute_domain_chi2_fdr_corrections(df: pd.DataFrame) -> pd.DataFrame:
@@ -304,14 +315,19 @@ def compute_domain_chi2_fdr_corrections(df: pd.DataFrame) -> pd.DataFrame:
     return domain_df
 
 
-def compute_inter_judge_kappa(engine) -> dict:
+def compute_inter_judge_kappa(
+    engine,
+    model_a: str = "gpt-4o-mini",
+    model_b: str = "deepseek/deepseek-chat",
+) -> dict:
     """
-    Calculate Inter-Judge Cohen's Kappa score comparing gpt-4o-mini vs llama3 decisions.
+    Calculate Inter-Judge Cohen's Kappa score comparing model_a vs model_b decisions.
     
     Finds all matchups evaluated by BOTH judge models on identical prompt_id,
     answer_a_id, and answer_b_id pairs.
     """
-    sql = """
+    from sqlalchemy import text
+    sql = text("""
     SELECT 
         j1.prompt_id,
         j1.answer_a_id,
@@ -320,37 +336,41 @@ def compute_inter_judge_kappa(engine) -> dict:
             WHEN j1.winner_id IS NULL THEN 'Tie'
             WHEN j1.winner_id = j1.answer_a_id THEN 'A'
             ELSE 'B'
-        END AS gpt4_choice,
+        END AS choice_a,
         CASE
             WHEN j2.winner_id IS NULL THEN 'Tie'
             WHEN j2.winner_id = j2.answer_a_id THEN 'A'
             ELSE 'B'
-        END AS llama3_choice
+        END AS choice_b
     FROM judge_decisions j1
     JOIN judge_decisions j2 
       ON j1.prompt_id = j2.prompt_id 
      AND j1.answer_a_id = j2.answer_a_id 
      AND j1.answer_b_id = j2.answer_b_id
-    WHERE j1.judge_model_name = 'gpt-4o-mini'
-      AND j2.judge_model_name = 'llama3'
-    """
+    WHERE j1.judge_model_name = :model_a
+      AND j2.judge_model_name = :model_b
+    """)
     with engine.connect() as conn:
-        df = pd.read_sql_query(sql, conn)
+        df = pd.read_sql_query(sql, conn, params={"model_a": model_a, "model_b": model_b})
 
     if len(df) == 0:
         return {
             "inter_judge_kappa": 0.0,
             "overlapping_trials": 0,
             "agreement_rate": 0.0,
+            "model_a": model_a,
+            "model_b": model_b,
         }
 
-    kappa = cohen_kappa_score(df["gpt4_choice"], df["llama3_choice"])
-    agreement = (df["gpt4_choice"] == df["llama3_choice"]).mean()
+    kappa = cohen_kappa_score(df["choice_a"], df["choice_b"])
+    agreement = (df["choice_a"] == df["choice_b"]).mean()
 
     return {
         "inter_judge_kappa": round(float(kappa) if not math.isnan(kappa) else 0.0, 4),
         "overlapping_trials": int(len(df)),
         "agreement_rate": round(float(agreement), 4),
+        "model_a": model_a,
+        "model_b": model_b,
     }
 
 
@@ -378,14 +398,14 @@ def build_report(
     lines.append(f"| Dimension | Score |")
     lines.append(f"| :--- | :---: |")
     lines.append(f"| Position-Order Consistency | `{pos_score:.1%}` |")
-    lines.append(f"| Cross-Category Consistency | `{cat_score:.1%}` |")
+    lines.append(f"| Domain Specialization Rate (Descriptive) | `{cat_score:.1%}` |")
     lines.append(f"| **Composite Logical Consistency Score** | **`{overall_score:.1%}`** |")
     lines.append("")
     lines.append(
-        "> **Thesis Interpretation**: A Composite Score below 80% indicates that the "
-        "judge's rankings are context-dependent rather than reflecting stable quality "
-        "estimates. This corroborates the need for calibrated scoring methods "
-        "(see Modules 2 and 3).\n"
+        "> **Thesis Interpretation**: The Composite Logical Consistency Score is defined "
+        "strictly by Position-Order Consistency (verdict invariance under position swapping). "
+        "Domain Specialization Rate is recorded separately as a neutral descriptive metric "
+        "representing model category-specific strengths, NOT as an evaluation flaw or inconsistency.\n"
     )
 
     lines.append("## 2. Position-Order Consistency\n")
@@ -409,19 +429,21 @@ def build_report(
             )
         lines.append("")
 
-    lines.append("## 3. Cross-Category Consistency\n")
+    lines.append("## 3. Cross-Category Domain Specialization Variance\n")
     lines.append(
-        "This section shows how the winner of each model pair changes across MT-bench "
-        "categories. A pair with `distinct_winners > 1` indicates the judge switches "
-        "its preference depending on the topic domain.\n"
+        "This section evaluates how relative win rates vary across MT-Bench prompt domains. "
+        "A pair with `distinct_winners > 1` demonstrates Domain Specialization Variance—where "
+        "model superiority shifts depending on topic domain (e.g., Coding vs Humanities), "
+        "reflecting domain-specific capabilities rather than a logical defect.\n"
     )
-    lines.append("| Model Pair | Distinct Winners | Has Contradiction |")
+    lines.append("| Model Pair | Distinct Winners | Domain Specialization Variance |")
     lines.append("| :--- | :---: | :---: |")
     for _, row in pair_flip_counts.iterrows():
-        flag = "YES" if row["has_contradiction"] else "no"
+        flag = "YES" if row["domain_specialization_variance"] else "no"
         pair_str = f"`{row['canonical_pair'][0]}` vs `{row['canonical_pair'][1]}`"
         lines.append(f"| {pair_str} | {row['distinct_winners']} | {flag} |")
     lines.append("")
+
 
     lines.append("## 4. Per-Category Win Rates (Selected Pairs)\n")
     # Show top 3 most-matched pairs pivoted by category
@@ -447,14 +469,10 @@ def build_report(
     lines.append(
         "The Logical Consistency Score reveals a critical limitation of deterministic "
         "pairwise evaluation: the judge's verdicts are not invariant to presentation "
-        "context. Both the position of an answer in the prompt (Position A vs B) and "
-        "the domain category of the question influence the judge's relative quality "
-        "ranking. This means that raw win-rate leaderboards—where a model's score "
-        "depends on which opponents it faced and in which order—are fundamentally "
-        "unstable. The Bradley-Terry Latent Quality Scores (Module 2) address this "
-        "by estimating intrinsic quality parameters that account for opponent strength, "
-        "while the Length-Neutralized Scores (Module 3) isolate true quality from "
-        "verbosity effects."
+        "context. The position of an answer in the prompt (Position A vs B) "
+        "can influence the judge's relative quality ranking. Domain Specialization Variance, "
+        "meanwhile, captures topic-specific performance differentials without penalizing "
+        "the judge's logical validity."
     )
 
     return "\n".join(lines)
@@ -463,12 +481,17 @@ def build_report(
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Analyze logical consistency metrics for LLM judge.")
+    parser.add_argument("--model", default="gpt-4o-mini", help="Judge model name to analyze.")
+    args = parser.parse_args()
+
     print("=" * 70)
-    print("  Module 1: Multi-Turn Logical Consistency Analysis (FDR Corrected)")
+    print(f"  Module 1: Multi-Turn Logical Consistency Analysis (Model: {args.model})")
     print("=" * 70)
 
     engine = create_engine(DATABASE_URL)
-    df = fetch_decisions(engine)
+    df = fetch_decisions(engine, judge_model_name=args.model)
     print(f"Loaded {len(df):,} judge decisions.")
 
     # 1. Position-order consistency
@@ -488,7 +511,7 @@ def main() -> None:
 
     # 5. Print summary
     print(f"\n  Position-Order Consistency Rate : {pos_score:.1%}")
-    print(f"  Cross-Category Consistency Rate : {cat_score:.1%}")
+    print(f"  Domain Specialization Rate      : {cat_score:.1%}")
     print(f"  Composite Logical Consistency   : {overall:.1%}")
     print(f"  Position flip cases detected    : {pos_results['inconsistencies']}")
     print(f"  Inter-Judge Cohen's Kappa (RQ6) : {inter_judge['inter_judge_kappa']:.4f}  (Agreement: {inter_judge['agreement_rate']:.1%}, N={inter_judge['overlapping_trials']})\n")

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,6 +6,7 @@ import {
   triggerPerturbationRun,
   triggerStochasticRun,
 } from '../api/client';
+import { useJudge } from '../context/JudgeContext';
 import { useExperimentProgress } from '../hooks/useExperimentProgress';
 import { SingleModelIcon } from '../components/ModelIcons';
 import {
@@ -24,8 +25,10 @@ import {
 } from 'lucide-react';
 
 const MODEL_OPTIONS = [
-  { value: 'gpt-4o-mini', label: 'GPT-4o-Mini (Cloud / OpenAI)', icon: 'openai' },
-  { value: 'llama3', label: 'Llama-3 8B (Local / Ollama)', icon: 'llama3' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o-Mini (Cloud / OpenAI)', icon: 'gpt-4o-mini' },
+  { value: 'deepseek/deepseek-chat', label: 'DeepSeek V3 Chat (OpenRouter)', icon: 'deepseek/deepseek-chat' },
+  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B Instruct (OpenRouter)', icon: 'meta-llama/llama-3.3-70b-instruct' },
+  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OpenRouter)', icon: 'anthropic/claude-3-haiku' },
 ];
 
 interface CustomModelSelectProps {
@@ -83,9 +86,11 @@ const CustomModelSelect: React.FC<CustomModelSelectProps> = ({ label, value, onC
 };
 
 export const ExperimentControlCenter: React.FC = () => {
+  const { judgeModel } = useJudge();
+
   // Batch Engine State
   const [batchSampleSize, setBatchSampleSize] = useState<number>(50);
-  const [batchModel, setBatchModel] = useState<string>('gpt-4o-mini');
+  const [batchModel, setBatchModel] = useState<string>(judgeModel);
   const [batchStrategy, setBatchStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
 
   // Perturbation Generator State
@@ -94,7 +99,12 @@ export const ExperimentControlCenter: React.FC = () => {
 
   // Stochastic Benchmark State
   const [stochasticNTrials, setStochasticNTrials] = useState<number>(5);
-  const [stochasticModel, setStochasticModel] = useState<string>('gpt-4o-mini');
+  const [stochasticModel, setStochasticModel] = useState<string>(judgeModel);
+
+  useEffect(() => {
+    setBatchModel(judgeModel);
+    setStochasticModel(judgeModel);
+  }, [judgeModel]);
 
   // Active Job Tracker State
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -127,6 +137,7 @@ export const ExperimentControlCenter: React.FC = () => {
       const res = await triggerPerturbationRun({
         padding_factor: paddingFactor,
         inject_markdown: injectMarkdown,
+        model_name: batchModel,
       });
       setActiveJobId(res.job_id);
     } catch (err: unknown) {

@@ -1,6 +1,11 @@
 import React from 'react';
+import { useJudge } from '../context/JudgeContext';
+import { formatModelName } from './ModelIcons';
 
 export const DiagnosticScientificCallouts: React.FC = () => {
+  const { judgeModel } = useJudge();
+  const modelName = formatModelName(judgeModel);
+
   return (
     <div className="space-y-4 font-sans">
       {/* Main Thesis Executive Synthesis Panel */}
@@ -15,7 +20,7 @@ export const DiagnosticScientificCallouts: React.FC = () => {
         </div>
 
         <blockquote className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed border-l-2 border-neutral-400 dark:border-neutral-600 pl-3 py-1 font-mono">
-          "Empirical evidence confirms that raw LLM evaluations are confounded by presentation position and length disparities. The gpt-4o-mini judge exhibits an 8.3% win-rate inflation per 100 extra words and a statistically significant preference for Position B (&chi;&sup2; = 4.1738, p = 0.0411)."
+          "Empirical evidence confirms that raw LLM evaluations under {modelName} are confounded by presentation position and length disparities. Statistical testing demonstrates significant sensitivity to presentation order and verbosity bias across benchmark tasks."
         </blockquote>
       </div>
 
@@ -27,15 +32,15 @@ export const DiagnosticScientificCallouts: React.FC = () => {
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5">
               <h5 className="font-semibold text-neutral-900 dark:text-neutral-200 text-xs">Position-Order Distortion</h5>
               <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5 rounded bg-white dark:bg-neutral-900">
-                &chi;&sup2; = 4.1738
+                Binary &chi;&sup2; Test
               </span>
             </div>
             <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              The Chi-Square test confirms that position selection is non-uniform (p = 0.0411). Reversing answer order flips the winner in 9 model-pair / category combinations (88.8% position consistency).
+              The Chi-Square test evaluates position selection against a 50/50 uniform baseline. Reversing presentation order exposes systematic position preference for candidate responses.
             </p>
           </div>
           <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[11px] font-mono text-neutral-500">
-            Mitigation: Order randomization
+            Mitigation: Dual A/B Order Randomization
           </div>
         </div>
 
@@ -45,11 +50,11 @@ export const DiagnosticScientificCallouts: React.FC = () => {
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5">
               <h5 className="font-semibold text-neutral-900 dark:text-neutral-200 text-xs">Verbosity &amp; Vocabulary Shift</h5>
               <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5 rounded bg-white dark:bg-neutral-900">
-                &rho; = +0.2283
+                Spearman &rho; Correlation
               </span>
             </div>
             <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              Spearman correlation (&rho; = 0.2283, p = 0.0030) proves length bias. Biased reasoning texts show a massive vocabulary shift toward length-justifying bi-grams (<em>"provides more"</em>, <em>"more comprehensive"</em>).
+              Spearman rank correlation measures length bias. Reasoning texts exhibit vocabulary shifts toward length-justifying bi-grams (<em>"provides more"</em>, <em>"more comprehensive"</em>).
             </p>
           </div>
           <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[11px] font-mono text-neutral-500">
@@ -63,11 +68,11 @@ export const DiagnosticScientificCallouts: React.FC = () => {
             <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5">
               <h5 className="font-semibold text-neutral-900 dark:text-neutral-200 text-xs">Forced Choice &amp; Hedging</h5>
               <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-1.5 py-0.5 rounded bg-white dark:bg-neutral-900">
-                Delta: +23.65%
+                Forced Choice Delta
               </span>
             </div>
             <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              On human-rated ties, the judge forces a winner in 48.09% of cases while doubling its hedging language (48.09% vs 24.44% baseline) using words like <em>"slightly"</em>, <em>"marginal"</em>, and <em>"subtle"</em>.
+              On human-rated ties, the LLM judge often forces a winner while increasing hedging vocabulary using words like <em>"slightly"</em>, <em>"marginal"</em>, and <em>"subtle"</em>.
             </p>
           </div>
           <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[11px] font-mono text-neutral-500">
@@ -78,3 +83,4 @@ export const DiagnosticScientificCallouts: React.FC = () => {
     </div>
   );
 };
+

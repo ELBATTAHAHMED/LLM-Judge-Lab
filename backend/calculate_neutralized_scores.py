@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import os
 import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -53,7 +54,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from scipy import stats
 from sklearn.model_selection import KFold
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 # ── Path Setup ────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent.resolve()
@@ -68,16 +69,12 @@ DATABASE_URL = os.getenv(
 
 # ── Database Fetch ────────────────────────────────────────────────────────────
 
-def fetch_decisions_with_lengths(engine) -> pd.DataFrame:
+def fetch_decisions_with_lengths(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
     """
-    Fetch all judge decisions enriched with word counts for both answers.
-    
-    Returns a DataFrame where each row is a single pairwise decision with:
-    - model identity for both answers
-    - word counts for both answers
-    - whether answer_a won (1), lost (0), or tied (0.5)
+    Fetch all judge decisions with answer word counts for a given judge model.
+    Excludes live-evaluation rows (category 'live' / 'live_calibrated') inserted by the API.
     """
-    sql = """
+    sql = text("""
     SELECT
         jd.id              AS decision_id,
         p.category         AS category,
@@ -94,10 +91,11 @@ def fetch_decisions_with_lengths(engine) -> pd.DataFrame:
     JOIN prompts p  ON jd.prompt_id   = p.id
     JOIN answers a1 ON jd.answer_a_id = a1.id
     JOIN answers a2 ON jd.answer_b_id = a2.id
-    WHERE jd.judge_model_name = 'gpt-4o-mini'
-    """
+    WHERE jd.judge_model_name = :judge_model_name
+      AND p.category NOT IN ('live', 'live_calibrated')
+    """)
     with engine.connect() as conn:
-        return pd.read_sql_query(sql, conn)
+        return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})
 
 
 # ── Regression Analysis with 5-Fold Cross-Validation ──────────────────────────
@@ -323,13 +321,19 @@ def build_report(
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Residual-Based Length Neutralization")
+    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="Judge model name to evaluate")
+    args = parser.parse_args()
+
+    judge_model = args.model
+
     print("=" * 70)
-    print("  Module 3: Residual-Based Length Neutralization (5-Fold CV)")
+    print(f"  Module 3: Residual-Based Length Neutralization ({judge_model})")
     print("=" * 70)
 
     engine = create_engine(DATABASE_URL)
-    df = fetch_decisions_with_lengths(engine)
-    print(f"Loaded {len(df):,} decisions with word-count data.\n")
+    df = fetch_decisions_with_lengths(engine, judge_model_name=judge_model)
+    print(f"Loaded {len(df):,} decisions for judge model '{judge_model}' with word-count data.\n")
 
     # 1. Linear regression with 5-Fold Cross Validation
     alpha, beta, r_sq, p_val, residuals, slope_se, cv_metrics = run_length_bias_regression(df)
@@ -359,10 +363,16 @@ def main() -> None:
             f"{row['neutralized_score']:>+12.5f}  {chg:>8}"
         )
 
-    # 3. Save CSV
-    csv_path = ROOT_DIR / "neutralized_scores.csv"
-    result_df.to_csv(csv_path, index=False)
-    print(f"\nSaved: 'neutralized_scores.csv' OK")
+    # 3. Save CSV (model specific)
+    sanitized_model = judge_model.replace("/", "_")
+    model_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized_model}.csv"
+    result_df.to_csv(model_csv_path, index=False)
+    print(f"\nSaved: '{model_csv_path.name}' OK")
+
+    if judge_model == "gpt-4o-mini":
+        default_csv_path = ROOT_DIR / "neutralized_scores.csv"
+        result_df.to_csv(default_csv_path, index=False)
+        print(f"Saved: 'neutralized_scores.csv' OK (backwards compatibility)")
 
     # 4. Save Markdown report
     report_md = build_report(result_df, alpha, beta, r_sq, p_val, slope_se)
@@ -374,3 +384,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

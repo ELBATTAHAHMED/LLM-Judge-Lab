@@ -41,7 +41,7 @@ export const MethodologyCards: React.FC = () => {
         </div>
 
         <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          Linear regression proves the judge exhibits verbosity bias (&beta; = +0.000832, p &lt; 0.0001). Every 100 extra words increases win probability by ~0.083%. Extracting the residual (&epsilon;) mathematically isolates the model's verbosity-independent Pure Quality score.
+          Linear regression proves the judge exhibits verbosity bias: every 100 extra words in the winning response increases win probability by ~6–8%. Extracting the residual (&epsilon;) mathematically isolates the model's verbosity-independent Pure Quality score.
         </p>
       </div>
     </div>

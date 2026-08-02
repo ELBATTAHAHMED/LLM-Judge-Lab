@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { executeLiveEvaluation, executeCalibratedEvaluation } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse } from '../api/types';
+import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
 import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check } from 'lucide-react';
@@ -19,7 +20,9 @@ const DEFAULT_ANSWER_B = `Hawaii has nice beaches, Pearl Harbor, and the Polynes
 
 const EVALUATOR_MODELS = [
   { value: 'gpt-4o-mini', label: 'GPT-4o-Mini (Cloud / OpenAI)', icon: 'gpt-4o-mini' },
-  { value: 'llama3', label: 'Llama-3 8B (Local / Ollama)', icon: 'llama3' },
+  { value: 'deepseek/deepseek-chat', label: 'DeepSeek V3 Chat (OpenRouter)', icon: 'deepseek/deepseek-chat' },
+  { value: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B Instruct (OpenRouter)', icon: 'meta-llama/llama-3.3-70b-instruct' },
+  { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OpenRouter)', icon: 'anthropic/claude-3-haiku' },
 ];
 
 const estimateTokens = (text: string) => {
@@ -29,13 +32,18 @@ const estimateTokens = (text: string) => {
 };
 
 export const LiveLabPage: React.FC = () => {
+  const { judgeModel } = useJudge();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
-  const [modelName, setModelName] = useState('gpt-4o-mini');
+  const [modelName, setModelName] = useState(judgeModel);
   const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('standard');
   const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setModelName(judgeModel);
+  }, [judgeModel]);
 
   const [loading, setLoading] = useState(false);
   const [executionStep, setExecutionStep] = useState<number>(0);

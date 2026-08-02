@@ -31,11 +31,15 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
 
   const total = chartData.reduce((sum, item) => sum + item.count, 0);
 
-  const pValueFormatted = data
+  const pValueFormatted = typeof data?.p_value === 'number'
     ? data.p_value < 0.001
       ? 'p < 0.001'
       : `p = ${data.p_value.toFixed(4)}`
     : '';
+
+  const chi2Formatted = typeof data?.chi2_stat === 'number'
+    ? data.chi2_stat.toFixed(2)
+    : '0.00';
 
   return (
     <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 flex flex-col justify-between h-full font-sans transition-colors duration-150">
@@ -51,10 +55,11 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
           </div>
           {data && (
             <span className="text-[11px] font-mono text-teal-600 dark:text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded bg-teal-500/10 font-semibold">
-              &chi;&sup2; = {data.chi2_stat.toFixed(2)} ({pValueFormatted})
+              &chi;&sup2; = {chi2Formatted} ({pValueFormatted || 'p-val N/A'})
             </span>
           )}
         </div>
+
 
         {loading ? (
           <div className="h-64 flex items-center justify-center font-mono text-xs text-neutral-500 flex-1">

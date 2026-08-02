@@ -30,7 +30,14 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
       ]
     : [];
 
-  const total = chartData.reduce((sum, item) => sum + item.count, 0);
+  const posA = data?.position_a || 0;
+  const posB = data?.position_b || 0;
+  const binaryTotal = posA + posB;
+  const chi2Stat = binaryTotal > 0 ? Math.pow(posA - posB, 2) / binaryTotal : 0;
+  const preferredPos = posB >= posA ? 'Position B' : 'Position A';
+
+  const total = chartData.reduce((sum, item) => sum + (item.count || 0), 0);
+
 
   return (
     <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 flex flex-col justify-between h-full font-sans transition-colors duration-150">
@@ -44,9 +51,11 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
               Selection frequency by physical choice order in prompt
             </p>
           </div>
-          <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
-            &chi;&sup2; = 4.1738 (p = 0.0411)
-          </span>
+          {data && (
+            <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900 font-semibold">
+              &chi;&sup2; = {chi2Stat.toFixed(2)} (df=1)
+            </span>
+          )}
         </div>
 
         {loading ? (
@@ -91,11 +100,12 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Position Bias Confirmed:</strong> Chi-Square test rejects 50/50 uniform distribution (p = 0.0411). The judge systematically prefers candidate answers in Position B.
+              <strong className="text-neutral-900 dark:text-neutral-200">Position Bias Analysis:</strong> Chi-Square test compares position selection against a 50/50 uniform distribution (&chi;&sup2; = {chi2Stat.toFixed(2)}). The judge currently exhibits a preference for <strong className="text-neutral-900 dark:text-neutral-200">{preferredPos}</strong>.
             </div>
           </div>
         )}
       </div>
+
 
       <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono pt-3">
         {chartData.map((p) => (

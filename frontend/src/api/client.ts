@@ -48,9 +48,12 @@ export async function getBiasStats(judgeModel?: string): Promise<BiasStatsRespon
  * Fetch stratified qualitative evaluation records by bucket category
  */
 export async function getQualitativeBucket(
-  bucket: QualitativeBucket
+  bucket: QualitativeBucket,
+  judgeModel?: string
 ): Promise<QualitativeRecord[]> {
-  const response = await apiClient.get<QualitativeRecord[]>(`/api/qualitative/${bucket}`);
+  const response = await apiClient.get<QualitativeRecord[]>(`/api/qualitative/${bucket}`, {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
   return response.data;
 }
 
@@ -158,7 +161,7 @@ export function useBiasStats(judgeModel?: string) {
   return { data, loading, error, refetch: fetch };
 }
 
-export function useQualitativeBucket(bucket: QualitativeBucket) {
+export function useQualitativeBucket(bucket: QualitativeBucket, judgeModel?: string) {
   const [data, setData] = useState<QualitativeRecord[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +170,7 @@ export function useQualitativeBucket(bucket: QualitativeBucket) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getQualitativeBucket(bucket);
+      const result = await getQualitativeBucket(bucket, judgeModel);
       setData(result);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -177,7 +180,7 @@ export function useQualitativeBucket(bucket: QualitativeBucket) {
     } finally {
       setLoading(false);
     }
-  }, [bucket]);
+  }, [bucket, judgeModel]);
 
   useEffect(() => {
     fetch();

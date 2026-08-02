@@ -36,8 +36,6 @@ import models  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, is_local_model  # noqa: E402
 
-BT_CSV_PATH          = ROOT_DIR / "bradley_terry_scores.csv"
-NEUTRALIZED_CSV_PATH = ROOT_DIR / "neutralized_scores.csv"
 QUALITATIVE_DIR      = ROOT_DIR / "qualitative_data"
 
 # Valid bucket names → CSV filename mapping
@@ -168,7 +166,7 @@ class BiasStatsResponse(BaseModel):
     position_data: dict[str, int]
     domain_kappa: list[dict[str, Any]]
     format_bias: dict[str, Any]
-    inter_judge_kappa: float
+    inter_judge_kappa: float | None = None
 
 
 class EvaluateResponse(BaseModel):
@@ -219,18 +217,28 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
 # ── GET /api/leaderboard ──────────────────────────────────────────────────────
 
 @app.get("/api/leaderboard", response_model=list[LeaderboardItem])
-def get_leaderboard() -> list[dict]:
+def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     """
     Merge Bradley-Terry scores and Length-Neutralized scores into a unified
-    leaderboard. Returns one record per model with all key metrics.
+    leaderboard for a given judge model. Returns one record per candidate model with all key metrics.
+    Falls back to an empty list (not a 404) when the CSV for the requested judge hasn't been
+    generated yet, so the frontend can display a graceful empty state.
     """
+    sanitized = judge_model.replace("/", "_")
+    bt_csv_path          = ROOT_DIR / f"bradley_terry_scores_{sanitized}.csv"
+    neutralized_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized}.csv"
+
+    # Graceful fallback: if this model's CSVs haven't been generated yet, return []
+    if not bt_csv_path.exists() or not neutralized_csv_path.exists():
+        return []
+
     try:
-        bt_df   = pd.read_csv(BT_CSV_PATH)
-        neut_df = pd.read_csv(NEUTRALIZED_CSV_PATH)
-    except FileNotFoundError as exc:
+        bt_df   = pd.read_csv(bt_csv_path)
+        neut_df = pd.read_csv(neutralized_csv_path)
+    except Exception as exc:
         raise HTTPException(
-            status_code=404,
-            detail=f"Leaderboard CSV not found: {exc.filename}",
+            status_code=500,
+            detail=f"Failed to read leaderboard CSVs for '{judge_model}': {exc}",
         )
 
     # Merge on 'model'; use suffixes to disambiguate shared 'raw_win_rate' column
@@ -250,6 +258,60 @@ def get_leaderboard() -> list[dict]:
     result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
 
     return _df_to_records(result_df)
+
+
+@app.get("/api/consistency")
+def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> dict:
+    """
+    Query multi-turn logical consistency and inter-judge reliability stats for a given judge_model.
+    """
+    from analyze_consistency import (
+        fetch_decisions,
+        compute_position_consistency,
+        compute_cross_category_consistency,
+        compute_overall_consistency_score,
+        compute_inter_judge_kappa,
+    )
+    try:
+        df = fetch_decisions(db.get_bind(), judge_model_name=judge_model)
+        if df.empty:
+            target_comparator = "deepseek/deepseek-chat" if judge_model == "gpt-4o-mini" else "gpt-4o-mini"
+            return {
+                "judge_model": judge_model,
+                "overall_consistency_score": 0.0,
+                "position_consistency_rate": 0.0,
+                "cross_category_consistency_rate": 0.0,
+                "inconsistencies_count": 0,
+                "inter_judge_reliability": {
+                    "inter_judge_kappa": 0.0,
+                    "overlapping_trials": 0,
+                    "agreement_rate": 0.0,
+                    "model_a": judge_model,
+                    "model_b": target_comparator,
+                },
+            }
+
+        pos_results = compute_position_consistency(df)
+        cross_cat_summary, pair_flip_counts = compute_cross_category_consistency(df)
+        overall, pos_score, cat_score = compute_overall_consistency_score(pos_results, pair_flip_counts)
+
+        target_comparator = "deepseek/deepseek-chat" if judge_model == "gpt-4o-mini" else "gpt-4o-mini"
+        inter_judge = compute_inter_judge_kappa(
+            db.get_bind(),
+            model_a=judge_model,
+            model_b=target_comparator,
+        )
+
+        return {
+            "judge_model": judge_model,
+            "overall_consistency_score": overall,
+            "position_consistency_rate": pos_score,
+            "cross_category_consistency_rate": cat_score,
+            "inconsistencies_count": pos_results.get("inconsistencies", 0),
+            "inter_judge_reliability": inter_judge,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to compute consistency metrics: {str(exc)}")
 
 
 # ── GET /api/stats/bias ───────────────────────────────────────────────────────
@@ -293,8 +355,6 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         """)
 
         verbosity_rows = db.execute(verbosity_sql, {"judge_model": judge_model}).fetchall()
-        if not verbosity_rows and judge_model != "gpt-4o-mini":
-            verbosity_rows = db.execute(verbosity_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
 
         verbosity_data = [
             {"word_count_diff": row.word_count_diff, "llm_verdict": row.llm_verdict}
@@ -323,8 +383,6 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         """)
 
         pos_row = db.execute(position_sql, {"judge_model": judge_model}).fetchone()
-        if (not pos_row or (not pos_row.position_a and not pos_row.position_b)) and judge_model != "gpt-4o-mini":
-            pos_row = db.execute(position_sql, {"judge_model": "gpt-4o-mini"}).fetchone()
 
         position_data = {
             "position_a": int(pos_row.position_a or 0) if pos_row else 0,
@@ -350,8 +408,6 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         """)
 
         domain_rows = db.execute(domain_sql, {"judge_model": judge_model}).fetchall()
-        if not domain_rows and judge_model != "gpt-4o-mini":
-            domain_rows = db.execute(domain_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
 
         if domain_rows:
             domain_df = pd.DataFrame([
@@ -404,8 +460,6 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         """)
 
         format_rows = db.execute(format_sql, {"judge_model": judge_model}).fetchall()
-        if not format_rows and judge_model != "gpt-4o-mini":
-            format_rows = db.execute(format_sql, {"judge_model": "gpt-4o-mini"}).fetchall()
 
         markdown_chosen = 0
         plain_text_chosen = 0
@@ -443,10 +497,11 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
 
         # ── Inter-Judge Agreement (RQ6) ──────────────────────────────────────
         try:
-            inter_judge_res = compute_inter_judge_kappa(db.get_bind())
-            inter_judge_kappa = inter_judge_res.get("inter_judge_kappa", 0.369)
+            target_comparator = "deepseek/deepseek-chat" if judge_model == "gpt-4o-mini" else "gpt-4o-mini"
+            inter_judge_res = compute_inter_judge_kappa(db.get_bind(), model_a=judge_model, model_b=target_comparator)
+            inter_judge_kappa = inter_judge_res.get("inter_judge_kappa")
         except Exception:
-            inter_judge_kappa = 0.369
+            inter_judge_kappa = None
 
         return {
             "verbosity_data": verbosity_data,
@@ -456,40 +511,16 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
             "inter_judge_kappa": inter_judge_kappa,
         }
     except Exception as exc:
-        print(f"Database query failed, returning static research telemetry fallback: {exc}")
-        # Fallback research telemetry values based on Phase 3 & 4 analysis
-        return {
-            "verbosity_data": [],
-            "position_data": {
-                "position_a": 662,
-                "position_b": 693,
-                "tie": 175,
-            },
-            "domain_kappa": [
-                {"domain": "humanities", "kappa": 0.512},
-                {"domain": "writing", "kappa": 0.448},
-                {"domain": "roleplay", "kappa": 0.420},
-                {"domain": "stem", "kappa": 0.385},
-                {"domain": "extraction", "kappa": 0.354},
-                {"domain": "reasoning", "kappa": 0.312},
-                {"domain": "coding", "kappa": 0.285},
-                {"domain": "math", "kappa": 0.210},
-            ],
-            "format_bias": {
-                "markdown_chosen": 142,
-                "plain_text_chosen": 38,
-                "p_value": 0.000001,
-                "p_value_adjusted": 0.000001,
-                "chi2_stat": 60.089,
-            },
-            "inter_judge_kappa": 0.369,
-        }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database query failed: {str(exc)}"
+        )
 
 
 # ── GET /api/qualitative/{bucket} ─────────────────────────────────────────────
 
 @app.get("/api/qualitative/{bucket}")
-def get_qualitative_bucket(bucket: str) -> list[dict]:
+def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> list[dict]:
     """
     Return the full contents of a stratified qualitative CSV bucket.
 
@@ -498,6 +529,11 @@ def get_qualitative_bucket(bucket: str) -> list[dict]:
     bucket : str
         One of: "verbosity", "forced_choice", "position_bias",
         "baseline_alignment"
+    judge_model : str
+        The judge model whose qualitative outputs to read. Resolves to a
+        model-specific subdirectory under qualitative_data/ when present;
+        falls back to the root qualitative_data/ folder for backwards
+        compatibility.
 
     Returns
     -------
@@ -518,7 +554,11 @@ def get_qualitative_bucket(bucket: str) -> list[dict]:
             ),
         )
 
-    csv_path = QUALITATIVE_DIR / filename
+    # Prefer model-specific subdirectory; fall back to shared root folder
+    sanitized = judge_model.replace("/", "_")
+    model_specific_path = QUALITATIVE_DIR / sanitized / filename
+    root_fallback_path  = QUALITATIVE_DIR / filename
+    csv_path = model_specific_path if model_specific_path.exists() else root_fallback_path
     if not csv_path.exists():
         raise HTTPException(
             status_code=404,
@@ -601,10 +641,11 @@ class EvaluateRequest(BaseModel):
 
 
 @app.post("/api/evaluate", response_model=EvaluateResponse)
-def evaluate_judge(req: EvaluateRequest) -> dict:
+def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
     """
     Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
+    Results are persisted to PostgreSQL so live evaluations accumulate in the database.
     """
     if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
         raise HTTPException(status_code=400, detail="Prompt, Answer A, and Answer B are required.")
@@ -624,6 +665,53 @@ def evaluate_judge(req: EvaluateRequest) -> dict:
             temperature=0.0,
         )
         verdict = result.verdict if result.verdict in ["A", "B", "TIE", "UNKNOWN"] else "UNKNOWN"
+
+        # Persist the live evaluation to PostgreSQL (fixes ephemeral evaluation bug)
+        try:
+            from sqlalchemy import text as sa_text
+            with db.begin_nested():
+                prompt_row = db.execute(
+                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'live') "
+                            "RETURNING id"),
+                    {"text": req.prompt[:4096]},
+                ).fetchone()
+                if prompt_row:
+                    prompt_id = prompt_row[0]
+                    ans_a = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192],
+                         "wc": len(req.answer_a.split())},
+                    ).fetchone()
+                    ans_b = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192],
+                         "wc": len(req.answer_b.split())},
+                    ).fetchone()
+                    if ans_a and ans_b:
+                        winner_id = ans_a[0] if verdict == "A" else (ans_b[0] if verdict == "B" else None)
+                        db.execute(
+                            sa_text("INSERT INTO judge_decisions "
+                                    "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
+                                    "position_a_id, winner_id, reasoning) "
+                                    "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
+                            {
+                                "pid": prompt_id,
+                                "judge": req.model_name,
+                                "a_id": ans_a[0],
+                                "b_id": ans_b[0],
+                                "pos_a": ans_a[0],
+                                "winner": winner_id,
+                                "reasoning": result.reasoning[:4096],
+                            },
+                        )
+                        db.commit()
+        except Exception as db_exc:
+            # DB persist failure is non-fatal — log and continue
+            print(f"[WARN] evaluate_judge: DB persist skipped: {db_exc}")
+            db.rollback()
+
         return {
             "winner": verdict,
             "verbatim_reasoning": result.reasoning,
@@ -652,10 +740,11 @@ class CalibratedEvaluationRequest(BaseModel):
 
 
 @app.post("/api/evaluate/calibrated", response_model=CalibratedEvaluationResponse)
-def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
+def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
+    Final calibrated verdict is persisted to PostgreSQL so live evaluations accumulate in the database.
     """
     try:
         _validate_api_key_or_raise(req.model_name)
@@ -673,11 +762,60 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest) -> dict[str, Any]:
             mitigation_strategy=req.mitigation_strategy,
         )
 
+        final_verdict = res.final_calibrated_winner
+
+        # Persist calibrated decision to PostgreSQL (fixes ephemeral evaluation bug)
+        try:
+            from sqlalchemy import text as sa_text
+            with db.begin_nested():
+                prompt_row = db.execute(
+                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'live_calibrated') "
+                            "RETURNING id"),
+                    {"text": req.question[:4096]},
+                ).fetchone()
+                if prompt_row:
+                    prompt_id = prompt_row[0]
+                    ans_a = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192],
+                         "wc": len(req.answer_a.split())},
+                    ).fetchone()
+                    ans_b = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192],
+                         "wc": len(req.answer_b.split())},
+                    ).fetchone()
+                    if ans_a and ans_b:
+                        winner_id = ans_a[0] if final_verdict == "A" else (ans_b[0] if final_verdict == "B" else None)
+                        reasoning_blob = json.dumps(res.detailed_reasoning) if isinstance(res.detailed_reasoning, dict) else str(res.detailed_reasoning)
+                        db.execute(
+                            sa_text("INSERT INTO judge_decisions "
+                                    "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
+                                    "position_a_id, winner_id, reasoning) "
+                                    "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
+                            {
+                                "pid": prompt_id,
+                                "judge": req.model_name,
+                                "a_id": ans_a[0],
+                                "b_id": ans_b[0],
+                                "pos_a": ans_a[0],
+                                "winner": winner_id,
+                                "reasoning": reasoning_blob[:4096],
+                            },
+                        )
+                        db.commit()
+        except Exception as db_exc:
+            # DB persist failure is non-fatal — log and continue
+            print(f"[WARN] evaluate_calibrated: DB persist skipped: {db_exc}")
+            db.rollback()
+
         return {
             "status": "success",
             "original_order_winner": res.original_order_winner,
             "swapped_order_winner": res.swapped_order_winner,
-            "final_calibrated_winner": res.final_calibrated_winner,
+            "final_calibrated_winner": final_verdict,
             "position_bias_detected": res.position_bias_detected,
             "detailed_reasoning": res.detailed_reasoning,
             "total_input_tokens": res.total_input_tokens,
@@ -709,6 +847,10 @@ class BatchRunRequest(BaseModel):
 class PerturbationRunRequest(BaseModel):
     padding_factor: float = 0.35
     inject_markdown: bool = True
+    model_name: str = Field(
+        default="gpt-4o-mini",
+        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+    )
 
 
 class StochasticRunRequest(BaseModel):
@@ -836,15 +978,12 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
             if i == 1 or i % max(1, sample_size // 10) == 0 or i == sample_size:
                 _log_job(job_id, f"Evaluated pair {i}/{sample_size} | Model: {model_name} | Strategy: {mitigation_strategy} | Verdict: {verdict}")
 
-        match_rate = round(78.5 + (0.5 if mitigation_strategy == "dual_ab" else 0.0), 1)
-
         JOBS_STORE[job_id]["result_summary"] = {
             "total_evaluated": sample_size,
             "winner_a_count": win_a,
             "winner_b_count": win_b,
             "tie_count": ties,
             "position_bias_flips": flips,
-            "overall_accuracy_vs_human": match_rate,
             "mitigation_strategy": mitigation_strategy,
         }
         _log_job(job_id, f"Batch Evaluation completed successfully! Processed {sample_size} prompt pairs.")
@@ -856,11 +995,10 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
         raise RuntimeError(err_msg) from exc
 
 
-def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdown: bool):
+def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdown: bool, model_name: str = "gpt-4o-mini"):
     try:
-        model_name = "gpt-4o-mini"
         _validate_api_key_or_raise(model_name)
-        _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown})...")
+        _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown}, model={model_name})...")
         JOBS_STORE[job_id]["status"] = "running"
         total_steps = 30
         JOBS_STORE[job_id]["total"] = total_steps
@@ -887,8 +1025,6 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
 
             if verdict == "A":
                 win_a += 1
-                if i % 6 == 0:
-                    flips += 1
             elif verdict == "B":
                 win_b += 1
             else:
@@ -906,7 +1042,6 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
             "winner_b_count": win_b,
             "tie_count": ties,
             "position_bias_flips": flips,
-            "overall_accuracy_vs_human": 73.3,
             "mitigation_strategy": "synthetic_perturbation",
         }
         _log_job(job_id, f"Synthetic Perturbation Suite complete! Re-generated perturbation dataset artifacts.")
@@ -932,10 +1067,11 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
         ties = 0
         flips = 0
         step = 0
+        pair_baseline_verdicts: dict[int, str] = {}
 
         for trial in range(1, n_trials + 1):
             _log_job(job_id, f"Executing Trial Pass #{trial} / {n_trials} across 10 prompt benchmark pairs...")
-            for pair in pairs:
+            for p_idx, pair in enumerate(pairs):
                 res = call_judge(
                     question=pair["question"],
                     answer_a=pair["answer_a"],
@@ -952,7 +1088,9 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
                 else:
                     ties += 1
 
-                if step % 8 == 0:
+                if p_idx not in pair_baseline_verdicts:
+                    pair_baseline_verdicts[p_idx] = verdict
+                elif verdict != pair_baseline_verdicts[p_idx]:
                     flips += 1
 
                 JOBS_STORE[job_id]["progress"] = step
@@ -964,7 +1102,6 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
             "winner_b_count": win_b,
             "tie_count": ties,
             "position_bias_flips": flips,
-            "overall_accuracy_vs_human": 81.2,
             "mitigation_strategy": f"stochastic_n{n_trials}",
         }
         _log_job(job_id, f"Stochastic Benchmark complete! Calculated N={n_trials} flip variance statistics.")
@@ -974,6 +1111,7 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
         _log_job(job_id, err_msg)
         JOBS_STORE[job_id]["status"] = "failed"
         raise RuntimeError(err_msg) from exc
+
 
 
 @app.post("/api/experiments/run-batch", response_model=JobTriggerResponse)
@@ -1008,7 +1146,7 @@ def trigger_perturbation_run(req: PerturbationRunRequest, background_tasks: Back
         "logs": [],
         "created_at": datetime.datetime.now().isoformat(),
     }
-    background_tasks.add_task(_execute_perturbation_job, job_id, req.padding_factor, req.inject_markdown)
+    background_tasks.add_task(_execute_perturbation_job, job_id, req.padding_factor, req.inject_markdown, req.model_name)
     return JobTriggerResponse(status="success", job_id=job_id, message="Perturbation generator job launched successfully.")
 
 
