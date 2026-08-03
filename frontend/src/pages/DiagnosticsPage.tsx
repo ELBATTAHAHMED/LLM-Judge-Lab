@@ -188,7 +188,7 @@ export const DiagnosticsPage: React.FC = () => {
 
       {/* Primary Research Row — Self-Preference Bias (RQ6) + Inter-Judge Agreement */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        <div id="self-preference-bias" className="scroll-mt-6">
+        <div id="self-preference-bias" className="scroll-mt-6 h-full">
           <SelfPreferenceCard
             data={selfPrefData}
             loading={selfPrefLoading}
@@ -196,7 +196,7 @@ export const DiagnosticsPage: React.FC = () => {
           />
         </div>
 
-        <div id="inter-judge-comparison" className="scroll-mt-6">
+        <div id="inter-judge-comparison" className="scroll-mt-6 h-full">
           <InterJudgeComparisonCard />
         </div>
       </div>

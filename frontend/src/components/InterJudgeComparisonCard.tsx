@@ -51,7 +51,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
   const selectedB = MODEL_OPTIONS.find((m) => m.value === modelB) || MODEL_OPTIONS[1];
 
   return (
-    <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-5 font-sans">
+    <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-5 font-sans h-full">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
         <div>
