@@ -15,6 +15,7 @@ import type {
   DatasetCountResponse,
   InterJudgeReliability,
   SelfPreferenceResponse,
+  MacroBenchmarkResponse,
 } from './types';
 
 // Axios instance targeting backend FastAPI dev server
@@ -363,5 +364,44 @@ export function useSelfPreferenceStats(judgeModel?: string) {
 
   return { data, loading, error, refetch: fetch };
 }
+
+/**
+ * Fetch aggregate macro benchmark synthesis stats (Before vs After Mitigation)
+ */
+export async function getMacroBenchmark(judgeModel?: string): Promise<MacroBenchmarkResponse> {
+  const response = await apiClient.get<MacroBenchmarkResponse>('/api/stats/macro-benchmark', {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
+  return response.data;
+}
+
+export function useMacroBenchmark(judgeModel?: string) {
+  const [data, setData] = useState<MacroBenchmarkResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getMacroBenchmark(judgeModel);
+      setData(result);
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch macro benchmark stats');
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [judgeModel]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
 
 

@@ -15,7 +15,12 @@ Usage (from project root, with venv active):
 
 import sys
 import os
+import io
 from pathlib import Path
+
+# Ensure stdout handles UTF-8 on Windows console without UnicodeEncodeError
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # ── path setup ────────────────────────────────────────────────────────────────
 BACKEND_DIR = Path(__file__).parent.resolve()
@@ -33,7 +38,7 @@ PASS = "\033[92m  [PASS]\033[0m"
 FAIL = "\033[91m  [FAIL]\033[0m"
 INFO = "\033[94m  [INFO]\033[0m"
 WARN = "\033[93m  [WARN]\033[0m"
-SEP  = "─" * 60
+SEP  = "-" * 60
 
 all_passed = True
 
@@ -83,10 +88,10 @@ def check_row_counts(db: Session) -> dict[str, int]:
         info(f"{table_name:<22}", f"{n:,} rows")
 
     # Sanity expectations
-    if counts["prompts"] == 80:
-        ok("prompts count", "exactly 80 MT-Bench questions ✓")
+    if counts["prompts"] >= 80:
+        ok("prompts count", f"{counts['prompts']:,} prompt rows present (benchmark + live)")
     else:
-        fail("prompts count", f"expected 80, got {counts['prompts']}")
+        fail("prompts count", f"expected >= 80, got {counts['prompts']}")
 
     if counts["answers"] > 0:
         ok("answers count", f"{counts['answers']:,} answer rows present")
@@ -266,7 +271,7 @@ def check_distribution(db: Session) -> None:
 
     # Print table header
     print(f"\n  {'Model':<22} {'Answers':>8}  {'Avg Words':>10}")
-    print(f"  {'─'*22}  {'─'*8}  {'─'*10}")
+    print(f"  {'-'*22}  {'-'*8}  {'-'*10}")
 
     counts = [r.answer_count for r in rows]
 
@@ -305,9 +310,9 @@ def check_distribution(db: Session) -> None:
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    print(f"\n{'═'*60}")
-    print("  LLM-as-a-Judge Reliability Lab — DB Verification")
-    print(f"{'═'*60}")
+    print(f"\n{'='*60}")
+    print("  LLM-as-a-Judge Reliability Lab -- DB Verification")
+    print(f"{'='*60}")
 
     with SessionLocal() as db:
         check_row_counts(db)
@@ -317,9 +322,9 @@ def main() -> None:
 
     print(f"\n{SEP}")
     if all_passed:
-        print("\033[92m  ✅  ALL CHECKS PASSED — database looks healthy!\033[0m")
+        print("\033[92m  [OK]  ALL CHECKS PASSED -- database looks healthy!\033[0m")
     else:
-        print("\033[91m  ❌  SOME CHECKS FAILED — review the [FAIL] lines above.\033[0m")
+        print("\033[91m  [FAIL]  SOME CHECKS FAILED -- review the [FAIL] lines above.\033[0m")
     print(f"{SEP}\n")
 
     sys.exit(0 if all_passed else 1)

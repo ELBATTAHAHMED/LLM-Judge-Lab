@@ -156,5 +156,21 @@ export interface SelfPreferenceResponse {
   statistically_significant: boolean;
 }
 
+export interface MacroBenchmarkResponse {
+  judge_model: string;
+  total_evaluations: number;
+  baseline_kappa: number;
+  calibrated_kappa: number;
+  delta_kappa: number;
+  baseline_accuracy: number;
+  calibrated_accuracy: number;
+  delta_accuracy: number;
+  baseline_flip_rate: number;
+  mitigated_flip_rate: number;
+  flip_rate_reduction: number;
+  message: string;
+}
+
+
 
 

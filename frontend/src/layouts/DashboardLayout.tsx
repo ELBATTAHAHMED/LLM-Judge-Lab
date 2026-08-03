@@ -6,6 +6,7 @@ import {
   Activity,
   Search,
   FlaskConical,
+  Award,
   Sun,
   Moon,
   PanelLeftClose,
@@ -85,6 +86,11 @@ export const DashboardLayout: React.FC = () => {
       icon: Trophy,
     },
     {
+      path: '/synthesis',
+      label: 'Synthesis',
+      icon: Award,
+    },
+    {
       path: '/diagnostics',
       label: 'Bias Diagnostics',
       icon: Activity,
@@ -106,6 +112,8 @@ export const DashboardLayout: React.FC = () => {
       case '/':
       case '/leaderboard':
         return 'Leaderboard';
+      case '/synthesis':
+        return 'Executive Synthesis';
       case '/diagnostics':
         return 'Bias Diagnostics';
       case '/qualitative-explorer':
