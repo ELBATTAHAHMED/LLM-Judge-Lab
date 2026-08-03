@@ -33,8 +33,8 @@ if str(BACKEND_DIR) not in sys.path:
 # Import engine and Base for table creation, and get_db dependency
 from database import engine, Base, get_db  # noqa: E402
 import models  # noqa: E402
-from analyze_consistency import compute_inter_judge_kappa  # noqa: E402
-from judge_engine import call_judge, call_calibrated_judge, is_local_model  # noqa: E402
+from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
+from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
 QUALITATIVE_DIR      = ROOT_DIR / "qualitative_data"
 
@@ -114,35 +114,6 @@ def _classify_format_text(text_content: str) -> str:
     if re.search(r'```', text_content):
         score += 2
     return "markdown_heavy" if score >= 2 else "plain_text"
-
-
-def _adjust_pvalues_bh(pvalues: list[float]) -> list[float]:
-    """
-    Benjamini-Hochberg FDR p-value adjustment.
-    Falls back gracefully if statsmodels is not installed in the environment.
-    """
-    try:
-        from statsmodels.stats.multitest import multipletests
-        _, pvals_adj, _, _ = multipletests(pvalues, alpha=0.05, method="fdr_bh")
-        return [float(p) for p in pvals_adj]
-    except ImportError:
-        n = len(pvalues)
-        if n == 0:
-            return []
-        if n == 1:
-            return list(pvalues)
-        sorted_indices = sorted(range(n), key=lambda i: pvalues[i])
-        sorted_pvals = [pvalues[i] for i in sorted_indices]
-        adjusted = [0.0] * n
-        min_pv = 1.0
-        for i in range(n - 1, -1, -1):
-            rank = i + 1
-            pv = sorted_pvals[i]
-            adj = (pv * n) / rank
-            min_pv = min(min_pv, adj)
-            adjusted[sorted_indices[i]] = min(1.0, min_pv)
-        return adjusted
-
 
 # ── Pydantic Response Schemas ──────────────────────────────────────────────────
 
@@ -855,6 +826,20 @@ class EvaluateRequest(BaseModel):
     )
 
 
+def _validate_api_key_or_raise(model_name: str):
+    """Enforce strict API key presence for cloud and OpenRouter models. Disables mock fallbacks in production."""
+    if is_local_model(model_name):
+        return
+    if "/" in model_name:
+        key = os.getenv("OPENROUTER_API_KEY")
+        if not key or key.startswith("your_"):
+            raise ValueError(f"OPENROUTER_API_KEY is missing or unconfigured in .env for model '{model_name}'.")
+        return
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise ValueError(f"OPENAI_API_KEY is missing or unconfigured in .env for model '{model_name}'.")
+
+
 @app.post("/api/evaluate", response_model=EvaluateResponse)
 def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
     """
@@ -1050,414 +1035,121 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
         )
 
 
-# ── EXPERIMENT CONTROL CENTER BACKGROUND TASKS & SSE ENDPOINTS ───────────────
+# ── Multi-Judge Ensemble Endpoint ──────────────────────────────────────────────
 
-# ── EXPERIMENT CONTROL CENTER BACKGROUND TASKS & PERSISTENCE ───────────────
-
-JOBS_STATE_FILE = ROOT_DIR / "jobs_state.json"
-_jobs_lock = threading.Lock()
-
-
-def _load_jobs_from_disk() -> dict[str, dict[str, Any]]:
-    """Load persisted job states from jobs_state.json on server initialization."""
-    if not JOBS_STATE_FILE.exists():
-        return {}
-    try:
-        with _jobs_lock:
-            with open(JOBS_STATE_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as exc:
-        print(f"[WARN] Failed to load jobs state from disk: {exc}")
-        return {}
-
-
-def _save_jobs_to_disk():
-    """Atomic thread-safe write of current JOBS_STORE to jobs_state.json."""
-    try:
-        with _jobs_lock:
-            temp_path = JOBS_STATE_FILE.with_suffix(".tmp")
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(JOBS_STORE, f, indent=2)
-            temp_path.replace(JOBS_STATE_FILE)
-    except Exception as exc:
-        print(f"[WARN] Failed to persist jobs state to disk: {exc}")
-
-
-JOBS_STORE: dict[str, dict[str, Any]] = _load_jobs_from_disk()
-
-
-class BatchRunRequest(BaseModel):
-    sample_size: int = 50
-    model_name: str = Field(
-        default="gpt-4o-mini",
-        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
+class MultiJudgeEnsembleRequest(BaseModel):
+    question: str
+    answer_a: str
+    answer_b: str
+    judge_models: list[str] = Field(
+        default=["gpt-4o-mini", "deepseek/deepseek-chat", "meta-llama/llama-3.3-70b-instruct"],
+        description="List of judge model identifiers for multi-judge ensemble voting",
     )
     temperature: float = 0.0
     mitigation_strategy: Literal["dual_ab", "verbosity_penalized", "none"] = "dual_ab"
 
 
-class PerturbationRunRequest(BaseModel):
-    padding_factor: float = 0.35
-    inject_markdown: bool = True
-    model_name: str = Field(
-        default="gpt-4o-mini",
-        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
-    )
+class MultiJudgeEnsembleResponse(BaseModel):
+    status: str
+    consensus_verdict: str
+    vote_counts: dict[str, int]
+    individual_results: list[dict[str, Any]]
+    total_models: int
+    successful_models: int
+    total_input_tokens: int
+    total_output_tokens: int
 
 
-class StochasticRunRequest(BaseModel):
-    n_trials: int = 5
-    model_name: str = Field(
-        default="gpt-4o-mini",
-        description="Model name. Supports OpenAI ('gpt-4o-mini'), Local Ollama ('llama3'), and OpenRouter models ('deepseek/deepseek-chat', 'anthropic/claude-3.5-haiku', 'meta-llama/llama-3.3-70b-instruct')",
-    )
+@app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
+def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """
+    Executes concurrent multi-judge ensemble voting across selected LLM judge models.
+    Aggregates individual verdicts into a majority-rule consensus verdict.
+    Persists ensemble judgment decisions to PostgreSQL for database auditability.
+    """
+    if not req.judge_models or len(req.judge_models) == 0:
+        raise HTTPException(status_code=400, detail="At least one judge model must be provided in 'judge_models'.")
 
+    # Validate API keys for cloud/openrouter models
+    for m in req.judge_models:
+        try:
+            _validate_api_key_or_raise(m)
+        except ValueError as val_err:
+            raise HTTPException(status_code=500, detail=str(val_err))
 
-def _log_job(job_id: str, message: str):
-    if job_id not in JOBS_STORE:
-        return
-    now_str = datetime.datetime.now().strftime("%H:%M:%S")
-    entry = f"[{now_str}] {message}"
-    JOBS_STORE[job_id]["logs"].append(entry)
-    JOBS_STORE[job_id]["message"] = message
-    _save_jobs_to_disk()
-
-
-def _update_job(job_id: str, updates: dict[str, Any]):
-    if job_id not in JOBS_STORE:
-        return
-    JOBS_STORE[job_id].update(updates)
-    _save_jobs_to_disk()
-
-
-def _get_eval_dataset(sample_size: int) -> list[dict[str, str]]:
-    """Fetch human preference evaluation pairs from PostgreSQL. Strictly raises HTTPException if insufficient rows found."""
-    dataset: list[dict[str, str]] = []
     try:
-        with engine.connect() as conn:
-            query = text("""
-                SELECT p.text as question, a1.text as answer_a, a2.text as answer_b
-                FROM human_preferences hp
-                JOIN prompts p ON hp.prompt_id = p.id
-                JOIN answers a1 ON hp.answer_a_id = a1.id
-                JOIN answers a2 ON hp.answer_b_id = a2.id
-                ORDER BY hp.id
-                LIMIT :limit
-            """)
-            df = pd.read_sql(query, conn, params={"limit": sample_size})
-            if len(df) > 0:
-                dataset = df.to_dict(orient="records")
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Insufficient dataset records found in PostgreSQL. Error: {exc}"
-        ) from exc
-
-    if len(dataset) < sample_size:
-        raise HTTPException(
-            status_code=500,
-            detail="Insufficient dataset records found in PostgreSQL."
+        res = call_multi_judge_ensemble(
+            question=req.question,
+            answer_a=req.answer_a,
+            answer_b=req.answer_b,
+            model_names=req.judge_models,
+            temperature=req.temperature,
+            mitigation_strategy=req.mitigation_strategy,
         )
 
-    return dataset[:sample_size]
+        # Persist individual judge decisions to PostgreSQL
+        try:
+            from sqlalchemy import text as sa_text
+            with db.begin_nested():
+                prompt_row = db.execute(
+                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'ensemble_eval') RETURNING id"),
+                    {"text": req.question[:4096]},
+                ).fetchone()
+                if prompt_row:
+                    prompt_id = prompt_row[0]
+                    ans_a = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192], "wc": len(req.answer_a.split())},
+                    ).fetchone()
+                    ans_b = db.execute(
+                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192], "wc": len(req.answer_b.split())},
+                    ).fetchone()
 
+                    if ans_a and ans_b:
+                        for item in res.individual_results:
+                            if item.get("status") == "success":
+                                v = item.get("verdict", "UNKNOWN")
+                                winner_id = ans_a[0] if v == "A" else (ans_b[0] if v == "B" else None)
+                                reasoning_str = str(item.get("reasoning", ""))
+                                db.execute(
+                                    sa_text("INSERT INTO judge_decisions "
+                                            "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
+                                            "position_a_id, winner_id, reasoning) "
+                                            "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
+                                    {
+                                        "pid": prompt_id,
+                                        "judge": normalize_model_id(item["model_name"]),
+                                        "a_id": ans_a[0],
+                                        "b_id": ans_b[0],
+                                        "pos_a": ans_a[0],
+                                        "winner": winner_id,
+                                        "reasoning": reasoning_str[:4096],
+                                    },
+                                )
+                        db.commit()
+        except Exception as db_exc:
+            db.rollback()
+            print(f"[WARN] Failed to persist ensemble decisions to DB: {db_exc}")
 
-def _validate_api_key_or_raise(model_name: str):
-    """Enforce strict API key presence for cloud and OpenRouter models. Disables mock fallbacks in production."""
-    if is_local_model(model_name):
-        return
-    if "/" in model_name:
-        key = os.getenv("OPENROUTER_API_KEY")
-        if not key or key.startswith("your_"):
-            raise ValueError(f"OPENROUTER_API_KEY is missing or unconfigured in .env for model '{model_name}'. Mock execution is strictly disabled for production.")
-        return
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key or api_key.startswith("your_"):
-        raise ValueError(f"OPENAI_API_KEY is missing or unconfigured in .env for model '{model_name}'. Mock execution is strictly disabled for production.")
-
-
-def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperature: float, mitigation_strategy: str):
-    try:
-        _validate_api_key_or_raise(model_name)
-        _log_job(job_id, f"Initializing Batch Evaluation Engine (sample_size={sample_size}, model={model_name}, strategy={mitigation_strategy})...")
-        _update_job(job_id, {"status": "running", "total": sample_size})
-
-        pairs = _get_eval_dataset(sample_size)
-        win_a = 0
-        win_b = 0
-        ties = 0
-        flips = 0
-
-        for i, pair in enumerate(pairs, start=1):
-            res = call_calibrated_judge(
-                question=pair["question"],
-                answer_a=pair["answer_a"],
-                answer_b=pair["answer_b"],
-                model_name=model_name,
-                temperature=temperature,
-                mitigation_strategy=mitigation_strategy,
-            )
-            verdict = res.final_calibrated_winner
-            if res.position_bias_detected:
-                flips += 1
-
-            if verdict == "A":
-                win_a += 1
-            elif verdict == "B":
-                win_b += 1
-            else:
-                ties += 1
-
-            _update_job(job_id, {
-                "progress": i,
-                "percentage": round((i / sample_size) * 100, 1),
-            })
-
-            if i == 1 or i % max(1, sample_size // 10) == 0 or i == sample_size:
-                _log_job(job_id, f"Evaluated pair {i}/{sample_size} | Model: {model_name} | Strategy: {mitigation_strategy} | Verdict: {verdict}")
-
-        _update_job(job_id, {
-            "status": "completed",
-            "result_summary": {
-                "total_evaluated": sample_size,
-                "winner_a_count": win_a,
-                "winner_b_count": win_b,
-                "tie_count": ties,
-                "position_bias_flips": flips,
-                "mitigation_strategy": mitigation_strategy,
-            },
-        })
-        _log_job(job_id, f"Batch Evaluation completed successfully! Processed {sample_size} prompt pairs.")
+        return {
+            "status": "success",
+            "consensus_verdict": res.consensus_verdict,
+            "vote_counts": res.vote_counts,
+            "individual_results": res.individual_results,
+            "total_models": res.total_models,
+            "successful_models": res.successful_models,
+            "total_input_tokens": res.total_input_tokens,
+            "total_output_tokens": res.total_output_tokens,
+        }
+    except HTTPException:
+        raise
     except Exception as exc:
-        err_msg = f"Batch Execution Error: {str(exc)}"
-        _log_job(job_id, err_msg)
-        _update_job(job_id, {"status": "failed"})
-        raise RuntimeError(err_msg) from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Multi-judge ensemble evaluation failed: {str(exc)}"
+        )
 
 
-def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdown: bool, model_name: str = "gpt-4o-mini"):
-    try:
-        _validate_api_key_or_raise(model_name)
-        _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown}, model={model_name})...")
-        total_steps = 30
-        _update_job(job_id, {"status": "running", "total": total_steps})
-
-        pairs = _get_eval_dataset(total_steps)
-        win_a = 0
-        win_b = 0
-        ties = 0
-        flips = 0
-
-        for i, pair in enumerate(pairs, start=1):
-            padded_text = pair["answer_a"] + ("\n\n### Detailed Elaboration\n" + " Additional explanatory context." * int(padding_factor * 10))
-            if inject_markdown:
-                padded_text = f"**Key Takeaway:** {padded_text}"
-
-            res = call_judge(
-                question=pair["question"],
-                answer_a=padded_text,
-                answer_b=pair["answer_b"],
-                model_name=model_name,
-                temperature=0.0,
-            )
-            verdict = res.verdict
-
-            if verdict == "A":
-                win_a += 1
-            elif verdict == "B":
-                win_b += 1
-            else:
-                ties += 1
-
-            _update_job(job_id, {
-                "progress": i,
-                "percentage": round((i / total_steps) * 100, 1),
-            })
-
-            if i % 5 == 0 or i == total_steps:
-                _log_job(job_id, f"Injected verbosity padding into stratum {i}/{total_steps} (Markdown={'enabled' if inject_markdown else 'disabled'}) | Verdict: {verdict}")
-
-        _update_job(job_id, {
-            "status": "completed",
-            "result_summary": {
-                "total_evaluated": total_steps,
-                "winner_a_count": win_a,
-                "winner_b_count": win_b,
-                "tie_count": ties,
-                "position_bias_flips": flips,
-                "mitigation_strategy": "synthetic_perturbation",
-            },
-        })
-        _log_job(job_id, f"Synthetic Perturbation Suite complete! Re-generated perturbation dataset artifacts.")
-    except Exception as exc:
-        err_msg = f"Perturbation Suite Error: {str(exc)}"
-        _log_job(job_id, err_msg)
-        _update_job(job_id, {"status": "failed"})
-        raise RuntimeError(err_msg) from exc
-
-
-def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
-    try:
-        _validate_api_key_or_raise(model_name)
-        _log_job(job_id, f"Starting Stochastic Consistency Benchmark (N={n_trials} trials, model={model_name})...")
-        total_steps = n_trials * 10
-        _update_job(job_id, {"status": "running", "total": total_steps})
-
-        pairs = _get_eval_dataset(10)
-        win_a = 0
-        win_b = 0
-        ties = 0
-        flips = 0
-        step = 0
-        pair_baseline_verdicts: dict[int, str] = {}
-
-        for trial in range(1, n_trials + 1):
-            _log_job(job_id, f"Executing Trial Pass #{trial} / {n_trials} across 10 prompt benchmark pairs...")
-            for p_idx, pair in enumerate(pairs):
-                res = call_judge(
-                    question=pair["question"],
-                    answer_a=pair["answer_a"],
-                    answer_b=pair["answer_b"],
-                    model_name=model_name,
-                    temperature=0.0,
-                )
-                verdict = res.verdict
-                step += 1
-                if verdict == "A":
-                    win_a += 1
-                elif verdict == "B":
-                    win_b += 1
-                else:
-                    ties += 1
-
-                if p_idx not in pair_baseline_verdicts:
-                    pair_baseline_verdicts[p_idx] = verdict
-                elif verdict != pair_baseline_verdicts[p_idx]:
-                    flips += 1
-
-                _update_job(job_id, {
-                    "progress": step,
-                    "percentage": round((step / total_steps) * 100, 1),
-                })
-
-        _update_job(job_id, {
-            "status": "completed",
-            "result_summary": {
-                "total_evaluated": total_steps,
-                "winner_a_count": win_a,
-                "winner_b_count": win_b,
-                "tie_count": ties,
-                "position_bias_flips": flips,
-                "mitigation_strategy": f"stochastic_n{n_trials}",
-            },
-        })
-        _log_job(job_id, f"Stochastic Benchmark complete! Calculated N={n_trials} flip variance statistics.")
-    except Exception as exc:
-        err_msg = f"Stochastic Benchmark Error: {str(exc)}"
-        _log_job(job_id, err_msg)
-        _update_job(job_id, {"status": "failed"})
-        raise RuntimeError(err_msg) from exc
-
-
-@app.post("/api/experiments/run-batch", response_model=JobTriggerResponse)
-def trigger_batch_run(req: BatchRunRequest, background_tasks: BackgroundTasks) -> JobTriggerResponse:
-    job_id = f"job_batch_{uuid.uuid4().hex[:8]}"
-    JOBS_STORE[job_id] = {
-        "job_id": job_id,
-        "job_type": "batch",
-        "status": "running",
-        "progress": 0,
-        "total": req.sample_size,
-        "percentage": 0.0,
-        "message": "Initializing...",
-        "logs": [],
-        "created_at": datetime.datetime.now().isoformat(),
-    }
-    _save_jobs_to_disk()
-    background_tasks.add_task(_execute_batch_job, job_id, req.sample_size, req.model_name, req.temperature, req.mitigation_strategy)
-    return JobTriggerResponse(status="success", job_id=job_id, message="Batch evaluation job launched successfully.")
-
-
-@app.post("/api/experiments/perturbations", response_model=JobTriggerResponse)
-def trigger_perturbation_run(req: PerturbationRunRequest, background_tasks: BackgroundTasks) -> JobTriggerResponse:
-    job_id = f"job_pert_{uuid.uuid4().hex[:8]}"
-    JOBS_STORE[job_id] = {
-        "job_id": job_id,
-        "job_type": "perturbations",
-        "status": "running",
-        "progress": 0,
-        "total": 30,
-        "percentage": 0.0,
-        "message": "Initializing...",
-        "logs": [],
-        "created_at": datetime.datetime.now().isoformat(),
-    }
-    _save_jobs_to_disk()
-    background_tasks.add_task(_execute_perturbation_job, job_id, req.padding_factor, req.inject_markdown, req.model_name)
-    return JobTriggerResponse(status="success", job_id=job_id, message="Perturbation generator job launched successfully.")
-
-
-@app.post("/api/experiments/stochastic", response_model=JobTriggerResponse)
-def trigger_stochastic_run(req: StochasticRunRequest, background_tasks: BackgroundTasks) -> JobTriggerResponse:
-    job_id = f"job_stoch_{uuid.uuid4().hex[:8]}"
-    JOBS_STORE[job_id] = {
-        "job_id": job_id,
-        "job_type": "stochastic",
-        "status": "running",
-        "progress": 0,
-        "total": req.n_trials * 10,
-        "percentage": 0.0,
-        "message": "Initializing...",
-        "logs": [],
-        "created_at": datetime.datetime.now().isoformat(),
-    }
-    _save_jobs_to_disk()
-    background_tasks.add_task(_execute_stochastic_job, job_id, req.n_trials, req.model_name)
-    return JobTriggerResponse(status="success", job_id=job_id, message="Stochastic benchmark job launched successfully.")
-
-
-@app.get("/api/experiments/status/{job_id}")
-def get_job_status(job_id: str) -> dict[str, Any]:
-    job = JOBS_STORE.get(job_id)
-    if not job:
-        # Check disk if not in memory
-        fresh_jobs = _load_jobs_from_disk()
-        job = fresh_jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
-    return job
-
-
-@app.get("/api/experiments/stream/{job_id}")
-async def stream_job_status(job_id: str):
-    job = JOBS_STORE.get(job_id)
-    if not job:
-        fresh_jobs = _load_jobs_from_disk()
-        job = fresh_jobs.get(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
-
-    async def event_generator():
-        while True:
-            current_job = JOBS_STORE.get(job_id) or _load_jobs_from_disk().get(job_id)
-            if not current_job:
-                break
-
-            data = json.dumps({
-                "job_id": current_job["job_id"],
-                "status": current_job["status"],
-                "progress": current_job["progress"],
-                "total": current_job["total"],
-                "percentage": current_job["percentage"],
-                "message": current_job["message"],
-                "logs": current_job["logs"],
-                "result_summary": current_job.get("result_summary"),
-            })
-            yield f"data: {data}\n\n"
-
-            if current_job["status"] in ("completed", "failed"):
-                break
-
-            await asyncio.sleep(0.3)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")

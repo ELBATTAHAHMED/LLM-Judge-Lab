@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
+import '@testing-library/jest-dom';
 import { SelfPreferenceCard } from '../SelfPreferenceCard';
 import type { SelfPreferenceResponse } from '../../api/types';
 

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { executeLiveEvaluation, executeCalibratedEvaluation } from '../api/client';
-import type { EvaluateResponse, CalibratedEvaluateResponse } from '../api/types';
+import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation } from '../api/client';
+import type { EvaluateResponse, CalibratedEvaluateResponse, EnsembleEvaluateResponse } from '../api/types';
 import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
-import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check } from 'lucide-react';
+import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square } from 'lucide-react';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
 
@@ -25,20 +25,19 @@ const EVALUATOR_MODELS = [
   { value: 'anthropic/claude-3-haiku', label: 'Claude 3 Haiku (OpenRouter)', icon: 'anthropic/claude-3-haiku' },
 ];
 
-const estimateTokens = (text: string) => {
-  if (!text) return 0;
-  const words = text.trim().split(/\s+/).length;
-  return Math.ceil(words * 1.3);
-};
-
 export const LiveLabPage: React.FC = () => {
   const { judgeModel } = useJudge();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
   const [modelName, setModelName] = useState(judgeModel);
-  const [evalMode, setEvalMode] = useState<'standard' | 'calibrated'>('standard');
+  const [evalMode, setEvalMode] = useState<'standard' | 'calibrated' | 'ensemble'>('standard');
   const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
+  const [selectedEnsembleModels, setSelectedEnsembleModels] = useState<string[]>([
+    'gpt-4o-mini',
+    'deepseek/deepseek-chat',
+    'meta-llama/llama-3.3-70b-instruct',
+  ]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -50,15 +49,27 @@ export const LiveLabPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [standardResult, setStandardResult] = useState<EvaluateResponse | null>(null);
   const [calibratedResult, setCalibratedResult] = useState<CalibratedEvaluateResponse | null>(null);
+  const [ensembleResult, setEnsembleResult] = useState<EnsembleEvaluateResponse | null>(null);
+  const [expandedJudges, setExpandedJudges] = useState<Record<number, boolean>>({});
 
-  // Calculated Token Telemetry
-  const promptTokens = estimateTokens(prompt);
-  const answerATokens = estimateTokens(answerA);
-  const answerBTokens = estimateTokens(answerB);
-  const totalInputTokensEst = promptTokens + answerATokens + answerBTokens;
-  const isLocal = modelName.includes('llama') || modelName.includes('ollama') || modelName.includes('local');
-  const maxContextTokens = isLocal ? 8192 : 128000;
-  const isContextWarning = totalInputTokensEst > (isLocal ? 2000 : 32000);
+  const toggleJudgeExpanded = (idx: number) => {
+    setExpandedJudges((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const toggleEnsembleModel = (value: string) => {
+    setSelectedEnsembleModels((prev) => {
+      if (prev.includes(value)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((m) => m !== value);
+      } else {
+        if (prev.length >= 3) {
+          // FIFO auto-swap: evict oldest selected model and append new selection
+          return [...prev.slice(1), value];
+        }
+        return [...prev, value];
+      }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,7 +87,18 @@ export const LiveLabPage: React.FC = () => {
     }, 1200);
 
     try {
-      if (evalMode === 'calibrated') {
+      if (evalMode === 'ensemble') {
+        const res = await executeEnsembleEvaluation({
+          question: prompt,
+          answer_a: answerA,
+          answer_b: answerB,
+          judge_models: selectedEnsembleModels,
+          mitigation_strategy: mitigationStrategy,
+        });
+        setEnsembleResult(res);
+        setStandardResult(null);
+        setCalibratedResult(null);
+      } else if (evalMode === 'calibrated') {
         const res = await executeCalibratedEvaluation({
           question: prompt,
           answer_a: answerA,
@@ -86,6 +108,7 @@ export const LiveLabPage: React.FC = () => {
         });
         setCalibratedResult(res);
         setStandardResult(null);
+        setEnsembleResult(null);
       } else {
         const res = await executeLiveEvaluation({
           prompt: prompt,
@@ -95,6 +118,7 @@ export const LiveLabPage: React.FC = () => {
         });
         setStandardResult(res);
         setCalibratedResult(null);
+        setEnsembleResult(null);
       }
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -114,6 +138,7 @@ export const LiveLabPage: React.FC = () => {
     setAnswerB(DEFAULT_ANSWER_B);
     setStandardResult(null);
     setCalibratedResult(null);
+    setEnsembleResult(null);
   };
 
   return (
@@ -145,58 +170,75 @@ export const LiveLabPage: React.FC = () => {
           <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-4">
             {/* Evaluation Engine Mode & Model Selector */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <div className="relative">
-                <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
-                  Evaluator Model
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-teal-500/60"
-                >
-                  <span className="flex items-center gap-2">
-                    <SingleModelIcon modelName={modelName} className="w-4 h-4 shrink-0" />
-                    <span>{EVALUATOR_MODELS.find(m => m.value === modelName)?.label || modelName}</span>
-                  </span>
-                  <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
+              {evalMode !== 'ensemble' ? (
+                <div className="relative">
+                  <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
+                    Evaluator Model
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 flex items-center justify-between cursor-pointer focus:outline-none focus:border-teal-500/60"
+                  >
+                    <span className="flex items-center gap-2">
+                      <SingleModelIcon modelName={modelName} className="w-4 h-4 shrink-0" />
+                      <span>{EVALUATOR_MODELS.find(m => m.value === modelName)?.label || modelName}</span>
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {isDropdownOpen && (
-                  <div className="absolute top-full left-0 mt-1 w-full z-30 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 font-mono text-xs">
-                    {EVALUATOR_MODELS.map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => {
-                          setModelName(item.value);
-                          setIsDropdownOpen(false);
-                        }}
-                        className={`w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer ${
-                          modelName === item.value ? 'bg-neutral-100 dark:bg-neutral-900 font-semibold' : ''
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <SingleModelIcon modelName={item.icon} className="w-4 h-4 shrink-0" />
-                          <span>{item.label}</span>
-                        </span>
-                        {modelName === item.value && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />}
-                      </button>
-                    ))}
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-full z-30 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 shadow-xl py-1 font-mono text-xs">
+                      {EVALUATOR_MODELS.map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => {
+                            setModelName(item.value);
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full px-2.5 py-2 text-left flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer ${
+                            modelName === item.value ? 'bg-neutral-100 dark:bg-neutral-900 font-semibold' : ''
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <SingleModelIcon modelName={item.icon} className="w-4 h-4 shrink-0" />
+                            <span>{item.label}</span>
+                          </span>
+                          {modelName === item.value && <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
+                    Ensemble Protocol
+                  </label>
+                  <div className="px-2.5 py-1.5 rounded bg-neutral-200/80 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-xs font-mono text-neutral-800 dark:text-neutral-200 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Users className="w-4 h-4 text-neutral-700 dark:text-neutral-300 shrink-0" />
+                      <span>Multi-Judge Voting</span>
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-300/80 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100">
+                      {selectedEnsembleModels.length} Models
+                    </span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
-                  Mitigation Mode
+                  Evaluation Protocol Mode
                 </label>
-                <div className="grid grid-cols-2 gap-1 p-0.5 rounded bg-neutral-200/60 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs font-mono">
+                <div className="grid grid-cols-3 gap-1 p-0.5 rounded bg-neutral-200/60 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs font-mono">
                   <button
                     type="button"
                     onClick={() => setEvalMode('standard')}
-                    className={`py-1 px-2 rounded text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
+                    className={`py-1 px-1.5 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-all ${
                       evalMode === 'standard'
-                        ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-semibold shadow-xs'
+                        ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white font-semibold border border-neutral-300 dark:border-neutral-700'
                         : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
@@ -207,20 +249,73 @@ export const LiveLabPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setEvalMode('calibrated')}
-                    className={`py-1 px-2 rounded text-[11px] font-medium flex items-center justify-center gap-1 transition-all ${
+                    className={`py-1 px-1.5 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-all ${
                       evalMode === 'calibrated'
-                        ? 'bg-white dark:bg-neutral-950 text-teal-700 dark:text-teal-400 font-semibold shadow-xs'
+                        ? 'bg-white dark:bg-neutral-950 text-teal-700 dark:text-teal-400 font-semibold border border-teal-500/40'
                         : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
                     }`}
                   >
                     <ShieldCheck className="w-3 h-3 text-teal-600 dark:text-teal-400" />
                     <span>Calibrated</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEvalMode('ensemble')}
+                    className={`py-1 px-1.5 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-all ${
+                      evalMode === 'ensemble'
+                        ? 'bg-white dark:bg-neutral-950 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-500/40'
+                        : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Users className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                    <span>Ensemble</span>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {evalMode === 'calibrated' && (
+            {evalMode === 'ensemble' && (
+              <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                    Select Ensemble Judge Models ({selectedEnsembleModels.length} selected)
+                  </label>
+                  <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 font-medium">
+                    Concurrent Majority Voting
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {EVALUATOR_MODELS.map((item) => {
+                    const isSelected = selectedEnsembleModels.includes(item.value);
+                    return (
+                      <button
+                        key={item.value}
+                        type="button"
+                        onClick={() => toggleEnsembleModel(item.value)}
+                        className={`p-2 rounded border text-xs font-mono text-left flex items-center justify-between transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-neutral-200/80 dark:bg-neutral-900 border-neutral-400 dark:border-neutral-700 text-neutral-900 dark:text-white font-semibold'
+                            : 'bg-white dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 truncate">
+                          <SingleModelIcon modelName={item.icon} className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </span>
+                        {isSelected ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-neutral-800 dark:text-neutral-200 shrink-0 ml-1" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5 text-neutral-400 shrink-0 ml-1" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {(evalMode === 'calibrated' || evalMode === 'ensemble') && (
               <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-1">
                 <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
                   Active Mitigation Strategy
@@ -228,7 +323,7 @@ export const LiveLabPage: React.FC = () => {
                 <select
                   value={mitigationStrategy}
                   onChange={(e: any) => setMitigationStrategy(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 cursor-pointer"
+                  className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 cursor-pointer"
                 >
                   <option value="dual_ab">Dual A/B Swap (Position Bias Mitigation)</option>
                   <option value="verbosity_penalized">Length Penalization (Verbosity Bias Mitigation)</option>
@@ -237,81 +332,45 @@ export const LiveLabPage: React.FC = () => {
               </div>
             )}
 
-            {/* Context Budget & Token Telemetry Bar */}
-            <div className="p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 font-mono text-[11px] space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-neutral-500 flex items-center gap-1.5">
-                  <span>Target Context Limit:</span>
-                  <strong className="text-neutral-800 dark:text-neutral-200">{maxContextTokens.toLocaleString()} tokens</strong>
-                </span>
-                <span className="text-neutral-500">
-                  Est. Prompt Payload: <strong className={isContextWarning ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-teal-600 dark:text-teal-400 font-semibold'}>{totalInputTokensEst.toLocaleString()} tokens</strong>
-                </span>
-              </div>
-              <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    isContextWarning ? 'bg-amber-500' : 'bg-teal-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (totalInputTokensEst / maxContextTokens) * 100)}%` }}
-                />
-              </div>
-              {isContextWarning && (
-                <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 pt-0.5">
-                  <AlertTriangle className="w-3 h-3 shrink-0" />
-                  <span>High Token Payload: Long essay input approaches local inference context bounds.</span>
-                </div>
-              )}
-            </div>
-
             {/* Prompt Input */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                  Question / Prompt
-                </label>
-                <span className="text-[10px] font-mono text-neutral-500">~{promptTokens} tokens</span>
-              </div>
+              <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                Question / Prompt
+              </label>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={2}
                 placeholder="Enter evaluation prompt..."
-                className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 dark:focus:border-teal-500/60 transition-colors"
+                className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 transition-colors"
               />
             </div>
 
             {/* Candidate Answers Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                    Candidate Answer A
-                  </label>
-                  <span className="text-[10px] font-mono text-neutral-500">~{answerATokens} tokens</span>
-                </div>
+                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                  Candidate Answer A
+                </label>
                 <textarea
                   value={answerA}
                   onChange={(e) => setAnswerA(e.target.value)}
                   rows={8}
                   placeholder="Enter Answer A text..."
-                  className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 dark:focus:border-teal-500/60 transition-colors"
+                  className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 transition-colors"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                    Candidate Answer B
-                  </label>
-                  <span className="text-[10px] font-mono text-neutral-500">~{answerBTokens} tokens</span>
-                </div>
+                <label className="block text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
+                  Candidate Answer B
+                </label>
                 <textarea
                   value={answerB}
                   onChange={(e) => setAnswerB(e.target.value)}
                   rows={8}
                   placeholder="Enter Answer B text..."
-                  className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-teal-500/60 dark:focus:border-teal-500/60 transition-colors"
+                  className="w-full p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 transition-colors"
                 />
               </div>
             </div>
@@ -331,9 +390,11 @@ export const LiveLabPage: React.FC = () => {
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-400" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-neutral-400" />
                   <span>
-                    {evalMode === 'calibrated'
+                    {evalMode === 'ensemble'
+                      ? `Running Multi-Judge Voting across ${selectedEnsembleModels.length} Models...`
+                      : evalMode === 'calibrated'
                       ? `[Step ${executionStep || 1}/3] ${
                           executionStep === 1
                             ? 'Pass 1 (Order A vs B) In-Flight...'
@@ -346,13 +407,17 @@ export const LiveLabPage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {evalMode === 'calibrated' ? (
+                  {evalMode === 'ensemble' ? (
+                    <Users className="w-3.5 h-3.5 text-neutral-300 dark:text-neutral-700 fill-current" />
+                  ) : evalMode === 'calibrated' ? (
                     <ShieldCheck className="w-3.5 h-3.5 text-teal-500 fill-current" />
                   ) : (
                     <Play className="w-3.5 h-3.5 fill-current" />
                   )}
                   <span>
-                    {evalMode === 'calibrated'
+                    {evalMode === 'ensemble'
+                      ? 'Run Ensemble Consensus'
+                      : evalMode === 'calibrated'
                       ? 'Run Dual A/B Swap Calibrated Trial'
                       : 'Run Standard G-EVAL Evaluation Trial'}
                   </span>
@@ -364,22 +429,133 @@ export const LiveLabPage: React.FC = () => {
 
         {/* Right Output Panel (5 Cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 h-full flex flex-col justify-between space-y-4">
-            <div>
-              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 mb-3">
+          <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 h-full flex flex-col justify-between">
+            <div className="flex flex-col flex-1 min-h-0 space-y-3">
+              <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3 shrink-0">
                 <span className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs font-mono uppercase tracking-wider flex items-center gap-1.5">
-                  {evalMode === 'calibrated' && <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />}
-                  <span>{evalMode === 'calibrated' ? 'Calibrated Telemetry Output' : 'Standard Evaluation Output'}</span>
+                  {evalMode === 'ensemble' ? (
+                    <Users className="w-3.5 h-3.5 text-neutral-700 dark:text-neutral-300" />
+                  ) : evalMode === 'calibrated' ? (
+                    <ShieldCheck className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  ) : null}
+                  <span>
+                    {evalMode === 'ensemble'
+                      ? 'Ensemble Consensus Telemetry'
+                      : evalMode === 'calibrated'
+                      ? 'Calibrated Telemetry Output'
+                      : 'Standard Evaluation Output'}
+                  </span>
                 </span>
-                {(calibratedResult || standardResult) && (
+                {(calibratedResult || standardResult || ensembleResult) && (
                   <span className="text-[10px] font-mono text-neutral-500 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded inline-flex items-center gap-1.5">
-                    <ModelIcon modelName={calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || '')} className="w-3.5 h-3.5 shrink-0" />
-                    <span>{formatModelName(calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || ''))}</span>
+                    {ensembleResult ? (
+                      <Users className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400 shrink-0" />
+                    ) : (
+                      <ModelIcon modelName={calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || '')} className="w-3.5 h-3.5 shrink-0" />
+                    )}
+                    <span>
+                      {ensembleResult
+                        ? `${ensembleResult.successful_models} Judges`
+                        : formatModelName(calibratedResult ? calibratedResult.model_name : (standardResult?.model_name || ''))}
+                    </span>
                   </span>
                 )}
               </div>
 
-              {calibratedResult ? (
+              {ensembleResult ? (
+                <div className="flex flex-col flex-1 min-h-0 space-y-3">
+                  {/* Consensus Status & Vote Counts */}
+                  <div className="p-3 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 space-y-3 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono text-neutral-500">Ensemble Consensus Verdict:</span>
+                      <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold px-2.5 py-1 rounded bg-neutral-200/80 dark:bg-neutral-900 text-neutral-900 dark:text-white border border-neutral-300 dark:border-neutral-700">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Winner: {ensembleResult.consensus_verdict}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-900 text-[11px] font-mono text-center">
+                      <div className="p-1.5 rounded bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                        <span className="text-neutral-500 block text-[10px]">Answer A</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{ensembleResult.vote_counts.A || 0} votes</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                        <span className="text-neutral-500 block text-[10px]">Answer B</span>
+                        <span className="font-bold text-sky-600 dark:text-sky-400">{ensembleResult.vote_counts.B || 0} votes</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                        <span className="text-neutral-500 block text-[10px]">TIE</span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">{ensembleResult.vote_counts.TIE || 0} votes</span>
+                      </div>
+                      <div className="p-1.5 rounded bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                        <span className="text-neutral-500 block text-[10px]">Responded</span>
+                        <span className="font-bold text-neutral-800 dark:text-neutral-200">{ensembleResult.successful_models}/{ensembleResult.total_models}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Individual Judge Model Verdict Breakdown */}
+                  <div className="flex flex-col flex-1 min-h-0 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 shrink-0">
+                      <span>Individual Judge Model Votes</span>
+                      <span className="flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 font-semibold">
+                        <Users className="w-3 h-3" />
+                        Majority Rule Active
+                      </span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pr-2 mb-4">
+                      {ensembleResult.individual_results.map((ind, i) => (
+                        <div key={i} className="p-2.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono space-y-1.5 flex-shrink-0 h-fit">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 font-semibold text-neutral-900 dark:text-neutral-100">
+                              <SingleModelIcon modelName={ind.model_name} className="w-3.5 h-3.5 shrink-0" />
+                              <span>{formatModelName(ind.model_name)}</span>
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              ind.verdict === 'A'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : ind.verdict === 'B'
+                                ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                            }`}>
+                              Vote: {ind.verdict}
+                            </span>
+                          </div>
+                          {ind.reasoning ? (
+                            <div
+                              onClick={() => toggleJudgeExpanded(i)}
+                              className={`p-2 rounded border transition-all cursor-pointer group ${
+                                expandedJudges[i]
+                                  ? 'bg-neutral-100 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700'
+                                  : 'bg-neutral-50 dark:bg-neutral-900/60 border-neutral-200/80 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-600'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-neutral-400 font-mono mb-1 select-none">
+                                <span>Reasoning Narrative</span>
+                                <span className="text-[9px] text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors font-semibold">
+                                  {expandedJudges[i] ? 'Click to collapse ▲' : 'Click to expand ▼'}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-[11px] text-neutral-700 dark:text-neutral-300 leading-relaxed font-mono ${
+                                  expandedJudges[i] ? 'whitespace-pre-wrap' : 'line-clamp-2'
+                                }`}
+                              >
+                                <TextHighlighter text={ind.reasoning} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2 rounded bg-neutral-50 dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-neutral-800/60 text-[11px] text-neutral-400 font-mono italic">
+                              No reasoning narrative provided by model.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : calibratedResult ? (
                 <div className="space-y-4">
                   {/* Calibrated Status & Verdict Badges */}
                   <div className="space-y-2 p-3 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
@@ -513,9 +689,9 @@ export const LiveLabPage: React.FC = () => {
               )}
             </div>
 
-            <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-500 font-mono flex items-center justify-between">
+            <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-500 font-mono flex items-center justify-between mt-4 flex-shrink-0">
               <span>Sampling Temp: $T=0.0$</span>
-              <span>Mode: {evalMode === 'calibrated' ? 'Dual A/B Swap Active' : 'Single Pass G-EVAL'}</span>
+              <span>Mode: {evalMode === 'ensemble' ? 'Multi-Judge Voting Active' : evalMode === 'calibrated' ? 'Dual A/B Swap Active' : 'Single Pass G-EVAL'}</span>
             </div>
           </div>
         </div>

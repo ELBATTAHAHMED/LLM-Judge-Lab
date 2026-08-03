@@ -30,14 +30,14 @@ export const MetaLlamaIcon: React.FC<IconProps> = ({ className = "w-4 h-4", styl
   </svg>
 );
 
-export const VicunaIcon: React.FC<IconProps> = ({ className = "w-4 h-4", style }) => (
+const VicunaIcon: React.FC<IconProps> = ({ className = "w-4 h-4", style }) => (
   <svg viewBox="0 0 100 100" className={className} style={style}>
     <circle cx="50" cy="50" r="50" fill="#387994"/>
     <text x="50" y="65" fontSize="45" fontWeight="bold" fill="white" textAnchor="middle" fontFamily="sans-serif">V</text>
   </svg>
 );
 
-export const AlpacaIcon: React.FC<IconProps> = ({ className = "w-4 h-4", style }) => (
+const AlpacaIcon: React.FC<IconProps> = ({ className = "w-4 h-4", style }) => (
   <svg viewBox="0 0 100 100" className={className} style={style}>
     <circle cx="50" cy="50" r="50" fill="#8C1515"/>
     <text x="50" y="65" fontSize="45" fontWeight="bold" fill="white" textAnchor="middle" fontFamily="sans-serif">A</text>

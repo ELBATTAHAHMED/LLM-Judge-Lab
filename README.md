@@ -1,4 +1,4 @@
-# 🔬 JudgeLab: LLM-as-a-Judge Reliability Lab
+# 🔬 JudgeLab: LLM-as-a-Judge Reliability & Bias Evaluation Platform
 
 **Measuring, Diagnosing, and Algorithmically Neutralizing Systemic Biases in LLM Evaluators**
 
@@ -23,9 +23,49 @@ Large Language Models (LLMs) are increasingly deployed as automated evaluators (
 1. **Verbosity Bias**: Systematic preference for longer candidate responses regardless of factual accuracy or conciseness.
 2. **Position Order Bias**: Systematic preference for candidate answers presented first (Position A) or second (Position B).
 3. **Format Bias**: Structural preference for Markdown-rendered text over plain-text responses.
-4. **Stochastic Non-Determinism**: Output fluctuations across repeated trials even at temperature $T = 0.0$.
+4. **Self-Preference Bias**: Self-enhancement tendency of judge models favoring their own generated completions.
+5. **Stochastic Non-Determinism**: Output fluctuations across repeated trials even at temperature $T = 0.0$.
 
-**JudgeLab** is a full-stack, scientific research platform and active bias mitigation suite built to measure, diagnose, and algorithmically calibrate automated LLM evaluators. Using **2,271 paired human preference matchups** across 6 candidate models (`alpaca-13b`, `claude-v1`, `gpt-3.5-turbo`, `gpt-4`, `llama-13b`, `vicuna-13b`) evaluated by 4 distinct judge architectures (`GPT-4o-Mini`, `DeepSeek-V3 Chat`, `Llama-3.3-70B-Instruct`, `Claude-3-Haiku`), JudgeLab transforms raw LLM verdicts into calibrated, unbiased evaluation metrics.
+**JudgeLab** is a full-stack, scientific research platform and active bias mitigation suite built to measure, diagnose, and algorithmically calibrate automated LLM evaluators. Using **2,271 paired human preference matchups** across 6 candidate models evaluated by 4 distinct judge architectures (`GPT-4o-Mini`, `DeepSeek-V3 Chat`, `Llama-3.3-70B-Instruct`, `Claude-3-Haiku`), JudgeLab transforms raw LLM verdicts into calibrated, unbiased evaluation metrics.
+
+---
+
+## 🏛️ System Architecture
+
+```
+LLM-Judge-Lab/
+├── backend/
+│   ├── database.py                   # SQLAlchemy engine & session factory
+│   ├── models.py                     # PostgreSQL ORM domain models
+│   ├── judge_engine.py               # G-EVAL & Multi-Judge Ensemble Voting Engine
+│   ├── main.py                       # FastAPI REST routes & PostgreSQL decision handlers
+│   ├── analyze_results.py            # Statistical tests (Kappa, Chi2, Spearman, Binomial)
+│   ├── analyze_consistency.py        # Multi-turn & inter-judge reliability (FDR adjustment)
+│   ├── calculate_latent_quality.py   # Bradley-Terry MLE solver (SciPy optimization)
+│   ├── calculate_neutralized_scores.py # OLS length-bias neutralization
+│   ├── extract_qualitative_data.py   # Qualitative data extraction script
+│   ├── generate_perturbations.py     # Standalone CLI perturbation generator
+│   ├── stochastic_test.py            # Standalone CLI non-zero temperature test
+│   ├── ingest_data.py                # PostgreSQL benchmark dataset dynamic seeder
+│   └── verify_db.py                  # Database integrity checker
+├── data/                             # Raw benchmark JSONL dataset files
+├── qualitative_data/                 # Per-judge segregated qualitative reasoning CSVs
+├── frontend/
+│   ├── src/
+│   │   ├── api/                      # Axios HTTP client & TypeScript interfaces
+│   │   ├── components/               # Specialized Recharts visualizers & UI controls
+│   │   ├── context/                  # React Judge & Theme state providers
+│   │   ├── layouts/                  # Global responsive navigation layout
+│   │   ├── pages/                    # Leaderboard, Diagnostics, Qualitative, LiveLab
+│   │   └── App.tsx                   # Main React router
+│   ├── package.json
+│   └── vite.config.ts
+├── tests/                            # Automated PyTest & Vitest suites
+│   ├── test_pipeline.py              # PyTest backend integration suite
+│   └── components/                   # Vitest frontend component tests
+├── requirements.txt                  # Frozen Python dependencies
+└── README.md                         # Thesis platform documentation
+```
 
 ---
 
@@ -33,26 +73,21 @@ Large Language Models (LLMs) are increasingly deployed as automated evaluators (
 
 ### 1. Unified Ranks & Leaderboard
 - **Bradley-Terry Latent Quality Scores ($\theta$)**: Computes Maximum Likelihood Estimation (MLE) latent strength parameters with reference model constraint ($\theta_{\text{alpaca-13b}} = 0.0$).
-- **5-Fold Cross-Validated Length Neutralization**: Fits OLS regression slopes ($\beta$) to compute residual neutralized win rates ($W_{\text{net}} = W_A - \beta(L_A - L_B)$) out-of-sample on holdout folds.
+- **Length Neutralization**: Fits OLS linear regression slopes ($\beta$) to compute residual neutralized win rates ($W_{\text{net}} = W_A - \beta(L_A - L_B)$).
 
 ### 2. Bias Diagnostics Workspace
 - **Verbosity Bias Analysis**: Quantifies length slope $\beta$, standard error, $R^2$, and Spearman rank correlation ($\rho$).
 - **Position Bias Analysis**: Computes binary $\chi^2$ test statistic and $p$-value for presentation order symmetry.
-- **Domain Reliability & Format Bias**: Category-stratified Cohen's $\kappa$ agreement with human judges and Markdown vs plain text preference tests.
+- **Self-Preference Bias Analysis**: Computes self-enhancement rates and exact Binomial test $p$-values.
 - **Inter-Judge Agreement Matrix**: Cross-judge Cohen's $\kappa$ and pairwise percentage agreement matrix ($N = 2,271$ overlapping pairs).
 
 ### 3. Qualitative Explorer
-- **Segregated Per-Model Reasoning Disk Data**: Dedicated subdirectories for all 4 judge models (`gpt-4o-mini`, `deepseek_deepseek-chat`, `meta-llama_llama-3.3-70b-instruct`, `anthropic_claude-3-haiku`).
-- **Verbatim Chain-of-Thought Rationale**: Side-by-side text comparison, word count differences, human winner vs AI winner, and verbatim judge rationale.
+- **Verbatim Rationale Inspector**: Side-by-side text comparison, word count differences, human winner vs AI winner, and syntax-highlighted verbatim judge rationale.
 
-### 4. Live Lab (Standard & Calibrated G-EVAL Sandbox)
-- **Real-Time Dual A/B Swap Calibration**: Symmetric two-pass pairwise execution (Original Order: A vs B, Swapped Order: B vs A) detecting position flips in flight.
-- **Database Persistence**: Automatic insertion of live evaluation runs into the PostgreSQL database.
-
-### 5. Experiment Control Center (ECC)
-- **Batch Evaluation Engine**: Execute strata batch evaluation runs across custom sample sizes and mitigation strategies.
-- **Synthetic Perturbation Generator**: Inject controlled verbosity padding ($10\% - 50\%$) and Markdown formatting transformations.
-- **Stochastic Benchmark Suite**: Multi-trial repetition passes ($N=5, 10, 20$) measuring flip rates at temperature $T=0.0$.
+### 4. Interactive Live Sandbox (Standard, Calibrated & Multi-Judge Ensemble)
+- **Standard G-EVAL Trial**: Single-pass pairwise comparison with verbatim reasoning.
+- **Dual A/B Swap Calibration**: Symmetric two-pass execution (Original Order: A vs B, Swapped Order: B vs A) detecting order flips in flight.
+- **Multi-Judge Ensemble Voting**: Concurrent ThreadPoolExecutor execution across 3 selected judge models, aggregating individual votes into a majority consensus verdict with single-model failure tolerance.
 
 ---
 
@@ -67,7 +102,7 @@ Large Language Models (LLMs) are increasingly deployed as automated evaluators (
 
 ---
 
-## 🛠️ Step-by-Step Getting Started Guide
+## 🛠️ Step-by-Step Installation & Setup
 
 ### Prerequisites
 - **Python**: 3.11 or higher
@@ -79,7 +114,7 @@ Large Language Models (LLMs) are increasingly deployed as automated evaluators (
 ### Step 1: Database Initialization
 
 1. Start your local PostgreSQL service.
-2. Create a database named `judgelab` and user `postgres` (or use your existing credentials):
+2. Create a database named `judgelab`:
 ```sql
 CREATE DATABASE judgelab;
 CREATE USER postgres WITH PASSWORD 'postgres';
@@ -90,22 +125,20 @@ GRANT ALL PRIVILEGES ON DATABASE judgelab TO postgres;
 
 ### Step 2: Backend Setup
 
-1. Open a terminal in the project root directory (`LLM-Judge-Lab`).
-2. Create and activate a Python virtual environment:
+1. Open a terminal in the project root directory (`llm-judge-lab`).
+2. Activate your Python virtual environment:
    ```bash
    # On Windows (PowerShell)
-   python -m venv .venv
    .\.venv\Scripts\Activate.ps1
 
    # On Linux / macOS
-   python3 -m venv .venv
    source .venv/bin/activate
    ```
-3. Install frozen Python dependencies:
+3. Install backend dependencies:
    ```bash
-   pip install -r backend/requirements.txt
+   pip install -r requirements.txt
    ```
-4. Configure your environment variables in `.env` (create a `.env` file in the root directory if missing):
+4. Configure your `.env` file in the root directory:
    ```env
    DATABASE_URL=postgresql://postgres:postgres@localhost:5432/judgelab
    OPENAI_API_KEY=your_openai_api_key_here
@@ -115,83 +148,40 @@ GRANT ALL PRIVILEGES ON DATABASE judgelab TO postgres;
    ```bash
    python backend/ingest_data.py
    ```
-6. Launch the FastAPI development server:
+6. Launch the FastAPI backend server:
    ```bash
    uvicorn backend.main:app --reload --port 8000
    ```
-   The backend API documentation will be accessible at `http://localhost:8000/docs`.
+   Interactive OpenAPI docs available at `http://localhost:8000/docs`.
 
 ---
 
 ### Step 3: Frontend Setup
 
-1. Open a new terminal window in the project root directory.
-2. Navigate to the `frontend` folder:
-   ```bash
-   cd frontend
-   ```
-3. Install Node package dependencies:
+1. Open a new terminal in the `frontend/` directory.
+2. Install dependencies:
    ```bash
    npm install
    ```
-4. Start the Vite React development server:
+3. Start the Vite React development server:
    ```bash
    npm run dev
    ```
-5. Open your web browser and navigate to `http://localhost:5173`.
+4. Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 🧪 Automated Testing
 
-```
-LLM-Judge-Lab/
-├── backend/
-│   ├── database.py                   # SQLAlchemy engine & session factory
-│   ├── models.py                     # PostgreSQL ORM domain models
-│   ├── judge_engine.py               # G-EVAL engine (OpenAI / OpenRouter / Ollama)
-│   ├── main.py                       # FastAPI REST routes & background job orchestrators
-│   ├── analyze_results.py            # Statistical tests (Kappa, Chi2, Spearman)
-│   ├── analyze_consistency.py        # Multi-turn & inter-judge reliability
-│   ├── calculate_latent_quality.py   # Bradley-Terry MLE solver (SciPy)
-│   ├── calculate_neutralized_scores.py # OLS length-bias neutralization (5-fold CV)
-│   ├── extract_qualitative_data.py   # Qualitative data extraction script
-│   ├── generate_perturbations.py     # Synthetic verbosity/format perturbation engine
-│   ├── stochastic_test.py            # Temperature=0.0 stochastic variance tester
-│   ├── ingest_data.py                # PostgreSQL benchmark dataset seeder
-│   └── requirements.txt              # Frozen Python dependencies
-├── data/                             # Raw MT-Bench JSONL dataset files
-├── qualitative_data/                 # Per-judge segregated qualitative reasoning CSVs
-│   ├── anthropic_claude-3-haiku/
-│   ├── deepseek_deepseek-chat/
-│   ├── gpt-4o-mini/
-│   └── meta-llama_llama-3.3-70b-instruct/
-├── frontend/
-│   ├── src/
-│   │   ├── api/                      # Axios HTTP client & TypeScript interfaces
-│   │   ├── components/               # Specialized Recharts visualizers & UI controls
-│   │   ├── context/                  # React Judge & Theme state providers
-│   │   ├── hooks/                    # Job progress polling hook
-│   │   ├── pages/                    # Leaderboard, Diagnostics, Qualitative, LiveLab, ECC
-│   │   └── App.tsx                   # Main router configuration
-│   └── package.json
-└── README.md
-```
-
----
-
-## 🧪 Verification & Automated Testing
-
-To run the backend statistical test suite and verify database integrity:
 ```bash
-# Execute pytest suite
-pytest
+# Execute PyTest backend integration suite
+pytest tests/test_pipeline.py -s
 
-# Verify PostgreSQL database row counts and model consistency
-python backend/verify_db.py
+# Execute Vitest frontend unit tests
+cd frontend && npx vitest run
 
-# Verify frontend build compilation
-cd frontend && npm run build
+# Verify production frontend build
+npm run build
 ```
 
 ---

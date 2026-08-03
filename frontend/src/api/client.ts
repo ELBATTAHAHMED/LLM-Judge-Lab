@@ -9,6 +9,8 @@ import type {
   EvaluateResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
+  EnsembleEvaluateRequest,
+  EnsembleEvaluateResponse,
   ConsistencyStatsResponse,
   DatasetCountResponse,
   InterJudgeReliability,
@@ -103,6 +105,34 @@ export async function executeCalibratedEvaluation(
   const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, { timeout: timeoutMs });
   return response.data;
 }
+
+/**
+ * Execute concurrent multi-judge ensemble voting evaluation
+ */
+export async function executeEnsembleEvaluation(
+  payload: EnsembleEvaluateRequest
+): Promise<EnsembleEvaluateResponse> {
+  const timeoutMs = 300000; // 5 mins timeout for multi-model ensemble
+  try {
+    const response = await apiClient.post<EnsembleEvaluateResponse>('/api/evaluate/ensemble', payload, { timeout: timeoutMs });
+    return response.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error('[Ensemble API Error Details]', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message,
+        payloadSent: payload,
+      });
+      const detailMsg = err.response?.data?.detail || err.message;
+      throw new Error(typeof detailMsg === 'string' ? detailMsg : JSON.stringify(detailMsg));
+    }
+    console.error('[Ensemble API Non-Axios Error]', err);
+    throw err;
+  }
+}
+
 
 // ── Custom React Hooks for UI Components ──────────────────────────────────────
 

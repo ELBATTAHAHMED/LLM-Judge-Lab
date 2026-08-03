@@ -61,6 +61,8 @@ def load_base_pairs(sample_size: int = 20, seed: int = 42) -> pd.DataFrame:
     csv_path = QUALITATIVE_DIR / "qualitative_baseline_alignment.csv"
     if csv_path.exists():
         df = pd.read_csv(csv_path)
+        if "reasoning_text" in df.columns and "question" not in df.columns:
+            df = df.rename(columns={"reasoning_text": "question"})
         return df.sample(n=min(sample_size, len(df)), random_state=seed).reset_index(drop=True)
 
     raise FileNotFoundError("Could not load evaluation pairs.")

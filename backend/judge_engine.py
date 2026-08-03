@@ -72,6 +72,18 @@ class CalibratedJudgeResult:
     total_output_tokens: int       # Aggregate completion tokens used
 
 
+@dataclass(frozen=True)
+class MultiJudgeEnsembleResult:
+    """Structured output from a multi-judge ensemble voting evaluation."""
+    consensus_verdict: str                  # Final majority vote: "A", "B", "TIE", or "UNKNOWN"
+    vote_counts: dict[str, int]             # {"A": 2, "B": 1, "TIE": 0, "UNKNOWN": 0}
+    individual_results: list[dict[str, Any]]# Detailed list of individual model verdicts & reasoning
+    total_models: int                       # Total models requested
+    successful_models: int                  # Count of successful model evaluations
+    total_input_tokens: int                 # Combined prompt tokens across judges
+    total_output_tokens: int                # Combined completion tokens across judges
+
+
 # ── Prompt Template ───────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
@@ -700,4 +712,156 @@ def call_ollama_judge(
             input_tokens=response_json.get("prompt_eval_count", 0),
             output_tokens=response_json.get("eval_count", 0),
         )
+
+
+# ── Multi-Judge Ensemble Voting Engine ─────────────────────────────────────────
+
+def call_multi_judge_ensemble(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+    model_names: list[str],
+    temperature: float = 0.0,
+    mitigation_strategy: str = "dual_ab",
+    max_workers: int = 4,
+) -> MultiJudgeEnsembleResult:
+    """
+    Executes concurrent pairwise evaluations across multiple LLM judge models and
+    aggregates their individual verdicts into a majority-voting ensemble consensus.
+
+    Robust against individual model failures or API timeouts: any failing judge
+    is recorded with status "failed" while consensus is computed on all remaining
+    successful judge model responses.
+    """
+    import concurrent.futures
+
+    def _eval_single_model(model_name: str) -> dict[str, Any]:
+        try:
+            if mitigation_strategy == "dual_ab":
+                res = call_calibrated_judge(
+                    question=question,
+                    answer_a=answer_a,
+                    answer_b=answer_b,
+                    model_name=model_name,
+                    temperature=temperature,
+                    mitigation_strategy="dual_ab",
+                )
+                return {
+                    "model_name": model_name,
+                    "status": "success",
+                    "verdict": res.final_calibrated_winner,
+                    "position_bias_detected": res.position_bias_detected,
+                    "reasoning": res.detailed_reasoning,
+                    "input_tokens": res.total_input_tokens,
+                    "output_tokens": res.total_output_tokens,
+                }
+            else:
+                res = call_judge(
+                    question=question,
+                    answer_a=answer_a,
+                    answer_b=answer_b,
+                    model_name=model_name,
+                    temperature=temperature,
+                )
+                return {
+                    "model_name": model_name,
+                    "status": "success",
+                    "verdict": res.verdict,
+                    "position_bias_detected": False,
+                    "reasoning": res.reasoning,
+                    "input_tokens": res.input_tokens,
+                    "output_tokens": res.output_tokens,
+                }
+        except Exception as exc:
+            log.warning("Ensemble judge model '%s' failed evaluation: %s", model_name, exc)
+            return {
+                "model_name": model_name,
+                "status": "failed",
+                "verdict": "UNKNOWN",
+                "error": str(exc),
+                "position_bias_detected": False,
+                "reasoning": f"Evaluation error: {str(exc)}",
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
+
+    results: list[dict[str, Any]] = []
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(model_names)))) as executor:
+            futures = {executor.submit(_eval_single_model, name): name for name in model_names}
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as fut_exc:
+                    name = futures[future]
+                    results.append({
+                        "model_name": name,
+                        "status": "failed",
+                        "verdict": "UNKNOWN",
+                        "error": str(fut_exc),
+                        "position_bias_detected": False,
+                        "reasoning": f"Future execution error: {str(fut_exc)}",
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                    })
+    except Exception as pool_exc:
+        log.error("ThreadPoolExecutor failure in call_multi_judge_ensemble: %s", pool_exc)
+        for name in model_names:
+            results.append({
+                "model_name": name,
+                "status": "failed",
+                "verdict": "UNKNOWN",
+                "error": str(pool_exc),
+                "position_bias_detected": False,
+                "reasoning": f"Thread pool error: {str(pool_exc)}",
+                "input_tokens": 0,
+                "output_tokens": 0,
+            })
+
+    # Sort results to preserve requested model order
+    order_map = {name: i for i, name in enumerate(model_names)}
+    results.sort(key=lambda r: order_map.get(r["model_name"], 999))
+
+    vote_counts = {"A": 0, "B": 0, "TIE": 0, "UNKNOWN": 0}
+    total_input_tokens = 0
+    total_output_tokens = 0
+    successful_models = 0
+
+    for r in results:
+        v = r.get("verdict", "UNKNOWN")
+        if v in vote_counts:
+            vote_counts[v] += 1
+        else:
+            vote_counts["UNKNOWN"] += 1
+
+        if r.get("status") == "success":
+            successful_models += 1
+
+        total_input_tokens += r.get("input_tokens", 0)
+        total_output_tokens += r.get("output_tokens", 0)
+
+    # Determine majority consensus verdict
+    valid_votes = {k: v for k, v in vote_counts.items() if k != "UNKNOWN"}
+    max_votes = max(valid_votes.values()) if valid_votes else 0
+
+    if max_votes == 0:
+        consensus_verdict = "UNKNOWN"
+    else:
+        top_candidates = [k for k, v in valid_votes.items() if v == max_votes]
+        if len(top_candidates) == 1:
+            consensus_verdict = top_candidates[0]
+        else:
+            # Tie between candidates -> TIE
+            consensus_verdict = "TIE"
+
+    return MultiJudgeEnsembleResult(
+        consensus_verdict=consensus_verdict,
+        vote_counts=vote_counts,
+        individual_results=results,
+        total_models=len(model_names),
+        successful_models=successful_models,
+        total_input_tokens=total_input_tokens,
+        total_output_tokens=total_output_tokens,
+    )
+
 

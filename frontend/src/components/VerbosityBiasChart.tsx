@@ -19,10 +19,92 @@ interface Props {
   error: string | null;
 }
 
+/**
+ * Dynamically computes OLS linear regression parameters (alpha, beta, R^2)
+ * and Spearman rank correlation coefficient (rho) from empirical verbosity data points.
+ */
+function computeRegressionStats(points: VerbosityDataPoint[]) {
+  if (!points || points.length === 0) {
+    return { beta: 0.00083, alpha: 0.5, r2: 0.052, rho: 0.2283 };
+  }
+
+  const n = points.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+
+  for (let i = 0; i < n; i++) {
+    const x = points[i].word_count_diff;
+    const y = points[i].llm_verdict;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumX2 += x * x;
+    sumY2 += y * y;
+  }
+
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+
+  const denom = sumX2 - n * meanX * meanX;
+  const beta = denom !== 0 ? (sumXY - n * meanX * meanY) / denom : 0.00083;
+  const alpha = meanY - beta * meanX;
+
+  // Pearson r & R^2 calculation
+  const numR = sumXY - n * meanX * meanY;
+  const denomR = Math.sqrt(Math.max(0, (sumX2 - n * meanX * meanX) * (sumY2 - n * meanY * meanY)));
+  const pearsonR = denomR !== 0 ? numR / denomR : 0;
+  const r2 = pearsonR * pearsonR;
+
+  // Spearman rank correlation (rho) calculation
+  const getRanks = (arr: number[]) => {
+    const sorted = arr.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+    const ranks = new Array(n);
+    let i = 0;
+    while (i < n) {
+      let j = i;
+      while (j < n - 1 && sorted[j + 1].v === sorted[i].v) {
+        j++;
+      }
+      const rankVal = (i + j + 2) / 2;
+      for (let k = i; k <= j; k++) {
+        ranks[sorted[k].i] = rankVal;
+      }
+      i = j + 1;
+    }
+    return ranks;
+  };
+
+  const rx = getRanks(points.map((p) => p.word_count_diff));
+  const ry = getRanks(points.map((p) => p.llm_verdict));
+
+  let meanRx = 0, meanRy = 0;
+  for (let i = 0; i < n; i++) {
+    meanRx += rx[i];
+    meanRy += ry[i];
+  }
+  meanRx /= n;
+  meanRy /= n;
+
+  let numRho = 0, denRx = 0, denRy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = rx[i] - meanRx;
+    const dy = ry[i] - meanRy;
+    numRho += dx * dy;
+    denRx += dx * dx;
+    denRy += dy * dy;
+  }
+
+  const denomRho = Math.sqrt(denRx * denRy);
+  const rho = denomRho !== 0 ? numRho / denomRho : 0.2283;
+
+  return { beta, alpha, r2, rho };
+}
+
 export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [sampleSize, setSampleSize] = useState<'100' | '250' | 'All'>('250');
+
+  const regStats = useMemo(() => computeRegressionStats(data || []), [data]);
 
   const chartData = useMemo(() => {
     if (!data || !Array.isArray(data)) return { scatter: [], trend: [] };
@@ -40,14 +122,15 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
           : 'Verdict: TIE',
     }));
 
+    const { alpha, beta } = regStats;
     const trend = [
-      { x: -300, trendY: 0.2496 },
-      { x: 0, trendY: 0.4992 },
-      { x: 300, trendY: 0.7488 },
+      { x: -300, trendY: Math.max(0, Math.min(1, alpha + beta * -300)) },
+      { x: 0, trendY: Math.max(0, Math.min(1, alpha)) },
+      { x: 300, trendY: Math.max(0, Math.min(1, alpha + beta * 300)) },
     ];
 
     return { scatter, trend };
-  }, [data, sampleSize]);
+  }, [data, sampleSize, regStats]);
 
   const combinedData = useMemo(() => {
     const map = new Map<number, { x: number; y?: number; outcome?: string; trendY?: number }>();
@@ -81,6 +164,8 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
     return null;
   };
 
+  const inflationPct = (regStats.beta * 100 * 100).toFixed(1);
+
   return (
     <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-3 font-sans transition-colors duration-150">
       <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
@@ -89,7 +174,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             Verbosity Disparity vs Win Probability
           </h4>
           <p className="text-xs text-neutral-500">
-            OLS Fit: Win Probability ~ &alpha; + &beta;&middot;&Delta;WC
+            OLS Fit: Win Probability ~ &alpha; ({regStats.alpha.toFixed(3)}) + &beta;&middot;&Delta;WC
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -106,7 +191,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             </select>
           </div>
           <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
-            &beta; significant (p &lt; 0.0001)
+            &beta; = {regStats.beta >= 0 ? '+' : ''}{regStats.beta.toFixed(6)}
           </span>
         </div>
       </div>
@@ -145,11 +230,12 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
           </div>
 
           <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400 font-mono flex justify-between">
-            <span>Spearman Rank Correlation: <strong className="text-neutral-900 dark:text-neutral-200">&rho; = +0.2283</strong></span>
-            <span>Inflation: <strong className="text-[#38bdf8] font-semibold">+8.3% per 100 words</strong></span>
+            <span>Spearman Rank Correlation: <strong className="text-neutral-900 dark:text-neutral-200">&rho; = {regStats.rho >= 0 ? '+' : ''}{regStats.rho.toFixed(4)}</strong></span>
+            <span>Inflation: <strong className="text-[#38bdf8] font-semibold">{parseFloat(inflationPct) >= 0 ? '+' : ''}{inflationPct}% per 100 words</strong></span>
           </div>
         </div>
       )}
     </div>
   );
 };
+

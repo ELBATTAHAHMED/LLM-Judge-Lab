@@ -89,45 +89,37 @@ export interface CalibratedEvaluateResponse {
   model_name: string;
 }
 
-export interface ResultSummary {
-  total_evaluated: number;
-  winner_a_count: number;
-  winner_b_count: number;
-  tie_count: number;
-  position_bias_flips: number;
-  overall_accuracy_vs_human: number;
-  mitigation_strategy: string;
-}
-
-export interface ExperimentJobStatus {
-  job_id: string;
-  job_type?: 'batch' | 'perturbations' | 'stochastic';
-  status: 'idle' | 'running' | 'completed' | 'failed';
-  progress: number;
-  total: number;
-  percentage: number;
-  message: string;
-  logs: string[];
-  result_summary?: ResultSummary;
-}
-
-export interface BatchRunRequest {
-  sample_size?: number;
-  model_name?: string;
+export interface EnsembleEvaluateRequest {
+  question: string;
+  answer_a: string;
+  answer_b: string;
+  judge_models: string[];
   temperature?: number;
   mitigation_strategy?: 'dual_ab' | 'verbosity_penalized' | 'none';
 }
 
-export interface PerturbationRunRequest {
-  padding_factor?: number;
-  inject_markdown?: boolean;
-  model_name?: string;
+export interface EnsembleIndividualResult {
+  model_name: string;
+  status: 'success' | 'failed';
+  verdict: string;
+  position_bias_detected?: boolean;
+  reasoning: string;
+  input_tokens: number;
+  output_tokens: number;
+  error?: string;
 }
 
-export interface StochasticRunRequest {
-  n_trials?: number;
-  model_name?: string;
+export interface EnsembleEvaluateResponse {
+  status: string;
+  consensus_verdict: string;
+  vote_counts: Record<string, number>;
+  individual_results: EnsembleIndividualResult[];
+  total_models: number;
+  successful_models: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
 }
+
 
 export interface InterJudgeReliability {
   inter_judge_kappa: number;

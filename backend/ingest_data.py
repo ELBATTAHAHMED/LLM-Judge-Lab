@@ -47,15 +47,30 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── constants ─────────────────────────────────────────────────────────────────
-# Maps the file stem (without .jsonl) to the canonical model name stored in DB
-MODEL_FILES: dict[str, str] = {
-    "gpt-4":          "gpt-4",
-    "gpt-3.5-turbo":  "gpt-3.5-turbo",
-    "claude-v1":      "claude-v1",
-    "llama-13b":      "llama-13b",
-    "vicuna-13b":     "vicuna-13b",
-    "alpaca-13b":     "alpaca-13b",
-}
+def discover_model_files(data_dir: Path) -> dict[str, str]:
+    """
+    Dynamically scan the data/ directory for all candidate model JSONL files
+    (excluding human preference/judgment datasets and question prompt files)
+    and map stem -> canonical model name.
+    """
+    model_files: dict[str, str] = {}
+    if data_dir.exists():
+        for file_path in data_dir.glob("*.jsonl"):
+            stem = file_path.stem
+            if stem not in ("human_judgment", "human_preferences", "judgments", "question", "questions", "prompts"):
+                model_files[stem] = stem
+    if not model_files:
+        model_files = {
+            "gpt-4":          "gpt-4",
+            "gpt-3.5-turbo":  "gpt-3.5-turbo",
+            "claude-v1":      "claude-v1",
+            "llama-13b":      "llama-13b",
+            "vicuna-13b":     "vicuna-13b",
+            "alpaca-13b":     "alpaca-13b",
+        }
+    return model_files
+
+MODEL_FILES: dict[str, str] = discover_model_files(DATA_DIR)
 
 # Maps dataset string variants in human_judgment.jsonl to canonical model names in DB
 MODEL_ALIASES: dict[str, str] = {
@@ -196,12 +211,6 @@ def ingest_answers(
     existing_keys: set[tuple[int, str, int]] = {
         (row.prompt_id, row.model_name, row.word_count) for row in existing_answers
     }
-    for row in existing_answers:
-        # Reconstruct a plausible key for the lookup dict. Since we don't have
-        # turn_index stored, we use word_count as a proxy discriminator – it
-        # uniquely identifies a (prompt, model, turn) combination in practice.
-        pass  # handled below during file parsing
-
     log.info("  → %d answers already in DB", len(existing_answers))
 
     # Build a full answer lookup from DB for foreign-key resolution in Step C
