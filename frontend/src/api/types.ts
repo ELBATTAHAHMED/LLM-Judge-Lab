@@ -128,3 +128,41 @@ export interface StochasticRunRequest {
   n_trials?: number;
   model_name?: string;
 }
+
+export interface InterJudgeReliability {
+  inter_judge_kappa: number;
+  overlapping_trials: number;
+  agreement_rate: number;
+  model_a: string;
+  model_b: string;
+}
+
+export interface ConsistencyStatsResponse {
+  judge_model: string;
+  overall_consistency_score: number;
+  position_consistency_rate: number;
+  cross_category_consistency_rate: number;
+  inconsistencies_count: number;
+  inter_judge_reliability?: InterJudgeReliability;
+}
+
+export interface DatasetCountResponse {
+  count: number;
+  message: string;
+}
+
+export interface SelfPreferenceResponse {
+  judge_model: string;
+  judge_family: string;
+  self_win_rate: number | null;
+  baseline_win_rate: number | null;
+  self_preference_ratio: number | null;
+  self_preference_detected: boolean;
+  total_self_matchups: number;
+  total_other_matchups: number;
+  p_value: number | null;
+  statistically_significant: boolean;
+}
+
+
+

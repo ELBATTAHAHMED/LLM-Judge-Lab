@@ -10,7 +10,6 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
-  Terminal,
   ChevronDown,
   Check,
 } from 'lucide-react';
@@ -100,11 +99,6 @@ export const DashboardLayout: React.FC = () => {
       label: 'Live Evaluation',
       icon: FlaskConical,
     },
-    {
-      path: '/experiments',
-      label: 'Experiment Controls',
-      icon: Terminal,
-    },
   ];
 
   const getPageTitle = (pathname: string) => {
@@ -118,8 +112,6 @@ export const DashboardLayout: React.FC = () => {
         return 'Qualitative Explorer';
       case '/live-lab':
         return 'Live Evaluation';
-      case '/experiments':
-        return 'Experiment Controls';
       default:
         return 'Overview';
     }

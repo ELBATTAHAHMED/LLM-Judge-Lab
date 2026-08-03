@@ -432,11 +432,17 @@ export const LiveLabPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Token Metrics Callout */}
-                  <div className="flex items-center justify-between px-3 py-2 rounded bg-neutral-100 dark:bg-neutral-900 text-[10px] font-mono text-neutral-500">
-                    <span>Input Tokens: {calibratedResult.total_input_tokens}</span>
-                    <span>Output Tokens: {calibratedResult.total_output_tokens}</span>
-                    <span>Tokens Total: {calibratedResult.total_input_tokens + calibratedResult.total_output_tokens}</span>
+                  {/* Statistical Debiasing Summary Callout */}
+                  <div className="flex items-center justify-between px-3 py-2 rounded bg-teal-500/10 border border-teal-500/20 text-[11px] font-mono text-teal-700 dark:text-teal-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <ShieldCheck className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                      <span>Empirical Debiasing Status:</span>
+                    </span>
+                    <span className="font-semibold">
+                      {calibratedResult.position_bias_detected
+                        ? 'Position Inconsistency Resolved via Order Inversion'
+                        : 'Order Invariance Verified (Consensus Winner)'}
+                    </span>
                   </div>
 
                   {/* Detailed Auditable Reasoning Inspector */}

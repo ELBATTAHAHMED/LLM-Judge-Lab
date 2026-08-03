@@ -156,3 +156,87 @@ def test_local_ollama_model_routing_and_client_resolution(client):
         assert "Standard evaluation failed" in data["detail"]
 
 
+def test_self_preference_bias_calculation(monkeypatch):
+    """Verify compute_self_preference_bias mathematical calculations using synthetic Pandas DataFrame."""
+    import pandas as pd
+    from unittest.mock import MagicMock
+    from analyze_consistency import compute_self_preference_bias
+
+    # 10 Self Matchups (gpt-4o-mini vs llama-3.3-70b-instruct): 8 wins for gpt-4o-mini (answer_a_id=1), 2 wins for llama (answer_b_id=2)
+    self_rows = [
+        {"decision_id": i, "judge_model": "gpt-4o-mini", "model_a": "gpt-4o-mini", "model_b": "meta-llama/llama-3.3-70b-instruct", "winner_id": 1 if i <= 8 else 2, "answer_a_id": 1, "answer_b_id": 2}
+        for i in range(1, 11)
+    ]
+
+    # 10 Imbalanced Other Matchups (llama vs claude): 8 wins for llama in Position A (answer_a_id=3), 2 wins for claude in Position B (answer_b_id=4)
+    other_rows = [
+        {"decision_id": 10 + i, "judge_model": "gpt-4o-mini", "model_a": "meta-llama/llama-3.3-70b-instruct", "model_b": "anthropic/claude-3-haiku", "winner_id": 3 if i <= 8 else 4, "answer_a_id": 3, "answer_b_id": 4}
+        for i in range(1, 11)
+    ]
+
+    mock_df = pd.DataFrame(self_rows + other_rows)
+
+    def mock_read_sql(*args, **kwargs):
+        return mock_df
+
+    monkeypatch.setattr(pd, "read_sql", mock_read_sql)
+
+    mock_db = MagicMock()
+    res = compute_self_preference_bias(mock_db, judge_model_name="gpt-4o-mini")
+
+    assert res["judge_model"] == "gpt-4o-mini"
+    assert res["judge_family"] == "gpt"
+    assert res["total_self_matchups"] == 10
+    assert res["total_other_matchups"] == 10
+    assert res["self_win_rate"] == 0.8
+    assert res["baseline_win_rate"] == 0.8
+    assert res["self_preference_ratio"] == 1.0
+
+
+def test_self_preference_bias_empty_matchups(monkeypatch):
+    """Verify compute_self_preference_bias returns None (not 0.5 / 1.0) when total_self_matchups is 0."""
+    import pandas as pd
+    from unittest.mock import MagicMock
+    from analyze_consistency import compute_self_preference_bias
+
+    # 10 Matchups between rival families only (no gpt candidate answers present)
+    other_rows = [
+        {"decision_id": i, "judge_model": "gpt-4o-mini", "model_a": "meta-llama/llama-3.3-70b-instruct", "model_b": "anthropic/claude-3-haiku", "winner_id": 3 if i <= 5 else 4, "answer_a_id": 3, "answer_b_id": 4}
+        for i in range(1, 11)
+    ]
+    mock_df = pd.DataFrame(other_rows)
+
+    def mock_read_sql(*args, **kwargs):
+        return mock_df
+
+    monkeypatch.setattr(pd, "read_sql", mock_read_sql)
+
+    mock_db = MagicMock()
+    res = compute_self_preference_bias(mock_db, judge_model_name="gpt-4o-mini")
+
+    assert res["judge_model"] == "gpt-4o-mini"
+    assert res["total_self_matchups"] == 0
+    assert res["self_win_rate"] is None
+    assert res["self_preference_ratio"] is None
+    assert res["p_value"] is None
+    assert res["self_preference_detected"] is False
+
+
+def test_normalize_model_id():
+    """Verify normalize_model_id handles legacy tags, OpenRouter strings, unknown models, and None."""
+    from main import normalize_model_id
+
+    # Legacy tag
+    assert normalize_model_id("gpt-4") == "gpt-4o-mini"
+
+    # OpenRouter slash format
+    assert normalize_model_id("meta-llama/llama-3.3-70b-instruct") == "meta-llama/llama-3.3-70b-instruct"
+
+    # Unknown string
+    assert normalize_model_id("unknown-model-xyz") == "unknown-model-xyz"
+
+    # None input
+    assert normalize_model_id(None) == "gpt-4o-mini"
+
+
+

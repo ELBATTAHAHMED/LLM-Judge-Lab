@@ -1,17 +1,21 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useBiasStats } from '../api/client';
+import { useBiasStats, useConsistencyStats, useSelfPreferenceStats } from '../api/client';
 import { useJudge } from '../context/JudgeContext';
 import { VerbosityBiasChart } from '../components/VerbosityBiasChart';
 import { PositionBiasChart } from '../components/PositionBiasChart';
 import { FormatBiasChart } from '../components/FormatBiasChart';
+import { SelfPreferenceCard } from '../components/SelfPreferenceCard';
 import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
+import { InterJudgeComparisonCard } from '../components/InterJudgeComparisonCard';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
 import { RefreshCw } from 'lucide-react';
 
 export const DiagnosticsPage: React.FC = () => {
   const { judgeModel } = useJudge();
-  const { data, loading, error, refetch } = useBiasStats(judgeModel);
+  const { data: biasData, loading: biasLoading, error: biasError, refetch: refetchBias } = useBiasStats(judgeModel);
+  const { data: consistencyData, loading: consistencyLoading, error: consistencyError, refetch: refetchConsistency } = useConsistencyStats(judgeModel);
+  const { data: selfPrefData, loading: selfPrefLoading, error: selfPrefError, refetch: refetchSelfPref } = useSelfPreferenceStats(judgeModel);
   const location = useLocation();
 
   useEffect(() => {
@@ -27,6 +31,14 @@ export const DiagnosticsPage: React.FC = () => {
     }
   }, [location.hash]);
 
+  const handleRefresh = () => {
+    refetchBias();
+    refetchConsistency();
+    refetchSelfPref();
+  };
+
+  const isLoading = biasLoading || consistencyLoading || selfPrefLoading;
+
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 py-2 font-sans">
       {/* Header */}
@@ -36,52 +48,165 @@ export const DiagnosticsPage: React.FC = () => {
             Systematic Bias Diagnostics
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            Real-time diagnostic telemetry evaluating Position-Order Bias (&chi;&sup2;), Verbosity Bias (&rho;), Format Bias (&chi;&sup2;), Inter-Rater Reliability (&kappa;), and Decisiveness Hallucinations
+            Real-time diagnostic telemetry evaluating Position-Order Bias (&chi;&sup2;), Verbosity Bias (&rho;), Format Bias (&chi;&sup2;), Inter-Rater Reliability (&kappa;), and Logical Consistency
           </p>
         </div>
 
         <button
-          onClick={refetch}
-          disabled={loading}
+          onClick={handleRefresh}
+          disabled={isLoading}
           className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs self-start sm:self-auto font-mono"
         >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
-      {/* Primary Bias Charts Grid */}
+      {/* Logical Consistency Telemetry */}
+      <div id="consistency-summary" className="scroll-mt-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
+            Logical Consistency — {judgeModel}
+          </h3>
+          {consistencyData?.inter_judge_reliability && (
+            <span className="hidden sm:block text-[11px] font-mono text-neutral-500 dark:text-neutral-500">
+              &kappa; vs {consistencyData.inter_judge_reliability.model_b}:{' '}
+              <span className="text-neutral-700 dark:text-neutral-300 font-medium">
+                {consistencyData.inter_judge_reliability.inter_judge_kappa.toFixed(3)}
+              </span>{' '}
+              (N={consistencyData.inter_judge_reliability.overlapping_trials})
+            </span>
+          )}
+        </div>
+
+        {consistencyError ? (
+          <div className="p-4 rounded-lg bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs font-mono">
+            Failed to load consistency statistics: {consistencyError}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Overall Consistency */}
+            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500 mb-2">
+                Overall Consistency
+              </p>
+              {consistencyLoading ? (
+                <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
+                  {((consistencyData?.overall_consistency_score ?? 0) * 100).toFixed(1)}%
+                </p>
+              )}
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
+                Ordering invariance across repeated evaluations
+              </p>
+            </div>
+
+            {/* Position Consistency */}
+            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500 mb-2">
+                Position Consistency
+              </p>
+              {consistencyLoading ? (
+                <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
+                  {((consistencyData?.position_consistency_rate ?? 0) * 100).toFixed(1)}%
+                </p>
+              )}
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
+                Verdict invariance under A/B order swap
+              </p>
+            </div>
+
+            {/* Domain Specialization */}
+            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500 mb-2">
+                Domain Specialization
+              </p>
+              {consistencyLoading ? (
+                <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
+              ) : (
+                <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
+                  {((consistencyData?.cross_category_consistency_rate ?? 0) * 100).toFixed(1)}%
+                </p>
+              )}
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
+                Category-specific win rate variance
+              </p>
+            </div>
+
+            {/* Position Flips — semantic muted red on value only */}
+            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500 mb-2">
+                Position Flips
+              </p>
+              {consistencyLoading ? (
+                <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
+              ) : (
+                <p className={`text-2xl font-mono font-bold tracking-tight ${
+                  (consistencyData?.inconsistencies_count ?? 0) > 0
+                    ? 'text-red-600/90 dark:text-red-400/90'
+                    : 'text-neutral-900 dark:text-white'
+                }`}>
+                  {consistencyData?.inconsistencies_count ?? 0}
+                </p>
+              )}
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
+                Flagged pairwise verdict reversals
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Primary Bias Charts Grid — Position & Format */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         <div id="position-bias" className="scroll-mt-6">
           <PositionBiasChart
-            data={data ? data.position_data : null}
-            loading={loading}
-            error={error}
+            data={biasData ? biasData.position_data : null}
+            loading={biasLoading}
+            error={biasError}
           />
         </div>
 
         <FormatBiasChart
-          data={data ? data.format_bias : null}
-          loading={loading}
-          error={error}
+          data={biasData ? biasData.format_bias : null}
+          loading={biasLoading}
+          error={biasError}
         />
       </div>
 
       {/* Full-Width Verbosity Bias Scatter Chart */}
       <div id="verbosity-bias" className="scroll-mt-6">
         <VerbosityBiasChart
-          data={data ? data.verbosity_data : []}
-          loading={loading}
-          error={error}
+          data={biasData ? biasData.verbosity_data : []}
+          loading={biasLoading}
+          error={biasError}
         />
+      </div>
+
+      {/* Primary Research Row — Self-Preference Bias (RQ6) + Inter-Judge Agreement */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        <div id="self-preference-bias" className="scroll-mt-6">
+          <SelfPreferenceCard
+            data={selfPrefData}
+            loading={selfPrefLoading}
+            error={selfPrefError}
+          />
+        </div>
+
+        <div id="inter-judge-comparison" className="scroll-mt-6">
+          <InterJudgeComparisonCard />
+        </div>
       </div>
 
       {/* Domain-Stratified Reliability Bar Chart */}
       <div id="reliability-metrics" className="scroll-mt-6 space-y-8">
         <DomainReliabilityChart
-          data={data ? data.domain_kappa : []}
-          loading={loading}
-          error={error}
+          data={biasData ? biasData.domain_kappa : []}
+          loading={biasLoading}
+          error={biasError}
         />
 
         {/* Academic Synthesis Callouts */}
@@ -90,3 +215,5 @@ export const DiagnosticsPage: React.FC = () => {
     </div>
   );
 };
+
+

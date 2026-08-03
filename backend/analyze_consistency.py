@@ -86,6 +86,20 @@ DATABASE_URL = os.getenv(
 )
 
 
+def _get_connectable(db_bind_or_session):
+    """
+    Safely resolve a SQLAlchemy Engine or Connection from a Session, Engine, or Connection object.
+    Ensures pd.read_sql receives a valid connectable object rather than an ORM Session.
+    """
+    if db_bind_or_session is None:
+        raise ValueError("Database connection or session cannot be None.")
+    if hasattr(db_bind_or_session, "connection"):
+        return db_bind_or_session.connection()
+    if hasattr(db_bind_or_session, "get_bind"):
+        return db_bind_or_session.get_bind()
+    return db_bind_or_session
+
+
 # ── Database Fetch ────────────────────────────────────────────────────────────
 
 def fetch_decisions(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFrame:
@@ -111,7 +125,11 @@ def fetch_decisions(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFra
     WHERE jd.judge_model_name = :judge_model_name
     ORDER BY p.category, a1.model_name, a2.model_name
     """)
-    with engine.connect() as conn:
+    conn = _get_connectable(engine)
+    if hasattr(conn, "connect"):
+        with conn.connect() as actual_conn:
+            return pd.read_sql_query(sql, actual_conn, params={"judge_model_name": judge_model_name})
+    else:
         return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})
 
 
@@ -350,7 +368,11 @@ def compute_inter_judge_kappa(
     WHERE j1.judge_model_name = :model_a
       AND j2.judge_model_name = :model_b
     """)
-    with engine.connect() as conn:
+    conn = _get_connectable(engine)
+    if hasattr(conn, "connect"):
+        with conn.connect() as actual_conn:
+            df = pd.read_sql_query(sql, actual_conn, params={"model_a": model_a, "model_b": model_b})
+    else:
         df = pd.read_sql_query(sql, conn, params={"model_a": model_a, "model_b": model_b})
 
     if len(df) == 0:
@@ -476,6 +498,150 @@ def build_report(
     )
 
     return "\n".join(lines)
+
+
+# ── Self-Preference Bias Analysis ─────────────────────────────────────────────
+
+def _extract_model_family(model_name: str | None) -> str:
+    """Extract model family prefix (e.g., gpt, llama, deepseek, claude, vicuna, etc.)."""
+    if not model_name:
+        return "unknown"
+    name = str(model_name).lower().strip()
+    if "gpt" in name or "openai" in name:
+        return "gpt"
+    elif "llama" in name or "meta" in name:
+        return "llama"
+    elif "deepseek" in name:
+        return "deepseek"
+    elif "claude" in name or "anthropic" in name:
+        return "claude"
+    elif "vicuna" in name:
+        return "vicuna"
+    elif "mistral" in name or "mixtral" in name:
+        return "mistral"
+    elif "palm" in name or "gemini" in name or "bison" in name:
+        return "google"
+    return name.split("/")[0].split("-")[0]
+
+
+def compute_self_preference_bias(db_bind_or_session, judge_model_name: str = "gpt-4o-mini") -> dict:
+    """
+    Measure Self-Preference Bias (whether judge model favors answers from its own model family).
+    Joins judge_decisions with answers and calculates same-family win rate vs baseline win rate.
+    """
+    from sqlalchemy import text
+    sql = text("""
+        SELECT
+            jd.id                    AS decision_id,
+            jd.judge_model_name      AS judge_model,
+            a1.model_name            AS model_a,
+            a2.model_name            AS model_b,
+            jd.winner_id,
+            jd.answer_a_id,
+            jd.answer_b_id
+        FROM judge_decisions jd
+        JOIN answers a1 ON jd.answer_a_id = a1.id
+        JOIN answers a2 ON jd.answer_b_id = a2.id
+        WHERE jd.judge_model_name = :judge_model
+    """)
+
+    try:
+        conn = _get_connectable(db_bind_or_session)
+        if hasattr(conn, "connect"):
+            with conn.connect() as actual_conn:
+                df = pd.read_sql(sql, actual_conn, params={"judge_model": judge_model_name})
+        else:
+            df = pd.read_sql(sql, conn, params={"judge_model": judge_model_name})
+    except Exception as exc:
+        import logging
+        logging.error(f"[ERROR] Failed to query decisions for self-preference bias for model '{judge_model_name}': {exc}", exc_info=True)
+        raise exc
+
+    judge_family = _extract_model_family(judge_model_name)
+
+    if df.empty:
+        return {
+            "judge_model": judge_model_name,
+            "judge_family": judge_family,
+            "self_win_rate": None,
+            "baseline_win_rate": None,
+            "self_preference_ratio": None,
+            "self_preference_detected": False,
+            "total_self_matchups": 0,
+            "total_other_matchups": 0,
+            "p_value": None,
+            "statistically_significant": False,
+        }
+
+    self_wins = 0
+    self_matchups = 0
+    other_wins = 0
+    other_matchups = 0
+
+    for _, row in df.iterrows():
+        fam_a = _extract_model_family(row["model_a"])
+        fam_b = _extract_model_family(row["model_b"])
+        winner_id = row["winner_id"]
+        a_id = row["answer_a_id"]
+        b_id = row["answer_b_id"]
+
+        is_a_self = (fam_a == judge_family)
+        is_b_self = (fam_b == judge_family)
+
+        if is_a_self and not is_b_self:
+            self_matchups += 1
+            if winner_id == a_id:
+                self_wins += 1
+        elif is_b_self and not is_a_self:
+            self_matchups += 1
+            if winner_id == b_id:
+                self_wins += 1
+        elif not is_a_self and not is_b_self:
+            other_matchups += 1
+            if winner_id == a_id:
+                other_wins += 1
+
+    if self_matchups == 0:
+        other_win_rate = (other_wins / other_matchups) if other_matchups > 0 else None
+        return {
+            "judge_model": judge_model_name,
+            "judge_family": judge_family,
+            "self_win_rate": None,
+            "baseline_win_rate": round(other_win_rate, 4) if other_win_rate is not None else None,
+            "self_preference_ratio": None,
+            "self_preference_detected": False,
+            "total_self_matchups": 0,
+            "total_other_matchups": other_matchups,
+            "p_value": None,
+            "statistically_significant": False,
+        }
+
+    self_win_rate = self_wins / self_matchups
+    other_win_rate = (other_wins / other_matchups) if other_matchups > 0 else None
+    ratio = (self_win_rate / other_win_rate) if (other_win_rate is not None and other_win_rate > 0) else None
+
+    p_val = None
+    try:
+        from scipy.stats import binomtest
+        res = binomtest(self_wins, self_matchups, p=0.5)
+        p_val = float(res.pvalue)
+    except Exception:
+        p_val = None
+
+    is_significant = bool(p_val is not None and p_val < 0.05)
+
+    return {
+        "judge_model": judge_model_name,
+        "judge_family": judge_family,
+        "self_win_rate": round(self_win_rate, 4),
+        "baseline_win_rate": round(other_win_rate, 4) if other_win_rate is not None else None,
+        "self_preference_ratio": round(ratio, 4) if ratio is not None else None,
+        "self_preference_detected": bool(other_win_rate is not None and self_win_rate > other_win_rate and is_significant),
+        "total_self_matchups": self_matchups,
+        "total_other_matchups": other_matchups,
+        "p_value": round(p_val, 6) if p_val is not None else None,
+        "statistically_significant": is_significant,
+    }
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

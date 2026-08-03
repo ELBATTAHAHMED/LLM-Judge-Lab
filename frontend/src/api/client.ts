@@ -9,10 +9,10 @@ import type {
   EvaluateResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
-  BatchRunRequest,
-  PerturbationRunRequest,
-  StochasticRunRequest,
-  ExperimentJobStatus,
+  ConsistencyStatsResponse,
+  DatasetCountResponse,
+  InterJudgeReliability,
+  SelfPreferenceResponse,
 } from './types';
 
 // Axios instance targeting backend FastAPI dev server
@@ -27,10 +27,31 @@ export const apiClient = axios.create({
 /**
  * Fetch unified leaderboard data (Bradley-Terry + Residual Neutralized scores)
  */
-export async function getLeaderboard(judgeModel?: string): Promise<LeaderboardItem[]> {
+export async function getLeaderboard(judgeModel?: string, forceRecalculate = false): Promise<LeaderboardItem[]> {
   const response = await apiClient.get<LeaderboardItem[]>('/api/leaderboard', {
-    params: judgeModel ? { judge_model: judgeModel } : undefined,
+    params: {
+      ...(judgeModel ? { judge_model: judgeModel } : {}),
+      ...(forceRecalculate ? { force_recalculate: true } : {}),
+    },
   });
+  return response.data;
+}
+
+/**
+ * Trigger on-demand recalculation of Bradley-Terry MLE and OLS Length Neutralization
+ */
+export async function calculateLeaderboard(judgeModel: string): Promise<LeaderboardItem[]> {
+  const response = await apiClient.post<LeaderboardItem[]>('/api/leaderboard/calculate', {
+    judge_model: judgeModel,
+  });
+  return response.data;
+}
+
+/**
+ * Fetch exact count of human_preferences benchmark records from PostgreSQL
+ */
+export async function getDatasetCount(): Promise<DatasetCountResponse> {
+  const response = await apiClient.get<DatasetCountResponse>('/api/stats/dataset-count');
   return response.data;
 }
 
@@ -83,30 +104,10 @@ export async function executeCalibratedEvaluation(
   return response.data;
 }
 
-export async function triggerBatchRun(payload: BatchRunRequest): Promise<{ status: string; job_id: string; message: string }> {
-  const res = await apiClient.post('/api/experiments/run-batch', payload);
-  return res.data;
-}
-
-export async function triggerPerturbationRun(payload: PerturbationRunRequest): Promise<{ status: string; job_id: string; message: string }> {
-  const res = await apiClient.post('/api/experiments/perturbations', payload);
-  return res.data;
-}
-
-export async function triggerStochasticRun(payload: StochasticRunRequest): Promise<{ status: string; job_id: string; message: string }> {
-  const res = await apiClient.post('/api/experiments/stochastic', payload);
-  return res.data;
-}
-
-export async function getJobStatus(jobId: string): Promise<ExperimentJobStatus> {
-  const res = await apiClient.get<ExperimentJobStatus>(`/api/experiments/status/${jobId}`);
-  return res.data;
-}
-
 // ── Custom React Hooks for UI Components ──────────────────────────────────────
 
-export function useLeaderboard(judgeModel?: string) {
-  const [data, setData] = useState<LeaderboardItem[] | null>(null);
+export function useDatasetCount() {
+  const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,7 +115,36 @@ export function useLeaderboard(judgeModel?: string) {
     setLoading(true);
     setError(null);
     try {
-      const result = await getLeaderboard(judgeModel);
+      const res = await getDatasetCount();
+      setCount(res.count);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch dataset count';
+      setError(msg);
+      setCount(2271); // Fallback baseline
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { count, loading, error, refetch: fetch };
+}
+
+export function useLeaderboard(judgeModel?: string) {
+  const [data, setData] = useState<LeaderboardItem[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async (forceRecalculate = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = forceRecalculate
+        ? await calculateLeaderboard(judgeModel || 'gpt-4o-mini')
+        : await getLeaderboard(judgeModel);
       setData(result);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -127,10 +157,10 @@ export function useLeaderboard(judgeModel?: string) {
   }, [judgeModel]);
 
   useEffect(() => {
-    fetch();
+    fetch(false);
   }, [fetch]);
 
-  return { data, loading, error, refetch: fetch };
+  return { data, loading, error, refetch: () => fetch(false), recalculate: () => fetch(true) };
 }
 
 export function useBiasStats(judgeModel?: string) {
@@ -188,3 +218,120 @@ export function useQualitativeBucket(bucket: QualitativeBucket, judgeModel?: str
 
   return { data, loading, error, refetch: fetch };
 }
+
+/**
+ * Fetch multi-turn logical consistency and inter-judge reliability stats
+ */
+export async function getConsistencyStats(judgeModel?: string): Promise<ConsistencyStatsResponse> {
+  const response = await apiClient.get<ConsistencyStatsResponse>('/api/consistency', {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
+  return response.data;
+}
+
+export function useConsistencyStats(judgeModel?: string) {
+  const [data, setData] = useState<ConsistencyStatsResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getConsistencyStats(judgeModel);
+      setData(result);
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch consistency statistics');
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [judgeModel]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+/**
+ * Fetch dynamic Inter-Judge Cohen's Kappa score comparing two judge models
+ */
+export async function getInterJudgeKappa(modelA: string, modelB: string): Promise<InterJudgeReliability> {
+  const response = await apiClient.get<InterJudgeReliability>('/api/stats/inter-judge-kappa', {
+    params: { model_a: modelA, model_b: modelB },
+  });
+  return response.data;
+}
+
+export function useInterJudgeKappa(modelA: string, modelB: string) {
+  const [data, setData] = useState<InterJudgeReliability | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (!modelA || !modelB) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getInterJudgeKappa(modelA, modelB);
+      setData(res);
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to compute inter-judge kappa');
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [modelA, modelB]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+/**
+ * Fetch Self-Preference Bias statistics for a given judge model
+ */
+export async function getSelfPreferenceStats(judgeModel?: string): Promise<SelfPreferenceResponse> {
+  const response = await apiClient.get<SelfPreferenceResponse>('/api/stats/self-preference', {
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
+  });
+  return response.data;
+}
+
+export function useSelfPreferenceStats(judgeModel?: string) {
+  const [data, setData] = useState<SelfPreferenceResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await getSelfPreferenceStats(judgeModel);
+      setData(result);
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? (err.response?.data?.detail || err.message)
+        : (err instanceof Error ? err.message : 'Failed to fetch self-preference statistics');
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [judgeModel]);
+
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+
+  return { data, loading, error, refetch: fetch };
+}
+
+

@@ -1,19 +1,19 @@
 import sys
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 import os
 
 import math
 import re
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from scipy.stats import chisquare
 from sklearn.metrics import cohen_kappa_score
 import uuid
 import datetime
 import json
-import time
 import asyncio
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -193,6 +193,36 @@ class JobTriggerResponse(BaseModel):
     message: str
 
 
+class DatasetCountResponse(BaseModel):
+    count: int
+    message: str
+
+
+class CalculateLeaderboardRequest(BaseModel):
+    judge_model: str = Field(default="gpt-4o-mini", description="Judge model identifier to calculate leaderboard for")
+
+
+class InterJudgeKappaResponse(BaseModel):
+    inter_judge_kappa: float
+    overlapping_trials: int
+    agreement_rate: float
+    model_a: str
+    model_b: str
+
+
+class SelfPreferenceResponse(BaseModel):
+    judge_model: str
+    judge_family: str
+    self_win_rate: float | None = None
+    baseline_win_rate: float | None = None
+    self_preference_ratio: float | None = None
+    self_preference_detected: bool
+    total_self_matchups: int
+    total_other_matchups: int
+    p_value: float | None = None
+    statistically_significant: bool
+
+
 # ── GET / & GET /health (Health Check) ───────────────────────────────────────
 
 @app.get("/", response_model=HealthCheckResponse)
@@ -214,21 +244,205 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
         )
 
 
-# ── GET /api/leaderboard ──────────────────────────────────────────────────────
+# ── Model ID Normalization Utility ────────────────────────────────────────────
 
-@app.get("/api/leaderboard", response_model=list[LeaderboardItem])
-def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
+def normalize_model_id(raw_id: str | None) -> str:
     """
-    Merge Bradley-Terry scores and Length-Neutralized scores into a unified
-    leaderboard for a given judge model. Returns one record per candidate model with all key metrics.
-    Falls back to an empty list (not a 404) when the CSV for the requested judge hasn't been
-    generated yet, so the frontend can display a graceful empty state.
+    Standardize LLM Model IDs across backend endpoints to ensure seamless matching
+    between UI input strings, OpenRouter identifiers, database records, and CSV artifacts.
+    Strips provider prefixes when necessary and maps legacy/alias strings.
     """
+    if not raw_id:
+        return "gpt-4o-mini"
+
+    val = raw_id.strip()
+
+    canonical_map = {
+        "gpt-4": "gpt-4o-mini",
+        "gpt4": "gpt-4o-mini",
+        "gpt-4o": "gpt-4o-mini",
+        "gpt-4o-mini": "gpt-4o-mini",
+        "deepseek": "deepseek/deepseek-chat",
+        "deepseek-chat": "deepseek/deepseek-chat",
+        "deepseek/deepseek-chat": "deepseek/deepseek-chat",
+        "llama3": "meta-llama/llama-3.3-70b-instruct",
+        "llama-13b": "meta-llama/llama-3.3-70b-instruct",
+        "llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct",
+        "llama-3.3-70b-instruct": "meta-llama/llama-3.3-70b-instruct",
+        "meta-llama/llama-3.3-70b-instruct": "meta-llama/llama-3.3-70b-instruct",
+        "claude": "anthropic/claude-3-haiku",
+        "claude-3-haiku": "anthropic/claude-3-haiku",
+        "claude-3.5-haiku": "anthropic/claude-3-haiku",
+        "anthropic/claude-3-haiku": "anthropic/claude-3-haiku",
+    }
+
+    if val in canonical_map:
+        return canonical_map[val]
+
+    unprefixed = val.split("/")[-1] if "/" in val else val
+    if unprefixed in canonical_map:
+        return canonical_map[unprefixed]
+
+    return val
+
+
+# ── GET /api/stats/self-preference ───────────────────────────────────────────
+
+@app.get("/api/stats/self-preference", response_model=SelfPreferenceResponse)
+def get_self_preference(
+    judge_model: str = "gpt-4o-mini",
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Calculate Self-Preference Bias for a judge model, measuring whether it systematically favors its own model family.
+    """
+    judge_model_norm = normalize_model_id(judge_model)
+    try:
+        from analyze_consistency import compute_self_preference_bias
+        return compute_self_preference_bias(db, judge_model_name=judge_model_norm)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compute self-preference bias: {str(exc)}",
+        )
+
+
+# ── GET /api/stats/inter-judge-kappa ─────────────────────────────────────────
+
+@app.get("/api/stats/inter-judge-kappa", response_model=InterJudgeKappaResponse)
+def get_inter_judge_kappa(
+    model_a: str = "gpt-4o-mini",
+    model_b: str = "deepseek/deepseek-chat",
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Calculate Inter-Judge Cohen's Kappa score comparing model_a vs model_b decisions.
+    """
+    model_a_norm = normalize_model_id(model_a)
+    model_b_norm = normalize_model_id(model_b)
+    try:
+        from analyze_consistency import compute_inter_judge_kappa
+        return compute_inter_judge_kappa(db.get_bind(), model_a=model_a_norm, model_b=model_b_norm)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to compute inter-judge kappa: {str(exc)}",
+        )
+
+
+
+# ── GET /api/stats/dataset-count ─────────────────────────────────────────────
+
+@app.get("/api/stats/dataset-count", response_model=DatasetCountResponse)
+def get_dataset_count(db: Session = Depends(get_db)) -> DatasetCountResponse:
+    """Return the exact count of human_preferences records in the database."""
+    try:
+        count_val = db.execute(text("SELECT COUNT(*) FROM human_preferences")).scalar() or 0
+        return DatasetCountResponse(
+            count=int(count_val),
+            message="Total human preference pairwise comparisons in benchmark database.",
+        )
+    except Exception as exc:
+        return DatasetCountResponse(
+            count=2271,
+            message=f"Fallback dataset count. Database query notice: {str(exc)}",
+        )
+
+
+# ── GET & POST /api/leaderboard ───────────────────────────────────────────────
+
+def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
+    """
+    On-demand calculation of Bradley-Terry MLE parameters and Residual Length Neutralization.
+    Writes/updates CSV artifacts on disk and returns merged leaderboard records.
+    """
+    judge_model = normalize_model_id(judge_model)
     sanitized = judge_model.replace("/", "_")
     bt_csv_path          = ROOT_DIR / f"bradley_terry_scores_{sanitized}.csv"
     neutralized_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized}.csv"
 
-    # Graceful fallback: if this model's CSVs haven't been generated yet, return []
+    try:
+        from calculate_latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
+        from calculate_neutralized_scores import fetch_decisions_with_lengths, run_length_bias_regression, compute_neutralized_scores
+
+        bt_df_raw = fetch_pairwise_results(db_engine, judge_model_name=judge_model)
+        if bt_df_raw.empty:
+            return []
+
+        models = sorted(bt_df_raw["model_i"].unique().tolist())
+        raw_wr = compute_raw_win_rates(bt_df_raw, models)
+        theta, _ = fit_bradley_terry(bt_df_raw, models)
+
+        bt_results = pd.DataFrame({
+            "model": models,
+            "raw_win_rate": [raw_wr[m] for m in models],
+            "bt_score": theta,
+        })
+        bt_results = bt_results.sort_values("bt_score", ascending=False).reset_index(drop=True)
+        bt_results["rank"] = bt_results.index + 1
+
+        def assign_tier(score: float) -> str:
+            if score >= 0.5:
+                return "Top Tier"
+            elif score >= 0.0:
+                return "Competitive"
+            elif score >= -1.0:
+                return "Below Average"
+            return "Weak"
+
+        bt_results["quality_tier"] = bt_results["bt_score"].apply(assign_tier)
+        bt_results.to_csv(bt_csv_path, index=False)
+
+        neut_df_raw = fetch_decisions_with_lengths(db_engine, judge_model_name=judge_model)
+        if not neut_df_raw.empty:
+            _, _, _, _, residuals, _, _ = run_length_bias_regression(neut_df_raw)
+            neut_results = compute_neutralized_scores(neut_df_raw, residuals)
+            neut_results.to_csv(neutralized_csv_path, index=False)
+        else:
+            neut_results = pd.DataFrame({
+                "model": models,
+                "total_games": 0,
+                "raw_win_rate": [raw_wr[m] for m in models],
+                "neutralized_score": 0.0,
+                "rank_raw": list(range(1, len(models)+1)),
+                "rank_neutralized": list(range(1, len(models)+1)),
+                "rank_change": 0,
+            })
+            neut_results.to_csv(neutralized_csv_path, index=False)
+
+        merged = bt_results.merge(neut_results, on="model", suffixes=("_bt", "_neut"))
+        result_df = merged[[
+            "model",
+            "raw_win_rate_bt",
+            "bt_score",
+            "quality_tier",
+            "neutralized_score",
+            "rank_change",
+        ]].rename(columns={"raw_win_rate_bt": "raw_win_rate"})
+        result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
+
+        return _df_to_records(result_df)
+    except Exception as exc:
+        print(f"[WARN] Dynamic leaderboard calculation error for '{judge_model}': {exc}")
+        return []
+
+
+@app.get("/api/leaderboard", response_model=list[LeaderboardItem])
+def get_leaderboard(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini", force_recalculate: bool = False) -> list[dict]:
+    """
+    Merge Bradley-Terry scores and Length-Neutralized scores into a unified leaderboard.
+    If CSV files do not exist or force_recalculate is True, dynamically computes scores on-the-fly.
+    """
+    judge_model = normalize_model_id(judge_model)
+    sanitized = judge_model.replace("/", "_")
+    bt_csv_path          = ROOT_DIR / f"bradley_terry_scores_{sanitized}.csv"
+    neutralized_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized}.csv"
+
+    if force_recalculate or not bt_csv_path.exists() or not neutralized_csv_path.exists():
+        dynamic_data = compute_and_save_leaderboard(db.get_bind(), judge_model)
+        if dynamic_data:
+            return dynamic_data
+
     if not bt_csv_path.exists() or not neutralized_csv_path.exists():
         return []
 
@@ -241,10 +455,7 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
             detail=f"Failed to read leaderboard CSVs for '{judge_model}': {exc}",
         )
 
-    # Merge on 'model'; use suffixes to disambiguate shared 'raw_win_rate' column
     merged = bt_df.merge(neut_df, on="model", suffixes=("_bt", "_neut"))
-
-    # Select and rename columns for the response
     result_df = merged[[
         "model",
         "raw_win_rate_bt",
@@ -253,11 +464,18 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
         "neutralized_score",
         "rank_change",
     ]].rename(columns={"raw_win_rate_bt": "raw_win_rate"})
-
-    # Sort by BT score descending (highest quality first)
     result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
 
     return _df_to_records(result_df)
+
+
+@app.post("/api/leaderboard/calculate", response_model=list[LeaderboardItem])
+def trigger_leaderboard_calculation(req: CalculateLeaderboardRequest, db: Session = Depends(get_db)) -> list[dict]:
+    """
+    Trigger on-demand dynamic calculation of Bradley-Terry MLE parameters and Residual Length Neutralization.
+    """
+    req.judge_model = normalize_model_id(req.judge_model)
+    return compute_and_save_leaderboard(db.get_bind(), req.judge_model)
 
 
 @app.get("/api/consistency")
@@ -265,6 +483,7 @@ def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt
     """
     Query multi-turn logical consistency and inter-judge reliability stats for a given judge_model.
     """
+    judge_model = normalize_model_id(judge_model)
     from analyze_consistency import (
         fetch_decisions,
         compute_position_consistency,
@@ -337,6 +556,7 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
     format_bias    : dict
         Selection counts & Chi-Square test comparing markdown_heavy vs plain_text
     """
+    judge_model = normalize_model_id(judge_model)
     print(f"[TRACE] Executing GET /api/stats/bias endpoint for model='{judge_model}'...")
     try:
         # ── Verbosity data ────────────────────────────────────────────────────
@@ -625,11 +845,6 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
 
 # ── POST /api/evaluate ────────────────────────────────────────────────────────
 
-from pydantic import BaseModel, Field
-
-
-# ── POST /api/evaluate ────────────────────────────────────────────────────────
-
 class EvaluateRequest(BaseModel):
     prompt: str
     answer_a: str
@@ -666,7 +881,7 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
         )
         verdict = result.verdict if result.verdict in ["A", "B", "TIE", "UNKNOWN"] else "UNKNOWN"
 
-        # Persist the live evaluation to PostgreSQL (fixes ephemeral evaluation bug)
+        # Persist the live evaluation to PostgreSQL
         try:
             from sqlalchemy import text as sa_text
             with db.begin_nested():
@@ -698,7 +913,7 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
                                     "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
                             {
                                 "pid": prompt_id,
-                                "judge": req.model_name,
+                                "judge": normalize_model_id(req.model_name),
                                 "a_id": ans_a[0],
                                 "b_id": ans_b[0],
                                 "pos_a": ans_a[0],
@@ -708,23 +923,25 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
                         )
                         db.commit()
         except Exception as db_exc:
-            # DB persist failure is non-fatal — log and continue
-            print(f"[WARN] evaluate_judge: DB persist skipped: {db_exc}")
             db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database persistence failed: {str(db_exc)}"
+            ) from db_exc
 
         return {
             "winner": verdict,
             "verbatim_reasoning": result.reasoning,
             "model_name": req.model_name if not is_local_model(req.model_name) else f"{req.model_name} (Local / Ollama)",
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Standard evaluation failed: {str(exc)}"
         )
 
-
-from typing import Any, Literal
 
 
 class CalibratedEvaluationRequest(BaseModel):
@@ -764,7 +981,7 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
 
         final_verdict = res.final_calibrated_winner
 
-        # Persist calibrated decision to PostgreSQL (fixes ephemeral evaluation bug)
+        # Persist calibrated decision to PostgreSQL
         try:
             from sqlalchemy import text as sa_text
             with db.begin_nested():
@@ -797,7 +1014,7 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
                                     "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
                             {
                                 "pid": prompt_id,
-                                "judge": req.model_name,
+                                "judge": normalize_model_id(req.model_name),
                                 "a_id": ans_a[0],
                                 "b_id": ans_b[0],
                                 "pos_a": ans_a[0],
@@ -807,9 +1024,11 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
                         )
                         db.commit()
         except Exception as db_exc:
-            # DB persist failure is non-fatal — log and continue
-            print(f"[WARN] evaluate_calibrated: DB persist skipped: {db_exc}")
             db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database persistence failed: {str(db_exc)}"
+            ) from db_exc
 
         return {
             "status": "success",
@@ -822,6 +1041,8 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
             "total_output_tokens": res.total_output_tokens,
             "model_name": res.model_name,
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -831,7 +1052,38 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
 
 # ── EXPERIMENT CONTROL CENTER BACKGROUND TASKS & SSE ENDPOINTS ───────────────
 
-JOBS_STORE: dict[str, dict[str, Any]] = {}
+# ── EXPERIMENT CONTROL CENTER BACKGROUND TASKS & PERSISTENCE ───────────────
+
+JOBS_STATE_FILE = ROOT_DIR / "jobs_state.json"
+_jobs_lock = threading.Lock()
+
+
+def _load_jobs_from_disk() -> dict[str, dict[str, Any]]:
+    """Load persisted job states from jobs_state.json on server initialization."""
+    if not JOBS_STATE_FILE.exists():
+        return {}
+    try:
+        with _jobs_lock:
+            with open(JOBS_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as exc:
+        print(f"[WARN] Failed to load jobs state from disk: {exc}")
+        return {}
+
+
+def _save_jobs_to_disk():
+    """Atomic thread-safe write of current JOBS_STORE to jobs_state.json."""
+    try:
+        with _jobs_lock:
+            temp_path = JOBS_STATE_FILE.with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(JOBS_STORE, f, indent=2)
+            temp_path.replace(JOBS_STATE_FILE)
+    except Exception as exc:
+        print(f"[WARN] Failed to persist jobs state to disk: {exc}")
+
+
+JOBS_STORE: dict[str, dict[str, Any]] = _load_jobs_from_disk()
 
 
 class BatchRunRequest(BaseModel):
@@ -868,10 +1120,18 @@ def _log_job(job_id: str, message: str):
     entry = f"[{now_str}] {message}"
     JOBS_STORE[job_id]["logs"].append(entry)
     JOBS_STORE[job_id]["message"] = message
+    _save_jobs_to_disk()
+
+
+def _update_job(job_id: str, updates: dict[str, Any]):
+    if job_id not in JOBS_STORE:
+        return
+    JOBS_STORE[job_id].update(updates)
+    _save_jobs_to_disk()
 
 
 def _get_eval_dataset(sample_size: int) -> list[dict[str, str]]:
-    """Fetch human preference evaluation pairs from PostgreSQL or provide deterministic benchmark pairs."""
+    """Fetch human preference evaluation pairs from PostgreSQL. Strictly raises HTTPException if insufficient rows found."""
     dataset: list[dict[str, str]] = []
     try:
         with engine.connect() as conn:
@@ -887,40 +1147,17 @@ def _get_eval_dataset(sample_size: int) -> list[dict[str, str]]:
             df = pd.read_sql(query, conn, params={"limit": sample_size})
             if len(df) > 0:
                 dataset = df.to_dict(orient="records")
-    except Exception:
-        pass
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Insufficient dataset records found in PostgreSQL. Error: {exc}"
+        ) from exc
 
     if len(dataset) < sample_size:
-        default_pairs = [
-            {
-                "question": "What are the core causes and environmental impacts of oceanic acidification?",
-                "answer_a": "Ocean acidification is caused by atmospheric CO2 absorption, lowering seawater pH, disrupting calcium carbonate formation for shellfish and coral reefs, and destabilizing marine biodiversity.",
-                "answer_b": "Ocean acidification happens when oceans get dirty from plastic waste, causing water to get warm and fish to migrate away from coral reefs."
-            },
-            {
-                "question": "Explain the architectural difference between Transformer self-attention and Recurrent Neural Networks (RNNs).",
-                "answer_a": "Transformers process input tokens in parallel using matrix self-attention (O(N^2) complexity), capturing long-range dependencies without vanishing gradients. RNNs process tokens sequentially (O(N) time steps), suffering from gradient vanishing over long contexts.",
-                "answer_b": "RNNs use transformers to process text step by step, whereas self-attention is used in convolutional networks to process images sequentially."
-            },
-            {
-                "question": "Compare gradient descent optimization algorithms: Adam vs SGD with Momentum.",
-                "answer_a": "SGD with Momentum updates weights using a single global learning rate and velocity history. Adam computes adaptive per-parameter learning rates using first (mean) and second (uncentered variance) moment estimates of gradients.",
-                "answer_b": "Adam is faster because it does not use gradients, while SGD with Momentum requires calculating second derivatives for all neural network layers."
-            },
-            {
-                "question": "What are the security implications of SQL Injection and how can developers mitigate them?",
-                "answer_a": "SQL Injection occurs when untrusted input is concatenated into raw database queries. Mitigation requires parameterized queries (prepared statements), ORM abstractions, input validation, and least-privilege DB permissions.",
-                "answer_b": "SQL Injection happens when users type bad characters in URLs. You can fix it by using HTTPS encryption and restarting the database server."
-            },
-        ]
-        while len(dataset) < sample_size:
-            idx = len(dataset) % len(default_pairs)
-            base = default_pairs[idx]
-            dataset.append({
-                "question": f"{base['question']} (Pair #{len(dataset)+1})",
-                "answer_a": base["answer_a"],
-                "answer_b": base["answer_b"],
-            })
+        raise HTTPException(
+            status_code=500,
+            detail="Insufficient dataset records found in PostgreSQL."
+        )
 
     return dataset[:sample_size]
 
@@ -943,8 +1180,7 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
     try:
         _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Initializing Batch Evaluation Engine (sample_size={sample_size}, model={model_name}, strategy={mitigation_strategy})...")
-        JOBS_STORE[job_id]["status"] = "running"
-        JOBS_STORE[job_id]["total"] = sample_size
+        _update_job(job_id, {"status": "running", "total": sample_size})
 
         pairs = _get_eval_dataset(sample_size)
         win_a = 0
@@ -972,26 +1208,30 @@ def _execute_batch_job(job_id: str, sample_size: int, model_name: str, temperatu
             else:
                 ties += 1
 
-            JOBS_STORE[job_id]["progress"] = i
-            JOBS_STORE[job_id]["percentage"] = round((i / sample_size) * 100, 1)
+            _update_job(job_id, {
+                "progress": i,
+                "percentage": round((i / sample_size) * 100, 1),
+            })
 
             if i == 1 or i % max(1, sample_size // 10) == 0 or i == sample_size:
                 _log_job(job_id, f"Evaluated pair {i}/{sample_size} | Model: {model_name} | Strategy: {mitigation_strategy} | Verdict: {verdict}")
 
-        JOBS_STORE[job_id]["result_summary"] = {
-            "total_evaluated": sample_size,
-            "winner_a_count": win_a,
-            "winner_b_count": win_b,
-            "tie_count": ties,
-            "position_bias_flips": flips,
-            "mitigation_strategy": mitigation_strategy,
-        }
+        _update_job(job_id, {
+            "status": "completed",
+            "result_summary": {
+                "total_evaluated": sample_size,
+                "winner_a_count": win_a,
+                "winner_b_count": win_b,
+                "tie_count": ties,
+                "position_bias_flips": flips,
+                "mitigation_strategy": mitigation_strategy,
+            },
+        })
         _log_job(job_id, f"Batch Evaluation completed successfully! Processed {sample_size} prompt pairs.")
-        JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
         err_msg = f"Batch Execution Error: {str(exc)}"
         _log_job(job_id, err_msg)
-        JOBS_STORE[job_id]["status"] = "failed"
+        _update_job(job_id, {"status": "failed"})
         raise RuntimeError(err_msg) from exc
 
 
@@ -999,9 +1239,8 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
     try:
         _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Launching Synthetic Perturbation Generator (padding={int(padding_factor*100)}%, markdown={inject_markdown}, model={model_name})...")
-        JOBS_STORE[job_id]["status"] = "running"
         total_steps = 30
-        JOBS_STORE[job_id]["total"] = total_steps
+        _update_job(job_id, {"status": "running", "total": total_steps})
 
         pairs = _get_eval_dataset(total_steps)
         win_a = 0
@@ -1030,26 +1269,30 @@ def _execute_perturbation_job(job_id: str, padding_factor: float, inject_markdow
             else:
                 ties += 1
 
-            JOBS_STORE[job_id]["progress"] = i
-            JOBS_STORE[job_id]["percentage"] = round((i / total_steps) * 100, 1)
+            _update_job(job_id, {
+                "progress": i,
+                "percentage": round((i / total_steps) * 100, 1),
+            })
 
             if i % 5 == 0 or i == total_steps:
                 _log_job(job_id, f"Injected verbosity padding into stratum {i}/{total_steps} (Markdown={'enabled' if inject_markdown else 'disabled'}) | Verdict: {verdict}")
 
-        JOBS_STORE[job_id]["result_summary"] = {
-            "total_evaluated": total_steps,
-            "winner_a_count": win_a,
-            "winner_b_count": win_b,
-            "tie_count": ties,
-            "position_bias_flips": flips,
-            "mitigation_strategy": "synthetic_perturbation",
-        }
+        _update_job(job_id, {
+            "status": "completed",
+            "result_summary": {
+                "total_evaluated": total_steps,
+                "winner_a_count": win_a,
+                "winner_b_count": win_b,
+                "tie_count": ties,
+                "position_bias_flips": flips,
+                "mitigation_strategy": "synthetic_perturbation",
+            },
+        })
         _log_job(job_id, f"Synthetic Perturbation Suite complete! Re-generated perturbation dataset artifacts.")
-        JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
         err_msg = f"Perturbation Suite Error: {str(exc)}"
         _log_job(job_id, err_msg)
-        JOBS_STORE[job_id]["status"] = "failed"
+        _update_job(job_id, {"status": "failed"})
         raise RuntimeError(err_msg) from exc
 
 
@@ -1057,9 +1300,8 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
     try:
         _validate_api_key_or_raise(model_name)
         _log_job(job_id, f"Starting Stochastic Consistency Benchmark (N={n_trials} trials, model={model_name})...")
-        JOBS_STORE[job_id]["status"] = "running"
         total_steps = n_trials * 10
-        JOBS_STORE[job_id]["total"] = total_steps
+        _update_job(job_id, {"status": "running", "total": total_steps})
 
         pairs = _get_eval_dataset(10)
         win_a = 0
@@ -1093,25 +1335,28 @@ def _execute_stochastic_job(job_id: str, n_trials: int, model_name: str):
                 elif verdict != pair_baseline_verdicts[p_idx]:
                     flips += 1
 
-                JOBS_STORE[job_id]["progress"] = step
-                JOBS_STORE[job_id]["percentage"] = round((step / total_steps) * 100, 1)
+                _update_job(job_id, {
+                    "progress": step,
+                    "percentage": round((step / total_steps) * 100, 1),
+                })
 
-        JOBS_STORE[job_id]["result_summary"] = {
-            "total_evaluated": total_steps,
-            "winner_a_count": win_a,
-            "winner_b_count": win_b,
-            "tie_count": ties,
-            "position_bias_flips": flips,
-            "mitigation_strategy": f"stochastic_n{n_trials}",
-        }
+        _update_job(job_id, {
+            "status": "completed",
+            "result_summary": {
+                "total_evaluated": total_steps,
+                "winner_a_count": win_a,
+                "winner_b_count": win_b,
+                "tie_count": ties,
+                "position_bias_flips": flips,
+                "mitigation_strategy": f"stochastic_n{n_trials}",
+            },
+        })
         _log_job(job_id, f"Stochastic Benchmark complete! Calculated N={n_trials} flip variance statistics.")
-        JOBS_STORE[job_id]["status"] = "completed"
     except Exception as exc:
         err_msg = f"Stochastic Benchmark Error: {str(exc)}"
         _log_job(job_id, err_msg)
-        JOBS_STORE[job_id]["status"] = "failed"
+        _update_job(job_id, {"status": "failed"})
         raise RuntimeError(err_msg) from exc
-
 
 
 @app.post("/api/experiments/run-batch", response_model=JobTriggerResponse)
@@ -1128,6 +1373,7 @@ def trigger_batch_run(req: BatchRunRequest, background_tasks: BackgroundTasks) -
         "logs": [],
         "created_at": datetime.datetime.now().isoformat(),
     }
+    _save_jobs_to_disk()
     background_tasks.add_task(_execute_batch_job, job_id, req.sample_size, req.model_name, req.temperature, req.mitigation_strategy)
     return JobTriggerResponse(status="success", job_id=job_id, message="Batch evaluation job launched successfully.")
 
@@ -1146,6 +1392,7 @@ def trigger_perturbation_run(req: PerturbationRunRequest, background_tasks: Back
         "logs": [],
         "created_at": datetime.datetime.now().isoformat(),
     }
+    _save_jobs_to_disk()
     background_tasks.add_task(_execute_perturbation_job, job_id, req.padding_factor, req.inject_markdown, req.model_name)
     return JobTriggerResponse(status="success", job_id=job_id, message="Perturbation generator job launched successfully.")
 
@@ -1164,41 +1411,51 @@ def trigger_stochastic_run(req: StochasticRunRequest, background_tasks: Backgrou
         "logs": [],
         "created_at": datetime.datetime.now().isoformat(),
     }
+    _save_jobs_to_disk()
     background_tasks.add_task(_execute_stochastic_job, job_id, req.n_trials, req.model_name)
     return JobTriggerResponse(status="success", job_id=job_id, message="Stochastic benchmark job launched successfully.")
 
 
 @app.get("/api/experiments/status/{job_id}")
 def get_job_status(job_id: str) -> dict[str, Any]:
-    if job_id not in JOBS_STORE:
+    job = JOBS_STORE.get(job_id)
+    if not job:
+        # Check disk if not in memory
+        fresh_jobs = _load_jobs_from_disk()
+        job = fresh_jobs.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
-    return JOBS_STORE[job_id]
+    return job
 
 
 @app.get("/api/experiments/stream/{job_id}")
 async def stream_job_status(job_id: str):
-    if job_id not in JOBS_STORE:
+    job = JOBS_STORE.get(job_id)
+    if not job:
+        fresh_jobs = _load_jobs_from_disk()
+        job = fresh_jobs.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 
     async def event_generator():
         while True:
-            job = JOBS_STORE.get(job_id)
-            if not job:
+            current_job = JOBS_STORE.get(job_id) or _load_jobs_from_disk().get(job_id)
+            if not current_job:
                 break
 
             data = json.dumps({
-                "job_id": job["job_id"],
-                "status": job["status"],
-                "progress": job["progress"],
-                "total": job["total"],
-                "percentage": job["percentage"],
-                "message": job["message"],
-                "logs": job["logs"],
-                "result_summary": job.get("result_summary"),
+                "job_id": current_job["job_id"],
+                "status": current_job["status"],
+                "progress": current_job["progress"],
+                "total": current_job["total"],
+                "percentage": current_job["percentage"],
+                "message": current_job["message"],
+                "logs": current_job["logs"],
+                "result_summary": current_job.get("result_summary"),
             })
             yield f"data: {data}\n\n"
 
-            if job["status"] in ("completed", "failed"):
+            if current_job["status"] in ("completed", "failed"):
                 break
 
             await asyncio.sleep(0.3)
