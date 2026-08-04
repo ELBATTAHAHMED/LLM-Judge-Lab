@@ -7,37 +7,41 @@ Ingests MT-Bench datasets from the root data/ directory into PostgreSQL
 using SQLAlchemy models defined in backend/models.py.
 
 Steps:
-  A. Ingest Prompts     → prompts table
-  B. Ingest Answers     → answers table (all model JSONL files)
+  A. Ingest Prompts     → prompts table (stores full multi-turn context for Turn 2)
+  B. Ingest Answers     → answers table (all model JSONL files + fallback extraction from human_judgment.jsonl)
   C. Ingest Human Pref  → human_preferences table
 
 Idempotent: safe to run multiple times without duplicating rows.
+Uses cryptographic MD5 text hashing for rock-solid answer deduplication.
 
 Usage (from project root):
     python backend/ingest_data.py
 """
 
-import sys
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
 import os
 import re
-import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
 import jsonlines
-from tqdm import tqdm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from tqdm import tqdm
 
 # ── path setup ──────────────────────────────────────────────────────────────
-# Ensure backend/ is on the import path so we can import database & models
 BACKEND_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = BACKEND_DIR.parent.resolve()
 DATA_DIR = ROOT_DIR / "data"
 sys.path.insert(0, str(BACKEND_DIR))
 
 from database import SessionLocal, engine, Base  # noqa: E402
-import models  # noqa: E402  – registers all ORM classes with Base.metadata
+import models  # noqa: E402
 
 # ── logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -46,6 +50,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 log = logging.getLogger(__name__)
+
 
 # ── constants ─────────────────────────────────────────────────────────────────
 def discover_model_files(data_dir: Path) -> dict[str, str]:
@@ -71,30 +76,28 @@ def discover_model_files(data_dir: Path) -> dict[str, str]:
         }
     return model_files
 
+
 MODEL_FILES: dict[str, str] = discover_model_files(DATA_DIR)
 
-# Maps dataset string variants in human_judgment.jsonl to canonical model names in DB
 MODEL_ALIASES: dict[str, str] = {
     "vicuna-13b-v1.2": "vicuna-13b",
 }
 
-BATCH_SIZE = 500   # rows flushed per SQLAlchemy bulk call
+BATCH_SIZE = 500
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
-
 def word_count(text: str) -> int:
     """Return the number of whitespace-delimited tokens in text."""
     return len(text.split())
 
 
-def classify_format(text: str) -> str:
-    """
-    Classify text format as 'markdown_heavy' or 'plain_text'.
+def compute_text_hash(text: str) -> str:
+    """Compute stable MD5 hex hash of normalized text for cryptographic deduplication."""
+    return hashlib.md5(text.strip().encode("utf-8")).hexdigest()
 
-    Checks for multiple markdown formatting syntax tokens (# headers, **bold**,
-    - / * list items, numbered list items 1., or ``` code blocks).
-    """
+
+def classify_format(text: str) -> str:
     if not text:
         return "plain_text"
 
@@ -114,32 +117,16 @@ def classify_format(text: str) -> str:
 
 
 def count_lines(path: Path) -> int:
-    """Fast line count without loading the full file."""
     with open(path, "rb") as f:
         return sum(1 for _ in f)
 
 
-def get_or_none(db: Session, model, **filters):
-    """Return the first ORM row matching filters, or None."""
-    stmt = select(model).filter_by(**filters)
-    return db.execute(stmt).scalars().first()
-
-
 # ── Step A: Ingest Prompts ────────────────────────────────────────────────────
-
 def ingest_prompts(db: Session) -> dict[int, int]:
     """
     Parse question.jsonl and upsert rows into the prompts table.
-
-    Each question has multiple turns. We store the full first-turn text as
-    the canonical prompt text (the MT-Bench convention).  The second turn is
-    a follow-up instruction and is deliberately omitted from the Prompt table
-    because the Answer table stores turn-level responses.
-
-    Returns
-    -------
-    question_id_to_db_id : dict
-        Mapping from MT-Bench question_id → database primary key.
+    Stores multi-turn prompt context (Turn 1 + Turn 2 follow-up) to ensure AI judge 
+    evaluators do not evaluate Turn 2 responses in isolation.
     """
     path = DATA_DIR / "question.jsonl"
     total = count_lines(path)
@@ -158,12 +145,17 @@ def ingest_prompts(db: Session) -> dict[int, int]:
                 log.warning("  question_id=%s has no turns – skipping", qid)
                 continue
 
-            # Use the first-turn text as the canonical prompt
-            text: str = turns[0]
+            # Multi-turn prompt context concatenation
+            if len(turns) == 1:
+                text: str = turns[0]
+            else:
+                text: str = turns[0] + "\n\n[Follow-up Question]: " + turns[1]
 
-            # Idempotency: look up by the MT-Bench question_id stored as id
             existing = db.get(models.Prompt, qid)
             if existing:
+                if existing.text != text:
+                    existing.text = text
+                    db.add(existing)
                 question_id_to_db_id[qid] = existing.id
                 continue
 
@@ -178,55 +170,42 @@ def ingest_prompts(db: Session) -> dict[int, int]:
 
 
 # ── Step B: Ingest Answers ────────────────────────────────────────────────────
-
 def ingest_answers(
     db: Session,
     question_id_to_db_id: dict[int, int],
 ) -> dict[tuple[int, str, int], int]:
     """
-    Parse every model JSONL file and insert rows into the answers table.
-
-    MT-Bench answers are multi-turn. We store each turn as a separate Answer
-    row to preserve granularity (turn 0 = first turn, turn 1 = second turn).
-
-    Returns
-    -------
-    answer_key_to_db_id : dict
-        Mapping from (prompt_db_id, model_name, turn_index) → answer.id
+    Parse model JSONL files + fallback extraction from human_judgment.jsonl.
+    Uses MD5 text hash for cryptographic deduplication.
     """
     answer_key_to_db_id: dict[tuple[int, str, int], int] = {}
 
-    # Pre-load existing answers to avoid duplicates (idempotency)
-    log.info("Step B – Pre-loading existing answers for idempotency check …")
+    log.info("Step B – Pre-loading existing answers with MD5 text hashes …")
     existing_answers = db.execute(
         select(
             models.Answer.id,
             models.Answer.prompt_id,
             models.Answer.model_name,
+            models.Answer.text,
             models.Answer.word_count,
         )
     ).all()
 
-    # We identify existing answers by (prompt_id, model_name, word_count) as a
-    # lightweight dedup key – full text comparison would be expensive.
-    existing_keys: set[tuple[int, str, int]] = {
-        (row.prompt_id, row.model_name, row.word_count) for row in existing_answers
+    # Stable dedup key using cryptographic MD5 hash of answer text
+    existing_keys: set[tuple[int, str, str]] = {
+        (row.prompt_id, row.model_name, compute_text_hash(row.text))
+        for row in existing_answers if row.text
     }
     log.info("  → %d answers already in DB", len(existing_answers))
-
-    # Build a full answer lookup from DB for foreign-key resolution in Step C
-    answer_lookup: dict[tuple[int, str], list[tuple[int, int]]] = {}
-    for row in existing_answers:
-        key = (row.prompt_id, row.model_name)
-        answer_lookup.setdefault(key, []).append((row.id, row.word_count))
 
     total_new = 0
     batch: list[models.Answer] = []
 
+    # 1. Parse explicit model JSONL files
     for file_stem, model_name in MODEL_FILES.items():
         path = DATA_DIR / f"{file_stem}.jsonl"
         if not path.exists():
-            log.warning("  Model file not found: %s – skipping", path)
+            log.warning("  Model file not found: %s – will fallback to human_judgment.jsonl", path)
             continue
 
         total_lines = count_lines(path)
@@ -238,14 +217,12 @@ def ingest_answers(
                 qid: int = record.get("question_id")
                 prompt_db_id = question_id_to_db_id.get(qid)
                 if prompt_db_id is None:
-                    log.debug("    question_id=%s not in prompts table – skipping", qid)
                     continue
 
                 choices: list[dict] = record.get("choices", [])
                 if not choices:
                     continue
 
-                # Each choice contains multi-turn responses.
                 turns: list[str] = choices[0].get("turns", [])
 
                 for turn_idx, turn_text in enumerate(turns):
@@ -253,19 +230,10 @@ def ingest_answers(
                         turn_text = str(turn_text)
 
                     wc = word_count(turn_text)
-                    dedup_key = (prompt_db_id, model_name, wc)
+                    thash = compute_text_hash(turn_text)
+                    dedup_key = (prompt_db_id, model_name, thash)
 
                     if dedup_key in existing_keys:
-                        # Try to populate answer_key_to_db_id for existing rows
-                        # so Step C can still resolve foreign keys.
-                        for ans_id, ans_wc in answer_lookup.get(
-                            (prompt_db_id, model_name), []
-                        ):
-                            if ans_wc == wc:
-                                answer_key_to_db_id[
-                                    (prompt_db_id, model_name, turn_idx)
-                                ] = ans_id
-                                break
                         continue
 
                     answer = models.Answer(
@@ -280,7 +248,6 @@ def ingest_answers(
                     file_new += 1
                     total_new += 1
 
-                    # Flush batch for memory efficiency
                     if len(batch) >= BATCH_SIZE:
                         db.add_all(batch)
                         db.flush()
@@ -288,7 +255,58 @@ def ingest_answers(
 
         log.info("    → %d new answers inserted for %s", file_new, model_name)
 
-    # Flush remaining batch
+    # 2. Fallback Extraction from human_judgment.jsonl for missing candidate model responses
+    hj_path = DATA_DIR / "human_judgment.jsonl"
+    if hj_path.exists():
+        log.info("  Scanning %s for fallback candidate answer extraction …", hj_path.name)
+        fallback_new = 0
+        with jsonlines.open(hj_path) as reader:
+            for record in reader:
+                qid: int = record.get("question_id")
+                prompt_db_id = question_id_to_db_id.get(qid)
+                if prompt_db_id is None:
+                    continue
+
+                for conv_key, model_key in [("conversation_a", "model_a"), ("conversation_b", "model_b")]:
+                    raw_mname = record.get(model_key, "")
+                    mname = MODEL_ALIASES.get(raw_mname, raw_mname)
+                    conv_turns = record.get(conv_key, [])
+                    
+                    if not mname or not conv_turns:
+                        continue
+
+                    for turn_idx, turn_obj in enumerate(conv_turns):
+                        turn_text = turn_obj.get("content", "") if isinstance(turn_obj, dict) else str(turn_obj)
+                        if not turn_text:
+                            continue
+
+                        wc = word_count(turn_text)
+                        thash = compute_text_hash(turn_text)
+                        dedup_key = (prompt_db_id, mname, thash)
+
+                        if dedup_key in existing_keys:
+                            continue
+
+                        answer = models.Answer(
+                            prompt_id=prompt_db_id,
+                            model_name=mname,
+                            text=turn_text,
+                            word_count=wc,
+                            format_type=classify_format(turn_text),
+                        )
+                        batch.append(answer)
+                        existing_keys.add(dedup_key)
+                        fallback_new += 1
+                        total_new += 1
+
+                        if len(batch) >= BATCH_SIZE:
+                            db.add_all(batch)
+                            db.flush()
+                            batch.clear()
+
+        if fallback_new > 0:
+            log.info("    → %d fallback candidate answers extracted from human_judgment.jsonl", fallback_new)
+
     if batch:
         db.add_all(batch)
         db.flush()
@@ -296,25 +314,21 @@ def ingest_answers(
 
     db.commit()
 
-    # Re-query the full answers table now that everything is committed, to build
-    # a reliable (prompt_id, model_name) → list[(id, word_count)] lookup for Step C.
     log.info("Step B – Rebuilding answer lookup table after commit …")
     all_answers = db.execute(
-        select(models.Answer.id, models.Answer.prompt_id, models.Answer.model_name, models.Answer.word_count)
+        select(models.Answer.id, models.Answer.prompt_id, models.Answer.model_name, models.Answer.text)
     ).all()
 
     answer_key_to_db_id.clear()
-    per_model_turns: dict[tuple[int, str], list[tuple[int, int]]] = {}
+    per_model_turns: dict[tuple[int, str], list[tuple[int, str]]] = {}
     for row in all_answers:
         per_model_turns.setdefault((row.prompt_id, row.model_name), []).append(
-            (row.id, row.word_count)
+            (row.id, row.text)
         )
 
-    # Reconstruct (prompt_id, model_name, turn_idx) → answer_id by sorting
-    # answers by id ascending (insertion order = turn order).
-    for (pid, mname), id_wc_pairs in per_model_turns.items():
-        id_wc_pairs.sort(key=lambda x: x[0])  # sort by answer.id
-        for turn_idx, (ans_id, _) in enumerate(id_wc_pairs):
+    for (pid, mname), id_text_pairs in per_model_turns.items():
+        id_text_pairs.sort(key=lambda x: x[0])
+        for turn_idx, (ans_id, _) in enumerate(id_text_pairs):
             answer_key_to_db_id[(pid, mname, turn_idx)] = ans_id
 
     log.info(
@@ -326,7 +340,6 @@ def ingest_answers(
 
 
 # ── Step C: Ingest Human Preferences ─────────────────────────────────────────
-
 def ingest_human_preferences(
     db: Session,
     question_id_to_db_id: dict[int, int],
@@ -334,19 +347,11 @@ def ingest_human_preferences(
 ) -> None:
     """
     Parse human_judgment.jsonl and insert into human_preferences table.
-
-    Each record includes:
-      - question_id, model_a, model_b  → resolve to FK ids
-      - winner  ("model_a" | "model_b" | "tie")
-      - turn    (1-indexed; convert to 0-indexed for our keys)
-
-    Skips rows where FK resolution fails (missing prompt or answer).
     """
     path = DATA_DIR / "human_judgment.jsonl"
     total = count_lines(path)
     log.info("Step C – Ingesting human preferences from %s (%d lines)", path.name, total)
 
-    # Build a set of existing (prompt_id, answer_a_id, answer_b_id) tuples for dedup
     existing_prefs: set[tuple[int, int, int]] = set(
         db.execute(
             select(
@@ -368,17 +373,14 @@ def ingest_human_preferences(
             model_a: str = MODEL_ALIASES.get(record.get("model_a", ""), record.get("model_a", ""))
             model_b: str = MODEL_ALIASES.get(record.get("model_b", ""), record.get("model_b", ""))
             winner_label: str = record.get("winner", "")
-            # human_judgment turn is 1-indexed; convert to 0-indexed
             turn_idx: int = int(record.get("turn", 1)) - 1
 
-            # ── resolve prompt FK ─────────────────────────────────────────
             prompt_db_id = question_id_to_db_id.get(qid)
             if prompt_db_id is None:
                 log.debug("    question_id=%s not found → skipping", qid)
                 skipped += 1
                 continue
 
-            # ── resolve answer FKs ────────────────────────────────────────
             answer_a_id = answer_key_to_db_id.get((prompt_db_id, model_a, turn_idx))
             answer_b_id = answer_key_to_db_id.get((prompt_db_id, model_b, turn_idx))
 
@@ -390,15 +392,12 @@ def ingest_human_preferences(
                 skipped += 1
                 continue
 
-            # ── resolve winner FK ─────────────────────────────────────────
             winner_id: Optional[int] = None
             if winner_label == "model_a":
                 winner_id = answer_a_id
             elif winner_label == "model_b":
                 winner_id = answer_b_id
-            # "tie" or unknown → winner_id stays None (allowed by schema)
 
-            # ── idempotency check ─────────────────────────────────────────
             dedup = (prompt_db_id, answer_a_id, answer_b_id)
             if dedup in existing_prefs:
                 continue
@@ -430,7 +429,6 @@ def ingest_human_preferences(
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
-
 def main() -> None:
     log.info("=" * 60)
     log.info("LLM-as-a-Judge Reliability Lab – Data Ingestion Pipeline")
@@ -438,17 +436,11 @@ def main() -> None:
     log.info("Data directory : %s", DATA_DIR)
     log.info("Database URL   : %s", os.getenv("DATABASE_URL", "(default from .env)"))
 
-    # Ensure all tables exist before writing
     Base.metadata.create_all(bind=engine)
 
     with SessionLocal() as db:
-        # Step A
         question_id_to_db_id = ingest_prompts(db)
-
-        # Step B
         answer_key_to_db_id = ingest_answers(db, question_id_to_db_id)
-
-        # Step C
         ingest_human_preferences(db, question_id_to_db_id, answer_key_to_db_id)
 
     log.info("=" * 60)

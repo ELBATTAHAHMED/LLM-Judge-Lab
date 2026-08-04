@@ -96,7 +96,7 @@ The platform follows a decoupled, production-grade full-stack architecture:
 The repository includes the complete ground-truth benchmark dataset located in `data/`:
 * `human_judgment.jsonl` (15.9 MB): 2,271 pairwise human preference evaluations from LMSYS Chatbot Arena.
 * `question.jsonl`: 80 Vicuna benchmark prompts spanning 8 domain categories.
-* `gpt-4.jsonl`, `gpt-3.5-turbo.jsonl`, `claude-v1.jsonl`, `alpaca-13b.jsonl`, `llama-13b.jsonl`: Pre-generated candidate response outputs.
+* `gpt-4.jsonl`, `gpt-3.5-turbo.jsonl`, `claude-v1.jsonl`, `alpaca-13b.jsonl`, `llama-13b.jsonl`, `vicuna-13b.jsonl`: Complete candidate model response outputs ($N=80$ prompts each).
 * `qualitative_data/`: Stratified CSV evaluation records and empirical results.
 
 ---
@@ -158,8 +158,8 @@ Ingest the benchmark dataset into PostgreSQL:
 # Ingest prompts, answers, and human preference data
 python backend/ingest_data.py
 
-# Verify database integrity
-python verify_database_evaluations.py
+# Generate empirical component ablation study report
+python backend/generate_ablation_matrix.py
 ```
 
 ---
@@ -205,6 +205,7 @@ pytest tests/test_pipeline.py -v
 
 For complete empirical figures, data tables, and detailed answers to Research Questions (RQ1–RQ6), refer to:
 * [`thesis_chapter_5_exhibits.md`](thesis_chapter_5_exhibits.md): Chapter 5 Empirical Thesis Exhibits & Findings.
+* [`ablation_matrix_report.md`](ablation_matrix_report.md): Mitigation Component Ablation Study Report.
 * [`bradley_terry_report.md`](bradley_terry_report.md): Bradley-Terry Model Fitting Technical Report.
 * [`neutralized_scores_report.md`](neutralized_scores_report.md): OLS Residual Neutralization Technical Report.
 * [`consistency_report.md`](consistency_report.md): Multi-Turn Consistency & Reliability Analysis Report.

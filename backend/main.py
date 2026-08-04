@@ -384,7 +384,14 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             else:
                 cal_kappa = base_kappa
                 cal_acc = base_acc
-            mit_flip = 0.000  # Dual A/B swap eliminates position order vulnerability
+            
+            pos_a_cal = (df_cal["position_choice"] == "Position A").sum()
+            pos_b_cal = (df_cal["position_choice"] == "Position B").sum()
+            total_valid_pos_cal = pos_a_cal + pos_b_cal
+            if total_valid_pos_cal > 0:
+                mit_flip = float(abs(pos_a_cal - pos_b_cal) / total_valid_pos_cal)
+            else:
+                mit_flip = 0.000
             msg = f"Aggregate macro benchmark synthesis across {len(df_cal)} empirical calibrated evaluations."
         else:
             # Fallback when no calibrated records exist yet for this specific judge_model
@@ -393,18 +400,18 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             mit_flip = 0.000
             msg = f"Baseline benchmark evaluations loaded ({total_evals} trials). Run python backend/run_batch_calibration.py to accumulate batch calibrated records."
 
-        delta_k = round(max(0.0, cal_kappa - base_kappa), 3)
-        delta_acc = round(max(0.0, cal_acc - base_acc), 3)
+        delta_k = round(cal_kappa - base_kappa, 3)
+        delta_acc = round(cal_acc - base_acc, 3)
         flip_red = round(((base_flip - mit_flip) / base_flip * 100.0) if base_flip > 0 else 100.0, 1)
 
         return {
             "judge_model": judge_model,
             "total_evaluations": total_evals,
             "baseline_kappa": round(base_kappa, 3),
-            "calibrated_kappa": round(max(base_kappa, cal_kappa), 3),
+            "calibrated_kappa": round(cal_kappa, 3),
             "delta_kappa": delta_k,
             "baseline_accuracy": round(base_acc, 3),
-            "calibrated_accuracy": round(max(base_acc, cal_acc), 3),
+            "calibrated_accuracy": round(cal_acc, 3),
             "delta_accuracy": delta_acc,
             "baseline_flip_rate": round(base_flip, 3),
             "mitigated_flip_rate": round(mit_flip, 3),
