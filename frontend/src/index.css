@@ -37,21 +37,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #d4d4d4;
 }
-
-/* Print styles for native Save-as-PDF fallback */
-@media print {
-  aside, nav, header, button, .no-print {
-    display: none !important;
-  }
-  body, main, #diagnostics-report-container {
-    background: #ffffff !important;
-    color: #000000 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-  .dark {
-    color-scheme: light !important;
-  }
-}

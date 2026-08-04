@@ -223,5 +223,27 @@ def run_stochastic_consistency_test(
     print(f" Saved summary consistency to: {summary_csv_path}")
 
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Run empirical stochastic consistency test (RQ2).",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--sample-size", type=int, default=30, help="Number of prompt pairs to sample")
+    parser.add_argument("--repeats", type=int, default=5, help="Number of repeated trials per pair")
+    parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature")
+    parser.add_argument("--model", default="gpt-4o-mini", help="Judge model identifier")
+    parser.add_argument("--max-workers", type=int, default=10, help="Maximum concurrent thread workers")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    run_stochastic_consistency_test()
+    args = parse_args()
+    run_stochastic_consistency_test(
+        sample_size=args.sample_size,
+        repeats=args.repeats,
+        temperature=args.temperature,
+        model_name=args.model,
+        max_workers=args.max_workers,
+    )
+
