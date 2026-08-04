@@ -9,7 +9,7 @@ Audits PostgreSQL `judge_decisions` table across all target LLM judge models:
   4. anthropic/claude-3-haiku (or anthropic/claude-3.5-haiku)
 
 Checks performed:
-  - Decision counts & dataset parity vs total human preference pairs (1,530).
+  - Decision counts & dataset parity vs total human preference pairs (2,271 Vicuna pairs).
   - Winner distribution (Winner A vs Winner B vs Ties/NULLs).
   - Reasoning payload integrity (detects empty, mock, or fallback strings).
   - Deprecated model tag detection (e.g., synthetic 'llama3' fallbacks).
@@ -135,12 +135,19 @@ def run_qa_audit():
     print("+" + "-" * 98 + "+")
 
     # 4. Check for deprecated/synthetic model tags (e.g. 'llama3')
-    deprecated_tags = [name for name in counts_map.keys() if name not in TARGET_MODELS and name != "anthropic/claude-3.5-haiku"]
+    # Valid tags include baseline models, claude-3.5-haiku, and _calibrated evaluation tags
+    def is_valid_tag(tag_name: str) -> bool:
+        base = tag_name[:-11] if tag_name.endswith("_calibrated") else tag_name
+        return base in TARGET_MODELS or base == "anthropic/claude-3.5-haiku"
+
+    deprecated_tags = [name for name in counts_map.keys() if not is_valid_tag(name)]
     if deprecated_tags:
         print(f"\n[WARNING] Deprecated or unexpected model tags found in database: {deprecated_tags}")
         has_blocking_issue = True
     else:
-        print("\n[CHECK 1 - MODEL TAGS] All model identifiers match clean production tags. No synthetic/deprecated tags found.")
+        calibrated_count = sum(1 for name in counts_map.keys() if name.endswith("_calibrated"))
+        calib_msg = f" ({calibrated_count} calibrated evaluation runs present)" if calibrated_count else ""
+        print(f"\n[CHECK 1 - MODEL TAGS] All model identifiers match clean production tags{calib_msg}. No synthetic/deprecated tags found.")
 
     # 5. Payload Integrity & Reasoning Quality Audit
     print("\n[CHECK 2 - REASONING PAYLOAD INTEGRITY AUDIT]")

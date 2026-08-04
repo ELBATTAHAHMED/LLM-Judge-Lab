@@ -4,8 +4,9 @@ stochastic_test.py
 Empirical Stochastic Consistency Analysis Module (RQ2).
 
 Evaluates the variance and self-consistency of an LLM evaluator judge
-by running N=5 repeated empirical evaluation trials on 30 deterministic prompt pairs
-using gpt-4o-mini at temperature=0.0 via the OpenAI API.
+by running repeated empirical evaluation trials on prompt pairs drawn from the
+2,271 Vicuna human preference benchmark dataset using gpt-4o-mini at
+temperature=0.0 (and T=0.7) via the OpenAI API.
 
 Outputs:
   - `qualitative_data/stochastic_consistency_real.csv`

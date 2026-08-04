@@ -380,7 +380,7 @@ ${activeRecord.reasoning_text}
                 </div>
               </div>
 
-              {/* Reasoning Terminal Box (Expanded G-EVAL Reasoning View) */}
+              {/* G-EVAL Reasoning Transcript (Expanded Reasoning View) */}
               <div className="p-4 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-2 flex-1 flex flex-col transition-colors duration-150">
                 <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2 text-xs font-mono">
                   <span className="font-semibold text-neutral-900 dark:text-neutral-200 flex items-center gap-1.5">
