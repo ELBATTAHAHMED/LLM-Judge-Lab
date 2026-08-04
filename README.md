@@ -1,6 +1,6 @@
 # JudgeLab — LLM-as-a-Judge Reliability & Bias Evaluation Platform
 
-[![Master's PFE](https://img.shields.io/badge/Academic%20Project-Master%202%20Big%20Data-blue.svg)](https://github.com/ELBATTAHAHMED/LLM-Judge-Lab)
+[![Master's PFE](https://img.shields.io/badge/Academic%20Project-Master%20IPS-blue.svg)](https://github.com/ELBATTAHAHMED/LLM-Judge-Lab)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Author:** Ahmed El Battah  
-**Degree:** Master 2 Big Data & Artificial Intelligence (PFE - Projet de Fin d'Études)  
+**Degree:** Master Intelligent Processing Systems (IPS - Projet de Fin d'Études)  
 **Repository:** [ELBATTAHAHMED/LLM-Judge-Lab](https://github.com/ELBATTAHAHMED/LLM-Judge-Lab)
 
 ---
