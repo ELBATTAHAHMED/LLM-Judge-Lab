@@ -12,16 +12,16 @@ Parameters are estimated via MLE over all $N = 2,271$ observed pairwise decision
 
 ## Results: Raw Win Rate vs Latent Quality Score
 
-*Model log-likelihood of fit: `-1637.84`*
+*Model log-likelihood of fit: `-1810.28`*
 
 | Rank | Model | Raw Win Rate | BT Score ($\theta$) | Quality Tier | vs. Anchor (alpaca-13b) |
 | :---: | :--- | :---: | :---: | :---: | :---: |
-| 1 | `gpt-4` | 79.3% | `2.1934` | Top Tier | `+2.193` |
-| 2 | `claude-v1` | 71.6% | `1.8615` | Top Tier | `+1.861` |
-| 3 | `gpt-3.5-turbo` | 62.5% | `1.3898` | Top Tier | `+1.390` |
-| 4 | `vicuna-13b` | 43.3% | `0.5862` | Top Tier | `+0.586` |
-| 5 | `alpaca-13b` | 27.0% | `0.0000` | Competitive | `+0.000` |
-| 6 | `llama-13b` | 14.3% | `-0.7493` | Below Average | `-0.749` |
+| 1 | `gpt-4` | 81.2% | `2.7912` | Top Tier | `+2.791` |
+| 2 | `claude-v1` | 73.3% | `2.4171` | Top Tier | `+2.417` |
+| 3 | `gpt-3.5-turbo` | 62.8% | `1.8785` | Top Tier | `+1.879` |
+| 4 | `vicuna-13b` | 49.5% | `1.2816` | Top Tier | `+1.282` |
+| 5 | `alpaca-13b` | 19.2% | `0.0000` | Competitive | `+0.000` |
+| 6 | `llama-13b` | 11.9% | `-0.5369` | Below Average | `-0.537` |
 
 ## Why BT Scores Are Superior to Raw Win Rates
 

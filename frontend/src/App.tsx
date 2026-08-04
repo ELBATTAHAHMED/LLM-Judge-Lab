@@ -1,31 +1,34 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { JudgeProvider } from './context/JudgeContext';
 import { DashboardLayout } from './layouts/DashboardLayout';
-import { LeaderboardPage } from './pages/LeaderboardPage';
-import { DiagnosticsPage } from './pages/DiagnosticsPage';
-import { QualitativeExplorerPage } from './pages/QualitativeExplorerPage';
-import { LiveLabPage } from './pages/LiveLabPage';
-import { SynthesisPage } from './pages/SynthesisPage';
+
+const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
+const SynthesisPage = lazy(() => import('./pages/SynthesisPage').then(m => ({ default: m.SynthesisPage })));
+const DiagnosticsPage = lazy(() => import('./pages/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
+const QualitativeExplorerPage = lazy(() => import('./pages/QualitativeExplorerPage').then(m => ({ default: m.QualitativeExplorerPage })));
+const LiveLabPage = lazy(() => import('./pages/LiveLabPage').then(m => ({ default: m.LiveLabPage })));
 
 export const App: React.FC = () => {
   return (
     <ThemeProvider>
       <JudgeProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<DashboardLayout />}>
-              <Route index element={<LeaderboardPage />} />
-              <Route path="leaderboard" element={<LeaderboardPage />} />
-              <Route path="synthesis" element={<SynthesisPage />} />
-              <Route path="diagnostics" element={<DiagnosticsPage />} />
-              <Route path="qualitative-explorer" element={<QualitativeExplorerPage />} />
-              <Route path="live-lab" element={<LiveLabPage />} />
-              {/* Catch-all redirect to home */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
+          <Suspense fallback={<div className="p-8 text-center text-gray-500 font-sans">Loading module...</div>}>
+            <Routes>
+              <Route path="/" element={<DashboardLayout />}>
+                <Route index element={<LeaderboardPage />} />
+                <Route path="leaderboard" element={<LeaderboardPage />} />
+                <Route path="synthesis" element={<SynthesisPage />} />
+                <Route path="diagnostics" element={<DiagnosticsPage />} />
+                <Route path="qualitative-explorer" element={<QualitativeExplorerPage />} />
+                <Route path="live-lab" element={<LiveLabPage />} />
+                {/* Catch-all redirect to home */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </JudgeProvider>
     </ThemeProvider>

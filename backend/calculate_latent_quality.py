@@ -86,7 +86,9 @@ def fetch_pairwise_results(engine, judge_model_name: str = "gpt-4o-mini") -> pd.
     JOIN answers a1 ON jd.answer_a_id = a1.id
     JOIN answers a2 ON jd.answer_b_id = a2.id
     WHERE jd.judge_model_name = :judge_model_name
-      AND p.category NOT IN ('live', 'live_calibrated')
+      AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
+      AND a1.model_name NOT IN ('answer_a', 'answer_b')
+      AND a2.model_name NOT IN ('answer_a', 'answer_b')
     """)
     with engine.connect() as conn:
         return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})
@@ -104,9 +106,11 @@ def compute_raw_win_rates(df: pd.DataFrame, models: list[str]) -> pd.Series:
             continue
         winner = row["model_i"] if row["outcome"] == "i" else row["model_j"]
         loser  = row["model_j"] if row["outcome"] == "i" else row["model_i"]
-        wins[winner]  += 1
-        games[winner] += 1
-        games[loser]  += 1
+        if winner in wins:
+            wins[winner]  += 1
+            games[winner] += 1
+        if loser in games:
+            games[loser]  += 1
 
     return pd.Series({m: wins[m] / games[m] if games[m] > 0 else 0.0 for m in models})
 
@@ -282,7 +286,7 @@ def main() -> None:
     df = fetch_pairwise_results(engine, judge_model_name=judge_model)
     print(f"Loaded {len(df):,} pairwise decisions for judge model: {judge_model}")
 
-    models = sorted(df["model_i"].unique().tolist())
+    models = sorted(list(set(df["model_i"].tolist() + df["model_j"].tolist())))
     print(f"Models identified: {models}\n")
 
     # 1. Raw win rates

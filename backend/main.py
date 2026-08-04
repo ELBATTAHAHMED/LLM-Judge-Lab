@@ -158,12 +158,6 @@ class CalibratedEvaluationResponse(BaseModel):
     model_name: str
 
 
-class JobTriggerResponse(BaseModel):
-    status: str
-    job_id: str
-    message: str
-
-
 class DatasetCountResponse(BaseModel):
     count: int
     message: str

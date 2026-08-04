@@ -92,7 +92,9 @@ def fetch_decisions_with_lengths(engine, judge_model_name: str = "gpt-4o-mini") 
     JOIN answers a1 ON jd.answer_a_id = a1.id
     JOIN answers a2 ON jd.answer_b_id = a2.id
     WHERE jd.judge_model_name = :judge_model_name
-      AND p.category NOT IN ('live', 'live_calibrated')
+      AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
+      AND a1.model_name NOT IN ('answer_a', 'answer_b')
+      AND a2.model_name NOT IN ('answer_a', 'answer_b')
     """)
     with engine.connect() as conn:
         return pd.read_sql_query(sql, conn, params={"judge_model_name": judge_model_name})

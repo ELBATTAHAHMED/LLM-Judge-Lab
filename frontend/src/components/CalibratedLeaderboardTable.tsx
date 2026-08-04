@@ -111,6 +111,19 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
     document.body.removeChild(link);
   };
 
+  const handleExportJSON = () => {
+    if (!filteredData || filteredData.length === 0) return;
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(filteredData, null, 2)
+    )}`;
+    const link = document.createElement('a');
+    link.setAttribute('href', jsonString);
+    link.setAttribute('download', 'leaderboard_data.json');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getTierBadge = (tier: string) => {
     const t = (tier || '').toLowerCase();
 
@@ -221,6 +234,15 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
           >
             <Download className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
             <span>Export CSV</span>
+          </button>
+
+          <button
+            onClick={handleExportJSON}
+            disabled={!filteredData || filteredData.length === 0}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs disabled:opacity-40"
+          >
+            <Download className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
+            <span>Download JSON</span>
           </button>
 
           {onRecalculate && (

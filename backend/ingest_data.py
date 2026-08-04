@@ -19,6 +19,7 @@ Usage (from project root):
 
 import sys
 import os
+import re
 import logging
 from pathlib import Path
 from typing import Optional

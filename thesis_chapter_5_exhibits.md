@@ -185,3 +185,46 @@ The qualitative text mining of G-EVAL reasoning outputs suggests that the statis
 Furthermore, the forced-choice analysis reveals a critical disconnect between the LLM's descriptive reasoning and its final categorical classification. In nearly half of the cases where human raters declared a tie, the LLM's reasoning text contained multiple hedging words indicating that both responses were comparable. Yet, due to G-EVAL's structural instruction requiring a winner, the model's output collapsed into a definitive choice. This linguistic dissonance implies that the LLM is capable of identifying parity, but its final decision-making layer is uncalibrated for draws, leading to 'forced-choice hallucinations' that artificially inflate model performance differences.
 
 Ultimately, these qualitative patterns prove that LLM-as-a-Judge reliability cannot be evaluated purely on agreement correlation. The qualitative appendix demonstrates that the judge's reasoning is highly susceptible to superficial markers of quality. When the length disparity increases, the judge's cognitive alignment with humans decreases, yet its linguistic certainty remains high. This mismatch between evaluation reasoning and actual task quality presents a major threat to the validity of automated LLM benchmarks, arguing for the integration of strict length-normalization and tie-tolerant calibration in future evaluation frameworks.
+
+## 5.4 Empirical Macro-Benchmark & Calibration Exhibits
+
+### Exhibit 5.4.1: Bradley-Terry Latent Quality Estimation (Module 2)
+To control for schedule-dependency and non-transitive pairwise wins, latent quality parameters $\theta_i$ were fit via Maximum Likelihood Estimation ($N = 2,271$ decisions, Log-Likelihood $= -1810.28$).
+
+| Rank | Model | Raw Win Rate | BT Score ($\theta$) | Quality Tier | vs. Anchor (`alpaca-13b`) |
+| :---: | :--- | :---: | :---: | :---: | :---: |
+| 1 | `gpt-4` | 81.2% | `+2.7912` | Top Tier | `+2.791` |
+| 2 | `claude-v1` | 73.3% | `+2.4171` | Top Tier | `+2.417` |
+| 3 | `gpt-3.5-turbo` | 62.8% | `+1.8785` | Top Tier | `+1.879` |
+| 4 | `vicuna-13b` | 49.5% | `+1.2816` | Top Tier | `+1.282` |
+| 5 | `alpaca-13b` | 19.2% | `+0.0000` | Competitive | `+0.000` |
+| 6 | `llama-13b` | 11.9% | `-0.5369` | Below Average | `-0.537` |
+
+### Exhibit 5.4.2: Econometric OLS Length Neutralization & 5-Fold CV (Module 3)
+The linear model $\text{Win\_A} \sim \alpha + \beta \cdot (WC_A - WC_B)$ quantifies systematic length inflation across candidate responses.
+
+* **OLS Regression Equation**: $\text{Win\_A} = 0.4970 + 0.000679 \cdot \Delta \text{WC}$
+* **Slope Coefficient ($\beta$)**: $+0.000679$ ($\text{SE} = 0.000059$, $t$-stat $p = 1.9210 \times 10^{-29} < 0.05$, statistically significant)
+* **In-Sample $R^2$**: `0.0544` (5.44% of win variance explained purely by length differential)
+* **5-Fold Cross-Validation Out-of-Sample $R^2$**: `0.0476`
+* **CV Test Holdout Length Correlation**: $r = -0.0006$ ($p = 0.977$, complete out-of-sample length neutrality)
+
+| Neutralized Rank | Model | Total Games | Raw Win Rate | Raw Rank | Neutralized Residual | Rank Change |
+| :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| 1 | `gpt-4` | 724 | 68.0% | #1 | `+0.22997` | — |
+| 2 | `claude-v1` | 726 | 62.5% | #2 | `+0.18161` | — |
+| 3 | `gpt-3.5-turbo` | 925 | 52.4% | #3 | `+0.10038` | — |
+| 4 | `vicuna-13b` | 741 | 40.9% | #4 | `-0.03270` | — |
+| 5 | `alpaca-13b` | 696 | 16.2% | #5 | `-0.18685` | — |
+| 6 | `llama-13b` | 730 | 10.5% | #6 | `-0.32455` | — |
+
+### Exhibit 5.4.3: Macro Benchmark Synthesis (Baseline vs Mitigated)
+Synthesis across $N = 2,271$ pairwise evaluations for evaluator `gpt-4o-mini`:
+
+| Benchmark Metric | Baseline (Unmitigated) | Calibrated (Dual A/B Swap) | Empirical Impact |
+| :--- | :---: | :---: | :---: |
+| **Human Alignment Cohen's $\kappa$** | `0.330` | `0.330` | Moderate Baseline Alignment |
+| **Human Preference Accuracy** | `56.9%` (`0.569`) | `56.9%` (`0.569`) | Stable Gold Agreement |
+| **Position Order Flip Rate** | `5.0%` (`0.050`) | `0.0%` (`0.000`) | **100.0% Reduction** |
+
+
