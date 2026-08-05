@@ -347,21 +347,21 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
         df_base = fetch_and_process_data(db.get_bind(), judge_model)
         
         if df_base.empty:
-            total_evals = 2271
-            base_kappa = 0.330
-            base_acc = 0.569
-            base_flip = 0.246
+            total_evals = 0
+            base_kappa = 0.0
+            base_acc = 0.0
+            base_flip = 0.0
         else:
             total_evals = len(df_base)
             clean_base = df_base[(df_base["human_choice"] != "Unknown") & (df_base["llm_choice"] != "Unknown")]
             if not clean_base.empty:
                 score = cohen_kappa_score(clean_base["human_choice"], clean_base["llm_choice"])
-                base_kappa = float(score) if not math.isnan(score) else 0.330
+                base_kappa = float(score) if not math.isnan(score) else 0.0
                 matches = (clean_base["human_choice"] == clean_base["llm_choice"]).sum()
                 base_acc = float(matches / len(clean_base))
             else:
-                base_kappa = 0.330
-                base_acc = 0.569
+                base_kappa = 0.0
+                base_acc = 0.0
             
             pos_a = (df_base["position_choice"] == "Position A").sum()
             pos_b = (df_base["position_choice"] == "Position B").sum()
@@ -369,7 +369,7 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             if total_valid_pos > 0:
                 base_flip = float(abs(pos_a - pos_b) / total_valid_pos)
             else:
-                base_flip = 0.246
+                base_flip = 0.0
 
         # 2. Fetch empirical calibrated evaluation records from PostgreSQL
         df_cal = fetch_and_process_data(db.get_bind(), calibrated_model_name)
@@ -391,13 +391,13 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             if total_valid_pos_cal > 0:
                 mit_flip = float(abs(pos_a_cal - pos_b_cal) / total_valid_pos_cal)
             else:
-                mit_flip = 0.000
+                mit_flip = 0.0
             msg = f"Aggregate macro benchmark synthesis across {len(df_cal)} empirical calibrated evaluations."
         else:
             # Fallback when no calibrated records exist yet for this specific judge_model
             cal_kappa = base_kappa
             cal_acc = base_acc
-            mit_flip = 0.000
+            mit_flip = 0.0
             msg = f"Baseline benchmark evaluations loaded ({total_evals} trials). Run python backend/run_batch_calibration.py to accumulate batch calibrated records."
 
         delta_k = round(cal_kappa - base_kappa, 3)
