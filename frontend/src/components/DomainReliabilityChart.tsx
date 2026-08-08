@@ -66,7 +66,7 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
             Human vs AI judge agreement across the 8 MT-Bench topic categories
           </p>
         </div>
-        <span className="text-[11px] font-mono text-teal-600 dark:text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded bg-teal-500/10 font-semibold">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-teal-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-teal-400 dark:border-neutral-700 shadow-none ring-0">
           Landis-Koch Benchmark
         </span>
       </div>

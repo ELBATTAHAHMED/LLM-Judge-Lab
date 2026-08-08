@@ -49,6 +49,11 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
       ? data.self_preference_ratio.toFixed(2)
       : null;
 
+  const diffVal =
+    hasData && data.self_win_rate !== null && data.baseline_win_rate !== null
+      ? (data.self_win_rate - data.baseline_win_rate) * 100
+      : null;
+
   // Scientific interpretation helpers
   const pValueStr =
     data.p_value !== null
@@ -59,39 +64,44 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
 
   const getInterpretationText = () => {
     if (!hasData) return null;
+    const formattedP = pValueStr ? (pValueStr.startsWith('<') ? `p ${pValueStr}` : `p = ${pValueStr}`) : null;
+
     if (isBiased) {
       return (
         <>
-          Binomial test on {data.total_self_matchups.toLocaleString()} asymmetric pairs yields{' '}
-          <strong className="text-neutral-900 dark:text-neutral-200">p = {pValueStr}</strong>,
-          which is{' '}
-          <strong className="text-neutral-900 dark:text-neutral-200">
-            statistically significant
-          </strong>{' '}
-          at α = 0.05. The{' '}
+          Statistically robust positive self-preference bias detected for the{' '}
           <strong className="text-neutral-900 dark:text-neutral-200">
             {data.judge_family.toUpperCase()}
           </strong>{' '}
-          judge family wins{' '}
-          <strong className="text-neutral-900 dark:text-neutral-200">+{diffPct}%</strong> more
-          often when the judge shares its model family, indicating systematic self-preference
-          bias.
+          family ({formattedP}). Binomial test on {data.total_self_matchups.toLocaleString()} asymmetric pairs confirms a{' '}
+          <strong className="text-neutral-900 dark:text-neutral-200">+{diffPct}%</strong> win-rate advantage over rival baseline ({baselinePct}%).
         </>
       );
     }
+
+    if (diffVal !== null && diffVal <= -10) {
+      return (
+        <>
+          No positive self-preference detected. The model exhibits significant{' '}
+          <strong className="text-neutral-900 dark:text-neutral-200">
+            Self-Disfavor Bias ({diffPct}%)
+          </strong>
+          , penalizing answers from its own{' '}
+          <strong className="text-neutral-900 dark:text-neutral-200">
+            {data.judge_family.toUpperCase()}
+          </strong>{' '}
+          family compared to rivals ({baselinePct}% baseline).
+        </>
+      );
+    }
+
     return (
       <>
-        Binomial test on {data.total_self_matchups.toLocaleString()} asymmetric pairs yields{' '}
-        <strong className="text-neutral-900 dark:text-neutral-200">p = {pValueStr}</strong>.
-        This{' '}
-        <strong className="text-neutral-900 dark:text-neutral-200">
-          does not meet the α = 0.05 significance threshold
-        </strong>
-        , indicating no statistically robust self-preference bias for the{' '}
+        No statistically robust self-preference bias detected for the{' '}
         <strong className="text-neutral-900 dark:text-neutral-200">
           {data.judge_family.toUpperCase()}
         </strong>{' '}
-        family. The observed {diffPct && parseFloat(diffPct) >= 0 ? `+${diffPct}%` : `${diffPct}%`}{' '}
+        family ({formattedP}). The observed {diffPct && parseFloat(diffPct) >= 0 ? `+${diffPct}%` : `${diffPct}%`}{' '}
         delta is consistent with random variation.
       </>
     );

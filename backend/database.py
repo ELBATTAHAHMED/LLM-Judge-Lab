@@ -42,3 +42,27 @@ def get_db() -> Generator:
         yield db
     finally:
         db.close()
+
+
+def resync_postgres_sequences(target_engine=engine):
+    """
+    Resynchronizes PostgreSQL PRIMARY KEY auto-increment sequences with the maximum
+    ID currently present in each table. Prevents UniqueViolation primary key errors.
+    """
+    if str(target_engine.url).startswith("sqlite"):
+        return
+
+    tables = ["prompts", "answers", "human_preferences", "judge_decisions"]
+    from sqlalchemy import text
+    try:
+        with target_engine.connect() as conn:
+            with conn.begin():
+                for tbl in tables:
+                    try:
+                        seq_sql = f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), COALESCE((SELECT MAX(id) FROM {tbl}), 0) + 1, false)"
+                        conn.execute(text(seq_sql))
+                    except Exception:
+                        pass
+    except Exception as e:
+        print(f"Warning: Could not resync postgres sequences: {e}")
+

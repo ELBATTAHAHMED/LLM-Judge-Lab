@@ -52,3 +52,7 @@ Desktop.ini
 *.sln
 *.swp
 *.swo
+
+# 6. Generated Data Artifacts
+data/artifacts/
+

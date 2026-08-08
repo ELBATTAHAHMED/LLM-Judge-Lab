@@ -395,13 +395,17 @@ export const LiveLabPage: React.FC = () => {
                     {evalMode === 'ensemble'
                       ? `Running Multi-Judge Voting across ${selectedEnsembleModels.length} Models...`
                       : evalMode === 'calibrated'
-                      ? `[Step ${executionStep || 1}/3] ${
-                          executionStep === 1
-                            ? 'Pass 1 (Order A vs B) In-Flight...'
-                            : executionStep === 2
-                            ? 'Pass 2 (Order B vs A) In-Flight...'
-                            : 'Debiasing Consensus Synthesis...'
-                        }`
+                      ? (mitigationStrategy === 'verbosity_penalized'
+                          ? 'Evaluating Length Penalization Trial...'
+                          : mitigationStrategy === 'none'
+                          ? 'Executing Uncalibrated Baseline Trial...'
+                          : `[Step ${executionStep || 1}/3] ${
+                              executionStep === 1
+                                ? 'Pass 1 (Order A vs B) In-Flight...'
+                                : executionStep === 2
+                                ? 'Pass 2 (Order B vs A) In-Flight...'
+                                : 'Debiasing Consensus Synthesis...'
+                            }`)
                       : 'Executing G-EVAL Verdict...'}
                   </span>
                 </>
@@ -418,7 +422,11 @@ export const LiveLabPage: React.FC = () => {
                     {evalMode === 'ensemble'
                       ? 'Run Ensemble Consensus'
                       : evalMode === 'calibrated'
-                      ? 'Run Dual A/B Swap Calibrated Trial'
+                      ? (mitigationStrategy === 'verbosity_penalized'
+                          ? 'Run Length-Calibrated Evaluation Trial'
+                          : mitigationStrategy === 'none'
+                          ? 'Run Uncalibrated Baseline Trial'
+                          : 'Run Dual A/B Swap Calibrated Trial')
                       : 'Run Standard G-EVAL Evaluation Trial'}
                   </span>
                 </>
@@ -559,43 +567,81 @@ export const LiveLabPage: React.FC = () => {
                 <div className="space-y-4">
                   {/* Calibrated Status & Verdict Badges */}
                   <div className="space-y-2 p-3 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-neutral-500">Position Bias Status:</span>
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                          calibratedResult.position_bias_detected
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                        }`}
-                      >
-                        {calibratedResult.position_bias_detected ? (
-                          <>
-                            <AlertTriangle className="w-3 h-3" />
-                            <span>Bias Detected (Neutralized to TIE)</span>
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>No Position Bias Detected</span>
-                          </>
-                        )}
-                      </span>
-                    </div>
+                    {mitigationStrategy === 'verbosity_penalized' ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-neutral-500">Length Bias Status:</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>Verbosity Penalty Calibrated (&beta; Mitigated)</span>
+                          </span>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-900 text-[11px] font-mono">
-                      <div>
-                        <span className="text-neutral-500 block text-[10px]">Pass 1 (Original Order):</span>
-                        <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                          Winner: Candidate {calibratedResult.original_order_winner}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-neutral-500 block text-[10px]">Pass 2 (Swapped Order):</span>
-                        <span className="font-semibold text-neutral-800 dark:text-neutral-200">
-                          Mapped Winner: Candidate {calibratedResult.swapped_order_winner}
-                        </span>
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-900 text-[11px] font-mono">
+                          <div>
+                            <span className="text-neutral-500 block text-[10px]">Candidate A Word Count:</span>
+                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                              {answerA.trim().split(/\s+/).length} words
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-500 block text-[10px]">Candidate B Word Count:</span>
+                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                              {answerB.trim().split(/\s+/).length} words
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : mitigationStrategy === 'none' ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-neutral-500">Evaluation Protocol:</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-neutral-100 text-neutral-600 dark:bg-neutral-800/50 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700">
+                            <span>Uncalibrated Baseline</span>
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-mono text-neutral-500">Position Bias Status:</span>
+                          <span
+                            className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                              calibratedResult.position_bias_detected
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            }`}
+                          >
+                            {calibratedResult.position_bias_detected ? (
+                              <>
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>Bias Detected (Neutralized to TIE)</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>No Position Bias Detected</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-900 text-[11px] font-mono">
+                          <div>
+                            <span className="text-neutral-500 block text-[10px]">Pass 1 (Original Order):</span>
+                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                              Winner: Candidate {calibratedResult.original_order_winner}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-neutral-500 block text-[10px]">Pass 2 (Swapped Order):</span>
+                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                              Mapped Winner: Candidate {calibratedResult.swapped_order_winner}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div className="pt-2 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
                       <span className="text-xs font-mono font-semibold text-neutral-700 dark:text-neutral-300">
@@ -615,7 +661,11 @@ export const LiveLabPage: React.FC = () => {
                       <span>Empirical Debiasing Status:</span>
                     </span>
                     <span className="font-semibold">
-                      {calibratedResult.position_bias_detected
+                      {mitigationStrategy === 'verbosity_penalized'
+                        ? 'Length Bias Penalization Injected into Judge Prompt'
+                        : mitigationStrategy === 'none'
+                        ? 'Uncalibrated Single-Pass Baseline Evaluation'
+                        : calibratedResult.position_bias_detected
                         ? 'Position Inconsistency Resolved via Order Inversion'
                         : 'Order Invariance Verified (Consensus Winner)'}
                     </span>
@@ -624,10 +674,22 @@ export const LiveLabPage: React.FC = () => {
                   {/* Detailed Auditable Reasoning Inspector */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500">
-                      <span>Dual-Pass Auditable Reasoning Narrative</span>
+                      <span>
+                        {mitigationStrategy === 'verbosity_penalized'
+                          ? 'Length-Calibrated Reasoning Narrative'
+                          : mitigationStrategy === 'none'
+                          ? 'Uncalibrated Single-Pass Reasoning Narrative'
+                          : 'Dual-Pass Auditable Reasoning Narrative'}
+                      </span>
                       <span className="flex items-center gap-1 text-[10px] text-teal-600 dark:text-teal-400">
                         <Sparkles className="w-3 h-3" />
-                        Dual A/B Active
+                        <span>
+                          {mitigationStrategy === 'verbosity_penalized'
+                            ? 'Length Penalty Active'
+                            : mitigationStrategy === 'none'
+                            ? 'Baseline Mode'
+                            : 'Dual A/B Active'}
+                        </span>
                       </span>
                     </div>
 
@@ -691,7 +753,19 @@ export const LiveLabPage: React.FC = () => {
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-500 font-mono flex items-center justify-between mt-4 flex-shrink-0">
               <span>Sampling Temp: $T=0.0$</span>
-              <span>Mode: {evalMode === 'ensemble' ? 'Multi-Judge Voting Active' : evalMode === 'calibrated' ? 'Dual A/B Swap Active' : 'Single Pass G-EVAL'}</span>
+              <span>
+                Mode: {
+                  evalMode === 'ensemble'
+                    ? 'Multi-Judge Voting Active'
+                    : evalMode === 'calibrated'
+                    ? (mitigationStrategy === 'verbosity_penalized'
+                        ? 'Length Penalization Active'
+                        : mitigationStrategy === 'none'
+                        ? 'Uncalibrated Baseline Active'
+                        : 'Dual A/B Swap Active')
+                    : 'Single Pass G-EVAL'
+                }
+              </span>
             </div>
           </div>
         </div>

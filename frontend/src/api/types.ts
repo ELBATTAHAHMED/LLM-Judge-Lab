@@ -4,7 +4,6 @@ export interface LeaderboardItem {
   bt_score: number;
   quality_tier: string;
   neutralized_score: number;
-  rank_change: number;
 }
 
 export interface VerbosityDataPoint {
@@ -156,6 +155,13 @@ export interface SelfPreferenceResponse {
   statistically_significant: boolean;
 }
 
+export interface CategoryBreakdownItem {
+  category: string;
+  baseline_kappa: number;
+  calibrated_kappa: number;
+  delta_kappa: number;
+}
+
 export interface MacroBenchmarkResponse {
   judge_model: string;
   total_evaluations: number;
@@ -168,6 +174,10 @@ export interface MacroBenchmarkResponse {
   baseline_flip_rate: number;
   mitigated_flip_rate: number;
   flip_rate_reduction: number;
+  baseline_length_bias?: number;
+  mitigated_length_bias?: number;
+  length_bias_reduction?: number;
+  category_breakdown?: CategoryBreakdownItem[];
   message: string;
 }
 

@@ -328,21 +328,26 @@ def main() -> None:
         )
 
     # 5. Save CSV (model specific)
+    CSV_DIR = ROOT_DIR / "data" / "artifacts" / "csv"
+    REPORTS_DIR = ROOT_DIR / "data" / "artifacts" / "reports"
+    CSV_DIR.mkdir(parents=True, exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
     sanitized_model = judge_model.replace("/", "_")
-    model_csv_path = ROOT_DIR / f"bradley_terry_scores_{sanitized_model}.csv"
+    model_csv_path = CSV_DIR / f"bradley_terry_scores_{sanitized_model}.csv"
     results.to_csv(model_csv_path, index=False)
-    print(f"\nSaved: '{model_csv_path.name}' OK")
+    print(f"\nSaved: '{model_csv_path}' OK")
 
     if judge_model == "gpt-4o-mini":
-        default_csv_path = ROOT_DIR / "bradley_terry_scores.csv"
+        default_csv_path = CSV_DIR / "bradley_terry_scores.csv"
         results.to_csv(default_csv_path, index=False)
-        print(f"Saved: 'bradley_terry_scores.csv' OK (backwards compatibility)")
+        print(f"Saved: '{default_csv_path}' OK (backwards compatibility)")
 
     # 6. Save Markdown report
     report_md = build_report(results, log_likelihood, total_decisions=len(df))
-    md_path = ROOT_DIR / "bradley_terry_report.md"
+    md_path = REPORTS_DIR / "bradley_terry_report.md"
     md_path.write_text(report_md, encoding="utf-8")
-    print(f"Saved: 'bradley_terry_report.md' OK")
+    print(f"Saved: '{md_path}' OK")
     print("=" * 70)
 
 

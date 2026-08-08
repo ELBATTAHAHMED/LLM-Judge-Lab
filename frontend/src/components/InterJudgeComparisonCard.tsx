@@ -130,7 +130,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
           Calculating inter-judge Cohen's Kappa score...
         </div>
       ) : error ? (
-        <div className="p-4 rounded bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-mono">
+        <div className="p-4 rounded bg-red-950/40 border border-red-800/40 text-red-600 dark:text-red-400 text-xs font-mono">
           {error}
         </div>
       ) : (

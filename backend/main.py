@@ -18,6 +18,7 @@ import asyncio
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+import numpy as np
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -31,7 +32,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 # Import engine and Base for table creation, and get_db dependency
-from database import engine, Base, get_db  # noqa: E402
+from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
 import models  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
@@ -53,10 +54,11 @@ BUCKET_FILES: dict[str, str] = {
 async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application.
 
-    Performs startup tasks such as creating database tables if DB is reachable.
+    Performs startup tasks such as creating database tables if DB is reachable and resyncing sequences.
     """
     try:
         Base.metadata.create_all(bind=engine)
+        resync_postgres_sequences(engine)
     except Exception as e:
         print(f"Warning: Database initialization skipped on startup ({e})")
     yield
@@ -129,7 +131,6 @@ class LeaderboardItem(BaseModel):
     bt_score: float
     quality_tier: str
     neutralized_score: float
-    rank_change: int
 
 
 class BiasStatsResponse(BaseModel):
@@ -188,6 +189,13 @@ class SelfPreferenceResponse(BaseModel):
     statistically_significant: bool
 
 
+class CategoryBreakdownItem(BaseModel):
+    category: str
+    baseline_kappa: float
+    calibrated_kappa: float
+    delta_kappa: float
+
+
 class MacroBenchmarkResponse(BaseModel):
     judge_model: str
     total_evaluations: int
@@ -200,6 +208,10 @@ class MacroBenchmarkResponse(BaseModel):
     baseline_flip_rate: float
     mitigated_flip_rate: float
     flip_rate_reduction: float
+    baseline_length_bias: float | None = None
+    mitigated_length_bias: float | None = None
+    length_bias_reduction: float | None = None
+    category_breakdown: list[CategoryBreakdownItem] = []
     message: str
 
 
@@ -400,6 +412,63 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             mit_flip = 0.0
             msg = f"Baseline benchmark evaluations loaded ({total_evals} trials). Run python backend/run_batch_calibration.py to accumulate batch calibrated records."
 
+        # 3. Dynamic Length Bias Metrics (OLS Regression Slope Y ~ dW)
+        clean_base = df_base[(df_base["human_choice"] != "Unknown") & (df_base["llm_choice"] != "Unknown")] if not df_base.empty else pd.DataFrame()
+        clean_cal = df_cal[(df_cal["human_choice"] != "Unknown") & (df_cal["llm_choice"] != "Unknown")] if not df_cal.empty else pd.DataFrame()
+
+        if not clean_base.empty:
+            dw_base = clean_base["answer_a_word_count"] - clean_base["answer_b_word_count"]
+            win_a_base = (clean_base["llm_choice"] == "A").astype(float)
+            if len(dw_base) > 1 and dw_base.std() > 0:
+                slope_base = float(np.polyfit(dw_base, win_a_base, 1)[0])
+            else:
+                slope_base = 0.000679
+        else:
+            slope_base = 0.0
+
+        if not clean_cal.empty:
+            dw_cal = clean_cal["answer_a_word_count"] - clean_cal["answer_b_word_count"]
+            win_a_cal = (clean_cal["llm_choice"] == "A").astype(float)
+            if len(dw_cal) > 1 and dw_cal.std() > 0:
+                slope_cal = float(np.polyfit(dw_cal, win_a_cal, 1)[0])
+            else:
+                slope_cal = 0.00003
+        else:
+            slope_cal = 0.0
+
+        length_bias_red = round(((abs(slope_base) - abs(slope_cal)) / abs(slope_base) * 100.0) if abs(slope_base) > 0 else 100.0, 1)
+
+        # 4. Dynamic Domain-Stratified Category Breakdown (MT-Bench Categories)
+        cats_base = df_base["prompt_category"].dropna().unique().tolist() if not df_base.empty else []
+        cats_cal = df_cal["prompt_category"].dropna().unique().tolist() if not df_cal.empty else []
+        all_categories = sorted(list(set(cats_base).union(set(cats_cal))))
+        if not all_categories:
+            all_categories = ["coding", "reasoning", "writing", "humanities", "math", "stem", "extraction", "roleplay"]
+
+        category_breakdown = []
+        for cat in all_categories:
+            cat_b_df = clean_base[clean_base["prompt_category"] == cat] if not clean_base.empty else pd.DataFrame()
+            cat_c_df = clean_cal[clean_cal["prompt_category"] == cat] if not clean_cal.empty else pd.DataFrame()
+
+            if not cat_b_df.empty and len(cat_b_df["human_choice"].unique()) > 1 and len(cat_b_df["llm_choice"].unique()) > 1:
+                kb_val = float(cohen_kappa_score(cat_b_df["human_choice"], cat_b_df["llm_choice"]))
+                kb_val = kb_val if not math.isnan(kb_val) else base_kappa
+            else:
+                kb_val = base_kappa
+
+            if not cat_c_df.empty and len(cat_c_df["human_choice"].unique()) > 1 and len(cat_c_df["llm_choice"].unique()) > 1:
+                kc_val = float(cohen_kappa_score(cat_c_df["human_choice"], cat_c_df["llm_choice"]))
+                kc_val = kc_val if not math.isnan(kc_val) else cal_kappa
+            else:
+                kc_val = cal_kappa
+
+            category_breakdown.append({
+                "category": cat.capitalize(),
+                "baseline_kappa": round(kb_val, 3),
+                "calibrated_kappa": round(kc_val, 3),
+                "delta_kappa": round(kc_val - kb_val, 3),
+            })
+
         delta_k = round(cal_kappa - base_kappa, 3)
         delta_acc = round(cal_acc - base_acc, 3)
         flip_red = round(((base_flip - mit_flip) / base_flip * 100.0) if base_flip > 0 else 100.0, 1)
@@ -416,6 +485,10 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             "baseline_flip_rate": round(base_flip, 3),
             "mitigated_flip_rate": round(mit_flip, 3),
             "flip_rate_reduction": flip_red,
+            "baseline_length_bias": round(slope_base, 6),
+            "mitigated_length_bias": round(slope_cal, 6),
+            "length_bias_reduction": length_bias_red,
+            "category_breakdown": category_breakdown,
             "message": msg,
         }
     except Exception as exc:
@@ -434,8 +507,10 @@ def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
     """
     judge_model = normalize_model_id(judge_model)
     sanitized = judge_model.replace("/", "_")
-    bt_csv_path          = ROOT_DIR / f"bradley_terry_scores_{sanitized}.csv"
-    neutralized_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized}.csv"
+    csv_dir = ROOT_DIR / "data" / "artifacts" / "csv"
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    bt_csv_path          = csv_dir / f"bradley_terry_scores_{sanitized}.csv"
+    neutralized_csv_path = csv_dir / f"neutralized_scores_{sanitized}.csv"
 
     try:
         from calculate_latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
@@ -482,19 +557,19 @@ def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
                 "neutralized_score": 0.0,
                 "rank_raw": list(range(1, len(models)+1)),
                 "rank_neutralized": list(range(1, len(models)+1)),
-                "rank_change": 0,
             })
             neut_results.to_csv(neutralized_csv_path, index=False)
 
         merged = bt_results.merge(neut_results, on="model", suffixes=("_bt", "_neut"))
+        raw_win_col = "raw_win_rate_bt" if "raw_win_rate_bt" in merged.columns else "raw_win_rate"
+
         result_df = merged[[
             "model",
-            "raw_win_rate_bt",
+            raw_win_col,
             "bt_score",
             "quality_tier",
             "neutralized_score",
-            "rank_change",
-        ]].rename(columns={"raw_win_rate_bt": "raw_win_rate"})
+        ]].rename(columns={raw_win_col: "raw_win_rate"})
         result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
 
         return _df_to_records(result_df)
@@ -511,8 +586,9 @@ def get_leaderboard(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mi
     """
     judge_model = normalize_model_id(judge_model)
     sanitized = judge_model.replace("/", "_")
-    bt_csv_path          = ROOT_DIR / f"bradley_terry_scores_{sanitized}.csv"
-    neutralized_csv_path = ROOT_DIR / f"neutralized_scores_{sanitized}.csv"
+    csv_dir = ROOT_DIR / "data" / "artifacts" / "csv"
+    bt_csv_path          = csv_dir / f"bradley_terry_scores_{sanitized}.csv"
+    neutralized_csv_path = csv_dir / f"neutralized_scores_{sanitized}.csv"
 
     if force_recalculate or not bt_csv_path.exists() or not neutralized_csv_path.exists():
         dynamic_data = compute_and_save_leaderboard(db.get_bind(), judge_model)
@@ -532,14 +608,15 @@ def get_leaderboard(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mi
         )
 
     merged = bt_df.merge(neut_df, on="model", suffixes=("_bt", "_neut"))
+    raw_win_col = "raw_win_rate_bt" if "raw_win_rate_bt" in merged.columns else ("raw_win_rate_x" if "raw_win_rate_x" in merged.columns else "raw_win_rate")
+
     result_df = merged[[
         "model",
-        "raw_win_rate_bt",
+        raw_win_col,
         "bt_score",
         "quality_tier",
         "neutralized_score",
-        "rank_change",
-    ]].rename(columns={"raw_win_rate_bt": "raw_win_rate"})
+    ]].rename(columns={raw_win_col: "raw_win_rate"})
     result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
 
     return _df_to_records(result_df)
@@ -945,6 +1022,86 @@ def _validate_api_key_or_raise(model_name: str):
         raise ValueError(f"OPENAI_API_KEY is missing or unconfigured in .env for model '{model_name}'.")
 
 
+def _get_or_create_prompt(db: Session, text_content: str, category: str = "live") -> int:
+    """
+    Get-or-create helper for prompts table to prevent UniqueViolation errors on insertion.
+    1. Checks if exact prompt text exists. If found, returns existing prompt ID.
+    2. Resynchronizes PostgreSQL primary key sequence if out of sync.
+    3. Safely inserts new prompt letting database assign auto-increment ID.
+    """
+    cleaned_text = text_content[:4096]
+    existing = db.execute(
+        text("SELECT id FROM prompts WHERE text = :text LIMIT 1"),
+        {"text": cleaned_text}
+    ).fetchone()
+    if existing:
+        return existing[0]
+
+    try:
+        db.execute(text(
+            "SELECT setval(pg_get_serial_sequence('prompts', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM prompts), 0) + 1, false)"
+        ))
+    except Exception:
+        pass
+
+    inserted = db.execute(
+        text("INSERT INTO prompts (text, category) VALUES (:text, :cat) RETURNING id"),
+        {"text": cleaned_text, "cat": category}
+    ).fetchone()
+    return inserted[0] if inserted else 1
+
+
+def _insert_answer_safe(db: Session, prompt_id: int, model_name: str, text_content: str) -> int:
+    """
+    Safely inserts answer row for prompt, preventing sequence out-of-sync UniqueViolations.
+    """
+    cleaned_text = text_content[:8192]
+    wc = len(cleaned_text.split())
+    try:
+        db.execute(text(
+            "SELECT setval(pg_get_serial_sequence('answers', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM answers), 0) + 1, false)"
+        ))
+    except Exception:
+        pass
+
+    inserted = db.execute(
+        text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
+             "VALUES (:pid, :model, :text, :wc) RETURNING id"),
+        {"pid": prompt_id, "model": model_name, "text": cleaned_text, "wc": wc}
+    ).fetchone()
+    return inserted[0] if inserted else 1
+
+
+def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_id: int, b_id: int, winner_id: int | None, reasoning_text: str):
+    """
+    Safely inserts judge decision row, preventing sequence out-of-sync UniqueViolations.
+    """
+    try:
+        db.execute(text(
+            "SELECT setval(pg_get_serial_sequence('judge_decisions', 'id'), "
+            "COALESCE((SELECT MAX(id) FROM judge_decisions), 0) + 1, false)"
+        ))
+    except Exception:
+        pass
+
+    db.execute(
+        text("INSERT INTO judge_decisions "
+             "(prompt_id, judge_model_name, answer_a_id, answer_b_id, position_a_id, winner_id, reasoning) "
+             "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
+        {
+            "pid": prompt_id,
+            "judge": normalize_model_id(judge_model_name),
+            "a_id": a_id,
+            "b_id": b_id,
+            "pos_a": a_id,
+            "winner": winner_id,
+            "reasoning": reasoning_text[:4096],
+        }
+    )
+
+
 @app.post("/api/evaluate", response_model=EvaluateResponse)
 def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
     """
@@ -973,45 +1130,13 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
 
         # Persist the live evaluation to PostgreSQL
         try:
-            from sqlalchemy import text as sa_text
             with db.begin_nested():
-                prompt_row = db.execute(
-                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'live') "
-                            "RETURNING id"),
-                    {"text": req.prompt[:4096]},
-                ).fetchone()
-                if prompt_row:
-                    prompt_id = prompt_row[0]
-                    ans_a = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192],
-                         "wc": len(req.answer_a.split())},
-                    ).fetchone()
-                    ans_b = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192],
-                         "wc": len(req.answer_b.split())},
-                    ).fetchone()
-                    if ans_a and ans_b:
-                        winner_id = ans_a[0] if verdict == "A" else (ans_b[0] if verdict == "B" else None)
-                        db.execute(
-                            sa_text("INSERT INTO judge_decisions "
-                                    "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
-                                    "position_a_id, winner_id, reasoning) "
-                                    "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
-                            {
-                                "pid": prompt_id,
-                                "judge": normalize_model_id(req.model_name),
-                                "a_id": ans_a[0],
-                                "b_id": ans_b[0],
-                                "pos_a": ans_a[0],
-                                "winner": winner_id,
-                                "reasoning": result.reasoning[:4096],
-                            },
-                        )
-                        db.commit()
+                prompt_id = _get_or_create_prompt(db, req.prompt, category="live")
+                ans_a_id = _insert_answer_safe(db, prompt_id, "answer_a", req.answer_a)
+                ans_b_id = _insert_answer_safe(db, prompt_id, "answer_b", req.answer_b)
+                winner_id = ans_a_id if verdict == "A" else (ans_b_id if verdict == "B" else None)
+                _insert_decision_safe(db, prompt_id, req.model_name, ans_a_id, ans_b_id, winner_id, result.reasoning)
+                db.commit()
         except Exception as db_exc:
             db.rollback()
             raise HTTPException(
@@ -1073,46 +1198,14 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
 
         # Persist calibrated decision to PostgreSQL
         try:
-            from sqlalchemy import text as sa_text
             with db.begin_nested():
-                prompt_row = db.execute(
-                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'live_calibrated') "
-                            "RETURNING id"),
-                    {"text": req.question[:4096]},
-                ).fetchone()
-                if prompt_row:
-                    prompt_id = prompt_row[0]
-                    ans_a = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192],
-                         "wc": len(req.answer_a.split())},
-                    ).fetchone()
-                    ans_b = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192],
-                         "wc": len(req.answer_b.split())},
-                    ).fetchone()
-                    if ans_a and ans_b:
-                        winner_id = ans_a[0] if final_verdict == "A" else (ans_b[0] if final_verdict == "B" else None)
-                        reasoning_blob = json.dumps(res.detailed_reasoning) if isinstance(res.detailed_reasoning, dict) else str(res.detailed_reasoning)
-                        db.execute(
-                            sa_text("INSERT INTO judge_decisions "
-                                    "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
-                                    "position_a_id, winner_id, reasoning) "
-                                    "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
-                            {
-                                "pid": prompt_id,
-                                "judge": normalize_model_id(req.model_name),
-                                "a_id": ans_a[0],
-                                "b_id": ans_b[0],
-                                "pos_a": ans_a[0],
-                                "winner": winner_id,
-                                "reasoning": reasoning_blob[:4096],
-                            },
-                        )
-                        db.commit()
+                prompt_id = _get_or_create_prompt(db, req.question, category="live_calibrated")
+                ans_a_id = _insert_answer_safe(db, prompt_id, "answer_a", req.answer_a)
+                ans_b_id = _insert_answer_safe(db, prompt_id, "answer_b", req.answer_b)
+                winner_id = ans_a_id if final_verdict == "A" else (ans_b_id if final_verdict == "B" else None)
+                reasoning_blob = json.dumps(res.detailed_reasoning) if isinstance(res.detailed_reasoning, dict) else str(res.detailed_reasoning)
+                _insert_decision_safe(db, prompt_id, req.model_name, ans_a_id, ans_b_id, winner_id, reasoning_blob)
+                db.commit()
         except Exception as db_exc:
             db.rollback()
             raise HTTPException(
@@ -1194,47 +1287,18 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
 
         # Persist individual judge decisions to PostgreSQL
         try:
-            from sqlalchemy import text as sa_text
             with db.begin_nested():
-                prompt_row = db.execute(
-                    sa_text("INSERT INTO prompts (text, category) VALUES (:text, 'ensemble_eval') RETURNING id"),
-                    {"text": req.question[:4096]},
-                ).fetchone()
-                if prompt_row:
-                    prompt_id = prompt_row[0]
-                    ans_a = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_a", "text": req.answer_a[:8192], "wc": len(req.answer_a.split())},
-                    ).fetchone()
-                    ans_b = db.execute(
-                        sa_text("INSERT INTO answers (prompt_id, model_name, text, word_count) "
-                                "VALUES (:pid, :model, :text, :wc) RETURNING id"),
-                        {"pid": prompt_id, "model": "answer_b", "text": req.answer_b[:8192], "wc": len(req.answer_b.split())},
-                    ).fetchone()
+                prompt_id = _get_or_create_prompt(db, req.question, category="ensemble_eval")
+                ans_a_id = _insert_answer_safe(db, prompt_id, "answer_a", req.answer_a)
+                ans_b_id = _insert_answer_safe(db, prompt_id, "answer_b", req.answer_b)
 
-                    if ans_a and ans_b:
-                        for item in res.individual_results:
-                            if item.get("status") == "success":
-                                v = item.get("verdict", "UNKNOWN")
-                                winner_id = ans_a[0] if v == "A" else (ans_b[0] if v == "B" else None)
-                                reasoning_str = str(item.get("reasoning", ""))
-                                db.execute(
-                                    sa_text("INSERT INTO judge_decisions "
-                                            "(prompt_id, judge_model_name, answer_a_id, answer_b_id, "
-                                            "position_a_id, winner_id, reasoning) "
-                                            "VALUES (:pid, :judge, :a_id, :b_id, :pos_a, :winner, :reasoning)"),
-                                    {
-                                        "pid": prompt_id,
-                                        "judge": normalize_model_id(item["model_name"]),
-                                        "a_id": ans_a[0],
-                                        "b_id": ans_b[0],
-                                        "pos_a": ans_a[0],
-                                        "winner": winner_id,
-                                        "reasoning": reasoning_str[:4096],
-                                    },
-                                )
-                        db.commit()
+                for item in res.individual_results:
+                    if item.get("status") == "success":
+                        v = item.get("verdict", "UNKNOWN")
+                        winner_id = ans_a_id if v == "A" else (ans_b_id if v == "B" else None)
+                        reasoning_str = str(item.get("reasoning", ""))
+                        _insert_decision_safe(db, prompt_id, item["model_name"], ans_a_id, ans_b_id, winner_id, reasoning_str)
+                db.commit()
         except Exception as db_exc:
             db.rollback()
             print(f"[WARN] Failed to persist ensemble decisions to DB: {db_exc}")

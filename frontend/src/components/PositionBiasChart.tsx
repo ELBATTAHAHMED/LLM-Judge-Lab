@@ -52,7 +52,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             </p>
           </div>
           {data && (
-            <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900 font-semibold">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-400 dark:border-neutral-700 shadow-none ring-0">
               &chi;&sup2; = {chi2Stat.toFixed(2)} (df=1)
             </span>
           )}

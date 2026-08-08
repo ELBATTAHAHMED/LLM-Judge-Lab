@@ -62,26 +62,6 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
     return 'Open-Source';
   };
 
-  const rawRankMap = useMemo(() => {
-    if (!data) return new Map<string, number>();
-    const sortedRaw = [...data].sort((a, b) => b.raw_win_rate - a.raw_win_rate);
-    const map = new Map<string, number>();
-    sortedRaw.forEach((item, index) => {
-      map.set(item.model, index + 1);
-    });
-    return map;
-  }, [data]);
-
-  const calibratedRankMap = useMemo(() => {
-    if (!data) return new Map<string, number>();
-    const sortedCalibrated = [...data].sort((a, b) => b.bt_score - a.bt_score);
-    const map = new Map<string, number>();
-    sortedCalibrated.forEach((item, index) => {
-      map.set(item.model, index + 1);
-    });
-    return map;
-  }, [data]);
-
   const filteredData = useMemo(() => {
     if (providerFilter === 'All') return sortedData;
     return sortedData.filter((item) => getProvider(item.model) === providerFilter);
@@ -89,7 +69,7 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
 
   const handleExportCSV = () => {
     if (!filteredData || filteredData.length === 0) return;
-    const headers = ['Rank', 'Model', 'Provider', 'Raw Win Rate', 'BT Score', 'Neutralized Score', 'Quality Tier', 'Rank Change'];
+    const headers = ['Rank', 'Model', 'Provider', 'Raw Win Rate', 'BT Score', 'Neutralized Score', 'Quality Tier'];
     const rows = filteredData.map((item, idx) => [
       idx + 1,
       `"${item.model}"`,
@@ -98,7 +78,6 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
       item.bt_score.toFixed(5),
       item.neutralized_score.toFixed(5),
       `"${item.quality_tier}"`,
-      item.rank_change,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -111,42 +90,35 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
     document.body.removeChild(link);
   };
 
-  const handleExportJSON = () => {
-    if (!filteredData || filteredData.length === 0) return;
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(filteredData, null, 2)
-    )}`;
-    const link = document.createElement('a');
-    link.setAttribute('href', jsonString);
-    link.setAttribute('download', 'leaderboard_data.json');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const getTierBadge = (tier: string) => {
     const t = (tier || '').toLowerCase();
 
     if (t.includes('top')) {
       return (
-        <div className="inline-flex items-center gap-1.5 border-l-2 border-rose-800/40 dark:border-rose-500/40 pl-2 py-0.5 font-sans">
-          <Award className="w-3.5 h-3.5 text-rose-700/80 dark:text-rose-400/80" />
-          <span className="font-mono text-[10px] uppercase tracking-widest font-bold text-rose-900/90 dark:text-rose-300/90">Top Tier</span>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-1.5 border-l-2 border-rose-800/40 dark:border-rose-500/40 pl-2 py-0.5 font-sans">
+            <Award className="w-3.5 h-3.5 text-rose-700/80 dark:text-rose-400/80" />
+            <span className="font-mono text-[10px] uppercase tracking-widest font-bold text-rose-900/90 dark:text-rose-300/90">Top Tier</span>
+          </div>
         </div>
       );
     }
     if (t.includes('comp')) {
       return (
-        <div className="inline-flex items-center gap-1.5 border-l-2 border-teal-800/40 dark:border-teal-500/30 pl-2 py-0.5 font-sans">
-          <Activity className="w-3 h-3 text-teal-700/70 dark:text-teal-400/70" />
-          <span className="font-mono text-[10px] uppercase tracking-widest font-medium text-teal-800/80 dark:text-teal-300/80">Competitive</span>
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-1.5 border-l-2 border-teal-800/40 dark:border-teal-500/30 pl-2 py-0.5 font-sans">
+            <Activity className="w-3 h-3 text-teal-700/70 dark:text-teal-400/70" />
+            <span className="font-mono text-[10px] uppercase tracking-widest font-medium text-teal-800/80 dark:text-teal-300/80">Competitive</span>
+          </div>
         </div>
       );
     }
     return (
-      <div className="inline-flex items-center gap-1.5 border-l-2 border-neutral-300 dark:border-neutral-800 pl-2 py-0.5 font-sans">
-        <Minus className="w-3 h-3 text-neutral-400 dark:text-neutral-600" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 dark:text-neutral-500">Below Average</span>
+      <div className="flex justify-center">
+        <div className="inline-flex items-center gap-1.5 border-l-2 border-neutral-300 dark:border-neutral-800 pl-2 py-0.5 font-sans">
+          <Minus className="w-3 h-3 text-neutral-400 dark:text-neutral-600" />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 dark:text-neutral-500">Below Average</span>
+        </div>
       </div>
     );
   };
@@ -236,15 +208,6 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
             <span>Export CSV</span>
           </button>
 
-          <button
-            onClick={handleExportJSON}
-            disabled={!filteredData || filteredData.length === 0}
-            className="flex items-center space-x-1.5 px-2.5 py-1 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs disabled:opacity-40"
-          >
-            <Download className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
-            <span>Download JSON</span>
-          </button>
-
           {onRecalculate && (
             <button
               onClick={onRecalculate}
@@ -286,37 +249,36 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
       ) : (
         /* Flat Borderless Table with Subtle Top/Bottom Row Borders & Micro-Interactions */
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="border-y border-neutral-200 dark:border-neutral-800 text-neutral-500 dark:text-neutral-500 font-medium select-none font-mono">
-                <th className="py-2.5 px-3 w-12">Rank</th>
+              <tr className="border-y border-neutral-200 dark:border-neutral-800 text-xs font-semibold text-neutral-500 uppercase tracking-wider select-none font-mono">
+                <th className="py-3 px-4 text-left w-12">Rank</th>
                 <th
                   onClick={() => handleSort('model')}
-                  className="py-2.5 px-3 cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
+                  className="py-3 px-4 text-left cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
                 >
                   Model {renderSortIndicator('model')}
                 </th>
-                <th className="py-2.5 px-3 text-center">Provider</th>
+                <th className="py-3 px-4 text-left">Provider</th>
                 <th
                   onClick={() => handleSort('raw_win_rate')}
-                  className="py-2.5 px-3 text-right cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
+                  className="py-3 px-4 text-center cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
                 >
                   Raw Win Rate {renderSortIndicator('raw_win_rate')}
                 </th>
                 <th
                   onClick={() => handleSort('bt_score')}
-                  className="py-2.5 px-3 text-right cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
+                  className="py-3 px-4 text-center cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
                 >
                   BT Score (&theta;) {renderSortIndicator('bt_score')}
                 </th>
                 <th
                   onClick={() => handleSort('neutralized_score')}
-                  className="py-2.5 px-3 text-right cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
+                  className="py-3 px-4 text-center cursor-pointer hover:text-neutral-900 dark:hover:text-neutral-200 transition-colors group"
                 >
                   Neutralized Score {renderSortIndicator('neutralized_score')}
                 </th>
-                <th className="py-2.5 px-3 text-center">Tier</th>
-                <th className="py-2.5 px-3 text-center">Rank &Delta;</th>
+                <th className="py-3 px-4 text-center">Tier</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800/70 text-neutral-800 dark:text-neutral-300">
@@ -324,29 +286,26 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
                 filteredData.map((item, idx) => {
                   const provider = getProvider(item.model);
                   const winPct = (item.raw_win_rate * 100).toFixed(1);
-                  const rawRank = rawRankMap.get(item.model) || (idx + 1);
-                  const calibratedRank = calibratedRankMap.get(item.model) || (idx + 1);
-                  const delta = item.rank_change !== undefined && item.rank_change !== 0
-                    ? item.rank_change
-                    : (rawRank - calibratedRank);
 
                   return (
                     <tr
                       key={item.model}
                       className="hover:bg-neutral-100 dark:hover:bg-neutral-800/40 transition-colors duration-150"
                     >
-                      <td className="py-3 px-3 font-mono text-[13px] tabular-nums tracking-tight font-semibold text-neutral-700 dark:text-neutral-300">
+                      <td className="py-3 px-4 text-left font-mono text-xs tabular-nums tracking-tight font-semibold text-neutral-700 dark:text-neutral-300">
                         #{idx + 1}
                       </td>
-                      <td className="py-3 px-3 font-sans font-medium text-neutral-900 dark:text-neutral-100 flex items-center space-x-2">
-                        <ModelIcon modelName={item.model} className="w-4 h-4 shrink-0" />
-                        <span>{formatModelName(item.model)}</span>
+                      <td className="py-3 px-4 text-left font-sans text-xs">
+                        <div className="flex items-center justify-start space-x-2 font-medium text-neutral-900 dark:text-neutral-100">
+                          <ModelIcon modelName={item.model} className="w-4 h-4 shrink-0" />
+                          <span>{formatModelName(item.model)}</span>
+                        </div>
                       </td>
-                      <td className="py-3 px-3 text-center text-neutral-600 dark:text-neutral-400 font-sans text-[11px]">
+                      <td className="py-3 px-4 text-left text-neutral-600 dark:text-neutral-400 font-sans text-xs">
                         {provider}
                       </td>
                       <td
-                        className={`py-3 px-3 text-right font-mono text-[13px] tabular-nums tracking-tight ${
+                        className={`py-3 px-4 text-center font-mono text-xs tabular-nums tracking-tight ${
                           viewMode === 'raw'
                             ? 'text-neutral-900 dark:text-neutral-100 font-bold'
                             : 'text-neutral-500 dark:text-neutral-400'
@@ -355,7 +314,7 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
                         {winPct}%
                       </td>
                       <td
-                        className={`py-3 px-3 text-right font-mono text-[13px] tabular-nums tracking-tight font-semibold ${
+                        className={`py-3 px-4 text-center font-mono text-xs tabular-nums tracking-tight font-semibold ${
                           viewMode === 'calibrated'
                             ? 'text-neutral-900 dark:text-neutral-100 font-bold'
                             : 'text-neutral-500 dark:text-neutral-400'
@@ -366,7 +325,7 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
                           : item.bt_score.toFixed(4)}
                       </td>
                       <td
-                        className={`py-3 px-3 text-right font-mono text-[13px] tabular-nums tracking-tight ${
+                        className={`py-3 px-4 text-center font-mono text-xs tabular-nums tracking-tight ${
                           viewMode === 'calibrated'
                             ? 'text-neutral-700 dark:text-neutral-200 font-medium'
                             : 'text-neutral-400 dark:text-neutral-500'
@@ -376,28 +335,15 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
                           ? `+${item.neutralized_score.toFixed(5)}`
                           : item.neutralized_score.toFixed(5)}
                       </td>
-                      <td className="py-3 px-3 text-center font-sans">
+                      <td className="py-3 px-4 text-center font-sans text-xs">
                         {getTierBadge(item.quality_tier)}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono text-[13px] tabular-nums tracking-tight">
-                        {delta > 0 ? (
-                          <span className="text-emerald-400 font-mono text-[11px] font-medium inline-flex items-center justify-center gap-0.5">
-                            <ArrowUp className="w-3 h-3" /> +{delta}
-                          </span>
-                        ) : delta < 0 ? (
-                          <span className="text-rose-400 font-mono text-[11px] font-medium inline-flex items-center justify-center gap-0.5">
-                            <ArrowDown className="w-3 h-3" /> -{Math.abs(delta)}
-                          </span>
-                        ) : (
-                          <span className="text-neutral-500 dark:text-neutral-400 font-mono text-[11px]">—</span>
-                        )}
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-neutral-500 font-mono text-xs">
+                  <td colSpan={7} className="py-8 text-center text-neutral-500 font-mono text-xs">
                     No leaderboard data found.
                   </td>
                 </tr>

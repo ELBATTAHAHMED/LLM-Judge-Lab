@@ -623,7 +623,9 @@ def compute_self_preference_bias(db_bind_or_session, judge_model_name: str = "gp
     p_val = None
     try:
         from scipy.stats import binomtest
-        res = binomtest(self_wins, self_matchups, p=0.5)
+        # Null hypothesis baseline p0 is the judge's win rate on rival model families
+        null_p = other_win_rate if (other_win_rate is not None and 0 < other_win_rate < 1) else 0.5
+        res = binomtest(self_wins, self_matchups, p=null_p, alternative="greater")
         p_val = float(res.pvalue)
     except Exception:
         p_val = None
