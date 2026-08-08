@@ -362,21 +362,42 @@ def print_formatted_results(df: pd.DataFrame, stats: dict) -> None:
 
 
 def generate_visualizations(df: pd.DataFrame, stats: dict) -> None:
-    """Generate and save 4 publication-quality figures."""
-    sns.set_theme(style="whitegrid", context="talk")
+    """Generate and save 4 publication-quality figures with a minimal, dark space visual theme."""
+    DARK_BG = "#0a0a0a"
+    CARD_BG = "#121212"
+    TEXT_MAIN = "#f3f4f6"
+    TEXT_MUTED = "#9ca3af"
+    GRID_COLOR = "#262626"
+    BORDER_COLOR = "#333333"
+
     plt.rcParams.update(
         {
             "font.family": "sans-serif",
-            "figure.titlesize": 16,
+            "figure.facecolor": DARK_BG,
+            "axes.facecolor": CARD_BG,
+            "axes.edgecolor": BORDER_COLOR,
+            "axes.labelcolor": TEXT_MAIN,
             "axes.titlesize": 14,
+            "axes.titlecolor": TEXT_MAIN,
             "axes.labelsize": 12,
+            "xtick.color": TEXT_MUTED,
+            "ytick.color": TEXT_MUTED,
             "xtick.labelsize": 11,
             "ytick.labelsize": 11,
+            "grid.color": GRID_COLOR,
+            "grid.linestyle": "--",
+            "grid.alpha": 0.5,
+            "figure.titlesize": 16,
+            "figure.titleweight": "bold",
+            "text.color": TEXT_MAIN,
         }
     )
 
     # --- Plot 1: Position Bias Breakdown ---
     fig1, ax1 = plt.subplots(figsize=(8, 4.5), layout="constrained")
+    fig1.patch.set_facecolor(DARK_BG)
+    ax1.set_facecolor(CARD_BG)
+
     pos_data = df["position_choice"].value_counts(normalize=True) * 100
     pos_df = pos_data.reset_index()
     pos_df.columns = ["Position", "Percentage"]
@@ -387,22 +408,27 @@ def generate_visualizations(df: pd.DataFrame, stats: dict) -> None:
         x="Percentage",
         hue="Position",
         legend=False,
-        palette={"Position B": "#3498db", "Position A": "#2ecc71", "Tie": "#95a5a6"},
+        palette={"Position B": "#f59e0b", "Position A": "#10b981", "Tie": "#6b7280"},
         ax=ax1,
     )
     for container in barplot.containers:
-        ax1.bar_label(container, fmt="%.2f%%", padding=8, fontsize=11, weight="bold")
+        ax1.bar_label(container, fmt="%.2f%%", padding=8, fontsize=11, weight="bold", color=TEXT_MAIN)
 
-    ax1.set_xlim(0, 60)
-    ax1.set_title("Position Bias Breakdown (gpt-4o-mini)", pad=15, weight="bold")
-    ax1.set_xlabel("Percentage (%)")
-    ax1.set_ylabel("Judge Choice Location")
-    fig1.savefig(ASSETS_DIR / "position_bias_analysis.png", dpi=300, bbox_inches="tight")
+    ax1.set_xlim(0, 65)
+    ax1.set_title("Position Bias Breakdown (gpt-4o-mini)", pad=15, weight="bold", color=TEXT_MAIN)
+    ax1.set_xlabel("Percentage (%)", color=TEXT_MAIN)
+    ax1.set_ylabel("Judge Choice Location", color=TEXT_MAIN)
+    ax1.grid(True, axis="x", color=GRID_COLOR, linestyle="--", alpha=0.5)
+
+    fig1.savefig(ASSETS_DIR / "position_bias_analysis.png", dpi=300, bbox_inches="tight", facecolor=DARK_BG)
     plt.close(fig1)
     print(f"Saved: '{ASSETS_DIR / 'position_bias_analysis.png'}'")
 
     # --- Plot 2: Confusion Matrix ---
     fig2, ax2 = plt.subplots(figsize=(7, 6.5), layout="constrained")
+    fig2.patch.set_facecolor(DARK_BG)
+    ax2.set_facecolor(CARD_BG)
+
     categories = ["A", "B", "Tie"]
     cm = confusion_matrix(df["human_choice"], df["llm_choice"], labels=categories)
     cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
@@ -412,48 +438,71 @@ def generate_visualizations(df: pd.DataFrame, stats: dict) -> None:
             for row, row_n in zip(cm, cm_norm)
         ]
     )
+
+    from matplotlib.colors import LinearSegmentedColormap
+    custom_cmap = LinearSegmentedColormap.from_list("dark_gold", ["#18181b", "#d97706", "#fbbf24"])
+
     sns.heatmap(
         cm_norm,
         annot=labels,
         fmt="",
-        cmap="Blues",
+        cmap=custom_cmap,
         xticklabels=categories,
         yticklabels=categories,
         cbar=True,
         square=True,
         ax=ax2,
-        annot_kws={"size": 12, "weight": "bold"},
+        annot_kws={"size": 12, "weight": "bold", "color": TEXT_MAIN},
+        cbar_kws={"shrink": 0.8},
     )
-    ax2.set_title("Human Baseline vs. LLM Judge Confusion Matrix", pad=15, weight="bold")
-    ax2.set_xlabel("LLM Judge Choice ('gpt-4o-mini')", labelpad=10)
-    ax2.set_ylabel("Human Reference Choice (Rows Sum to 100%)", labelpad=10)
-    fig2.savefig(ASSETS_DIR / "agreement_confusion_matrix.png", dpi=300, bbox_inches="tight")
+
+    # Style heatmap colorbar
+    cbar = ax2.collections[0].colorbar
+    if cbar:
+        cbar.ax.yaxis.set_tick_params(color=TEXT_MUTED)
+        plt.setp(plt.getp(cbar.ax.axes, "yticklabels"), color=TEXT_MUTED)
+
+    ax2.set_title("Human Baseline vs. LLM Judge Confusion Matrix", pad=15, weight="bold", color=TEXT_MAIN)
+    ax2.set_xlabel("LLM Judge Choice ('gpt-4o-mini')", labelpad=10, color=TEXT_MAIN)
+    ax2.set_ylabel("Human Reference Choice (Rows Sum to 100%)", labelpad=10, color=TEXT_MAIN)
+
+    fig2.savefig(ASSETS_DIR / "agreement_confusion_matrix.png", dpi=300, bbox_inches="tight", facecolor=DARK_BG)
     plt.close(fig2)
     print(f"Saved: '{ASSETS_DIR / 'agreement_confusion_matrix.png'}'")
 
     # --- Plot 3: Domain-Stratified Reliability (Category-Specific Kappa) ---
     fig3, ax3 = plt.subplots(figsize=(9, 5), layout="constrained")
+    fig3.patch.set_facecolor(DARK_BG)
+    ax3.set_facecolor(CARD_BG)
+
     sorted_kappa = sorted(stats["domain_kappa"].items(), key=lambda x: x[1], reverse=True)
     domains = [x[0] for x in sorted_kappa]
     kappas = [x[1] for x in sorted_kappa]
-    
-    # Map colors from high agreement (Blue) to low agreement (Muted Orange)
-    colors = plt.cm.coolwarm(np.linspace(0.85, 0.25, len(domains)))
-    
-    barplot3 = sns.barplot(x=kappas, y=domains, hue=domains, palette=list(colors), legend=False, ax=ax3)
-    ax3.bar_label(barplot3.containers[0], fmt="%.3f", padding=8, fontsize=10, weight="bold")
+
+    # Gold and Amber gradient colors
+    gold_palette = ["#fbbf24", "#f59e0b", "#d97706", "#b45309", "#92400e", "#78350f", "#451a03", "#291002"]
+    if len(domains) > len(gold_palette):
+        gold_palette = [plt.cm.YlOrBr(i) for i in np.linspace(0.8, 0.3, len(domains))]
+
+    barplot3 = sns.barplot(x=kappas, y=domains, hue=domains, palette=gold_palette[:len(domains)], legend=False, ax=ax3)
+    for container in barplot3.containers:
+        ax3.bar_label(container, fmt="%.3f", padding=8, fontsize=10, weight="bold", color=TEXT_MAIN)
+
     ax3.set_xlim(0, 0.7)
-    ax3.set_title("Inter-Rater Reliability (Cohen's Kappa) by Prompt Domain", pad=15, weight="bold")
-    ax3.set_xlabel("Cohen's Kappa Score (Agreement with Human)")
-    ax3.set_ylabel("Prompt Domain")
-    fig3.savefig(ASSETS_DIR / "domain_reliability_kappa.png", dpi=300, bbox_inches="tight")
+    ax3.set_title("Inter-Rater Reliability (Cohen's Kappa) by Prompt Domain", pad=15, weight="bold", color=TEXT_MAIN)
+    ax3.set_xlabel("Cohen's Kappa Score (Agreement with Human)", color=TEXT_MAIN)
+    ax3.set_ylabel("Prompt Domain", color=TEXT_MAIN)
+    ax3.grid(True, axis="x", color=GRID_COLOR, linestyle="--", alpha=0.5)
+
+    fig3.savefig(ASSETS_DIR / "domain_reliability_kappa.png", dpi=300, bbox_inches="tight", facecolor=DARK_BG)
     plt.close(fig3)
     print(f"Saved: '{ASSETS_DIR / 'domain_reliability_kappa.png'}'")
 
     # --- Plot 4: Verbosity Bias Trend (Binned Length Diff vs Win Probability) ---
     fig4, ax4 = plt.subplots(figsize=(9, 5), layout="constrained")
-    
-    # Target value: 1 if LLM chose A, 0 if B, 0.5 if Tie
+    fig4.patch.set_facecolor(DARK_BG)
+    ax4.set_facecolor(CARD_BG)
+
     def get_binary_outcome(row):
         if row["llm_choice"] == "A":
             return 1.0
@@ -463,35 +512,37 @@ def generate_visualizations(df: pd.DataFrame, stats: dict) -> None:
 
     df["llm_win_prob_A"] = df.apply(get_binary_outcome, axis=1)
 
-    # Plot binned trend (15 bins) to reduce scatter noise and display a clean probability trend
     sns.regplot(
         data=df,
         x="word_len_diff",
         y="llm_win_prob_A",
         x_bins=15,
         fit_reg=True,
-        scatter_kws={"color": "#3498db", "s": 75, "alpha": 0.8},
-        line_kws={"color": "#e74c3c", "linewidth": 2.5, "label": "Linear Fit Trend"},
+        scatter_kws={"color": "#fbbf24", "s": 75, "alpha": 0.9},
+        line_kws={"color": "#38bdf8", "linewidth": 2.5, "label": "Linear Fit Trend"},
         ax=ax4,
     )
-    
-    # Add marginal data density indicator along the X-axis (rugplot)
+
     sns.rugplot(
         data=df,
         x="word_len_diff",
         ax=ax4,
-        color="#e74c3c",
-        alpha=0.3,
+        color="#f59e0b",
+        alpha=0.4,
         height=0.04
     )
-    
+
     ax4.set_ylim(-0.05, 1.05)
-    ax4.set_title("Length Disparity vs. LLM Judge Win Probability (A)", pad=15, weight="bold")
-    ax4.set_xlabel("Length Disparity in Words (Answer A Length - Answer B Length)")
-    ax4.set_ylabel("Probability of Selection (Answer A)")
-    ax4.legend(loc="upper left")
-    
-    fig4.savefig(ASSETS_DIR / "verbosity_bias_trend.png", dpi=300, bbox_inches="tight")
+    ax4.set_title("Length Disparity vs. LLM Judge Win Probability (A)", pad=15, weight="bold", color=TEXT_MAIN)
+    ax4.set_xlabel("Length Disparity in Words (Answer A Length - Answer B Length)", color=TEXT_MAIN)
+    ax4.set_ylabel("Probability of Selection (Answer A)", color=TEXT_MAIN)
+    ax4.grid(True, color=GRID_COLOR, linestyle="--", alpha=0.5)
+
+    leg = ax4.legend(loc="upper left", facecolor=CARD_BG, edgecolor=BORDER_COLOR)
+    for text_obj in leg.get_texts():
+        text_obj.set_color(TEXT_MAIN)
+
+    fig4.savefig(ASSETS_DIR / "verbosity_bias_trend.png", dpi=300, bbox_inches="tight", facecolor=DARK_BG)
     plt.close(fig4)
     print(f"Saved: '{ASSETS_DIR / 'verbosity_bias_trend.png'}'")
 
