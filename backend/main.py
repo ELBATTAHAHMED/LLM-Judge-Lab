@@ -949,10 +949,16 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
         from database import engine
         from sqlalchemy import text as sa_text, bindparam
 
+        def _parse_pid(val: Any) -> int | None:
+            if val is None or str(val).strip() == "":
+                return None
+            s = str(val).strip().split('.')[0]
+            return int(s) if s.isdigit() else None
+
         pids = list({
-            int(r["prompt_id"])
+            _parse_pid(r.get("prompt_id"))
             for r in records
-            if r.get("prompt_id") is not None and str(r.get("prompt_id")).isdigit()
+            if _parse_pid(r.get("prompt_id")) is not None
         })
 
         if pids:
@@ -973,9 +979,8 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
                     answers_map.setdefault(row[1], []).append((row[2], row[3]))
 
                 for row in records:
-                    pid = row.get("prompt_id")
-                    if pid is not None and str(pid).isdigit():
-                        pid_int = int(pid)
+                    pid_int = _parse_pid(row.get("prompt_id"))
+                    if pid_int is not None:
                         if pid_int in prompts_map:
                             row["prompt_text"] = prompts_map[pid_int]
 

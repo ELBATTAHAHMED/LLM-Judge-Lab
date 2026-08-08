@@ -137,14 +137,21 @@ def fetch_decisions(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFra
 
 def compute_position_consistency(df: pd.DataFrame) -> dict:
     """
-    Detect position-order inconsistencies.
-    
-    For each UNORDERED model pair (A, B), find all decisions where:
-      - Session 1: model A was shown in position_a, model B in position_b
-      - Session 2: model B was shown in position_a, model A in position_b
-    
-    A position inconsistency is flagged when the winner differs between
-    the two orderings for the same prompt.
+    Detect position-order inconsistencies across evaluation records.
+
+    Methodological Note & Protocol Distinction:
+    ---------------------------------------------
+    1. Baseline Cross-Prompt Distributional Analysis:
+       In uncalibrated baseline datasets where each prompt is evaluated once in a single
+       randomized presentation order, this function aggregates decision records by category
+       and model pair to compare relative win rates when Model A occupies Position A vs Position B
+       across cross-prompt distributions.
+
+    2. Strict Same-Prompt Invariance (Dual A/B Swap Calibration):
+       In contrast, Dual A/B Swap calibration (executed via `run_batch_calibration.py` and
+       `call_calibrated_judge`) evaluates the EXACT SAME prompt and candidate answers in both
+       orderings (Pass 1: A vs B, Pass 2: B vs A) under identical context to measure strict
+       prompt-level position invariance.
     """
     # Create canonical pair identifier (sorted so (A,B) == (B,A))
     df = df.copy()
@@ -162,10 +169,9 @@ def compute_position_consistency(df: pd.DataFrame) -> dict:
     total_swapped_pairs = 0
     inconsistent_examples = []
 
-    # Group by prompt + canonical pair — should have at most 1 decision per
-    # prompt (our design is one evaluation per preference pair).
-    # Instead we look across different prompts within same category for
-    # cross-ordering inconsistencies.
+    # Group by category and canonical pair to compare cross-prompt win rates under reversed
+    # presentation orderings (Baseline Cross-Prompt Analysis), as uncalibrated single-pass
+    # datasets contain one evaluation trial per prompt pair.
     grouped = df.groupby(["category", "canonical_pair"])
 
     for (category, pair), group in grouped:
