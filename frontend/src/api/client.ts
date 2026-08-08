@@ -18,9 +18,23 @@ import type {
   MacroBenchmarkResponse,
 } from './types';
 
-// Axios instance targeting backend FastAPI dev server
+/**
+ * Resolve backend API base URL.
+ * Prioritizes environment variables (VITE_API_BASE_URL or VITE_API_URL) for production deployments.
+ * Falls back to 'http://localhost:8000' strictly for local standalone development environments.
+ */
+const getBaseURL = (): string => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    return envUrl;
+  }
+  // Local development fallback to FastAPI dev server port 8000
+  return 'http://localhost:8000';
+};
+
+// Axios instance targeting backend FastAPI server
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },

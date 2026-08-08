@@ -9,7 +9,7 @@ import { SelfPreferenceCard } from '../components/SelfPreferenceCard';
 import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
 import { InterJudgeComparisonCard } from '../components/InterJudgeComparisonCard';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 
 export const DiagnosticsPage: React.FC = () => {
   const { judgeModel } = useJudge();
@@ -37,6 +37,47 @@ export const DiagnosticsPage: React.FC = () => {
     refetchSelfPref();
   };
 
+  const handleExportTelemetryCSV = () => {
+    if (!biasData && !consistencyData && !selfPrefData) return;
+
+    const rows: string[][] = [
+      ['Category', 'Metric', 'Value', 'Details'],
+      ['Judge Model', 'Model Name', `"${judgeModel}"`, ''],
+      ['Logical Consistency', 'Overall Score', `${((consistencyData?.overall_consistency_score ?? 0) * 100).toFixed(1)}%`, 'Ordering invariance rate'],
+      ['Logical Consistency', 'Position Consistency', `${((consistencyData?.position_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Verdict invariance under A/B swap'],
+      ['Logical Consistency', 'Domain Specialization', `${((consistencyData?.cross_category_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Category win rate variance'],
+      ['Logical Consistency', 'Position Flips', `${consistencyData?.inconsistencies_count ?? 0}`, 'Flagged pairwise verdict reversals'],
+      ['Position Bias', 'Position A Wins', `${biasData?.position_data?.position_a ?? 0}`, 'Slot A total selections'],
+      ['Position Bias', 'Position B Wins', `${biasData?.position_data?.position_b ?? 0}`, 'Slot B total selections'],
+      ['Position Bias', 'Ties', `${biasData?.position_data?.tie ?? 0}`, 'Tie decisions'],
+      ['Format Bias', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 0}`, 'Markdown heavy selections'],
+      ['Format Bias', 'Plain Text Chosen', `${biasData?.format_bias?.plain_text_chosen ?? 0}`, 'Plain text selections'],
+      ['Format Bias', 'Chi-Square Stat', `${biasData?.format_bias?.chi2_stat ?? 0}`, 'Chi2 goodness of fit'],
+      ['Format Bias', 'p-value', `${biasData?.format_bias?.p_value ?? 1}`, 'Raw p-value'],
+      ['Format Bias', 'p-value (BH Adjusted)', `${biasData?.format_bias?.p_value_adjusted ?? 1}`, 'Benjamini-Hochberg adjusted p-value'],
+      ['Self Preference', 'Judge Family', `"${selfPrefData?.judge_family ?? ''}"`, 'Model provider family'],
+      ['Self Preference', 'Self Win Rate', selfPrefData?.self_win_rate != null ? `${(selfPrefData.self_win_rate * 100).toFixed(1)}%` : 'N/A', 'Same family win rate'],
+      ['Self Preference', 'Baseline Win Rate', selfPrefData?.baseline_win_rate != null ? `${(selfPrefData.baseline_win_rate * 100).toFixed(1)}%` : 'N/A', 'Other family win rate'],
+      ['Self Preference', 'Self Preference Ratio', selfPrefData?.self_preference_ratio != null ? selfPrefData.self_preference_ratio.toFixed(3) : 'N/A', 'Ratio over baseline'],
+      ['Self Preference', 'Detected', `${selfPrefData?.self_preference_detected ?? false}`, 'Statistical significance flag'],
+    ];
+
+    if (biasData?.domain_kappa) {
+      biasData.domain_kappa.forEach((dk) => {
+        rows.push(['Domain Reliability', `Kappa (${dk.domain})`, dk.kappa.toFixed(3), 'Domain stratified Cohen Kappa']);
+      });
+    }
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map((r) => r.join(',')).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `judgelab_telemetry_${judgeModel.replace('/', '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const isLoading = biasLoading || consistencyLoading || selfPrefLoading;
 
   return (
@@ -52,14 +93,25 @@ export const DiagnosticsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs self-start sm:self-auto font-mono"
-        >
-          <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center space-x-2 self-start sm:self-auto font-mono">
+          <button
+            onClick={handleExportTelemetryCSV}
+            disabled={isLoading || (!biasData && !consistencyData && !selfPrefData)}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs disabled:opacity-40"
+          >
+            <Download className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
+            <span>Export Telemetry CSV</span>
+          </button>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs"
+          >
+            <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Logical Consistency Telemetry */}

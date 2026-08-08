@@ -336,8 +336,8 @@ def get_dataset_count(db: Session = Depends(get_db)) -> DatasetCountResponse:
         )
     except Exception as exc:
         return DatasetCountResponse(
-            count=2271,
-            message=f"Fallback dataset count. Database query notice: {str(exc)}",
+            count=0,
+            message=f"Database query error: {str(exc)}",
         )
 
 
@@ -422,7 +422,7 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             if len(dw_base) > 1 and dw_base.std() > 0:
                 slope_base = float(np.polyfit(dw_base, win_a_base, 1)[0])
             else:
-                slope_base = 0.000679
+                slope_base = 0.0
         else:
             slope_base = 0.0
 
@@ -432,7 +432,7 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             if len(dw_cal) > 1 and dw_cal.std() > 0:
                 slope_cal = float(np.polyfit(dw_cal, win_a_cal, 1)[0])
             else:
-                slope_cal = 0.00003
+                slope_cal = 0.0
         else:
             slope_cal = 0.0
 
