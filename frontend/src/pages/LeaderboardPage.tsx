@@ -10,7 +10,7 @@ export const LeaderboardPage: React.FC = () => {
   const { data, loading, error, refetch, recalculate } = useLeaderboard(judgeModel);
   const { count, loading: countLoading } = useDatasetCount();
 
-  const formattedCount = (count ?? 2271).toLocaleString();
+  const formattedCount = count !== null && count !== undefined ? count.toLocaleString() : '0';
   const pairwiseCountStr = countLoading
     ? 'Loading dataset count...'
     : `${formattedCount} Pairwise Matchups`;

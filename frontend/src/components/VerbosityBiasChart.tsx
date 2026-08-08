@@ -25,7 +25,7 @@ interface Props {
  */
 function computeRegressionStats(points: VerbosityDataPoint[]) {
   if (!points || points.length === 0) {
-    return { beta: 0.00083, alpha: 0.5, r2: 0.052, rho: 0.2283 };
+    return null;
   }
 
   const n = points.length;
@@ -45,7 +45,7 @@ function computeRegressionStats(points: VerbosityDataPoint[]) {
   const meanY = sumY / n;
 
   const denom = sumX2 - n * meanX * meanX;
-  const beta = denom !== 0 ? (sumXY - n * meanX * meanY) / denom : 0.00083;
+  const beta = denom !== 0 ? (sumXY - n * meanX * meanY) / denom : 0;
   const alpha = meanY - beta * meanX;
 
   // Pearson r & R^2 calculation
@@ -94,7 +94,7 @@ function computeRegressionStats(points: VerbosityDataPoint[]) {
   }
 
   const denomRho = Math.sqrt(denRx * denRy);
-  const rho = denomRho !== 0 ? numRho / denomRho : 0.2283;
+  const rho = denomRho !== 0 ? numRho / denomRho : 0;
 
   return { beta, alpha, r2, rho };
 }
@@ -107,7 +107,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
   const regStats = useMemo(() => computeRegressionStats(data || []), [data]);
 
   const chartData = useMemo(() => {
-    if (!data || !Array.isArray(data)) return { scatter: [], trend: [] };
+    if (!data || !Array.isArray(data) || !regStats) return { scatter: [], trend: [] };
 
     const limit = sampleSize === '100' ? 100 : sampleSize === '250' ? 250 : data.length;
     const scatter = data.slice(0, limit).map((d, i) => ({
@@ -164,7 +164,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
     return null;
   };
 
-  const inflationPct = (regStats.beta * 100 * 100).toFixed(1);
+  const inflationPct = regStats ? (regStats.beta * 100 * 100).toFixed(1) : '0.0';
 
   return (
     <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-3 font-sans transition-colors duration-150">
@@ -174,7 +174,9 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
             Verbosity Disparity vs Win Probability
           </h4>
           <p className="text-xs text-neutral-500">
-            OLS Fit: Win Probability ~ &alpha; ({regStats.alpha.toFixed(3)}) + &beta;&middot;&Delta;WC
+            {regStats
+              ? `OLS Fit: Win Probability ~ α (${regStats.alpha.toFixed(3)}) + β·ΔWC`
+              : 'OLS Fit: No telemetry data'}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -190,9 +192,11 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
               <option value="All">All</option>
             </select>
           </div>
-          <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
-            &beta; = {regStats.beta >= 0 ? '+' : ''}{regStats.beta.toFixed(6)}
-          </span>
+          {regStats && (
+            <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
+              &beta; = {regStats.beta >= 0 ? '+' : ''}{regStats.beta.toFixed(6)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -202,6 +206,11 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
         </div>
       ) : error ? (
         <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs">{error}</div>
+      ) : !data || data.length === 0 || !regStats ? (
+        <div className="h-64 flex flex-col items-center justify-center font-mono text-xs text-neutral-500 space-y-1.5">
+          <p className="font-semibold text-neutral-700 dark:text-neutral-300">No telemetry data available</p>
+          <p className="text-neutral-500 text-[11px]">No verbosity comparison samples found for this judge model.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           <div className="h-64 w-full">

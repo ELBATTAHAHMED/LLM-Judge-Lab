@@ -151,7 +151,7 @@ export function useDatasetCount() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to fetch dataset count';
       setError(msg);
-      setCount(2271); // Fallback baseline
+      setCount(null);
     } finally {
       setLoading(false);
     }
