@@ -27,7 +27,7 @@ from test_phase5_offline_integration import chain, request
 def test_controlled_analysisrun_and_populated_api_use_persisted_evidence(tmp_path):
     path = tmp_path / "analysis.sqlite"
     cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", f"sqlite:///{path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{path.as_posix()}")
     Session = sessionmaker(bind=engine)
     try:
@@ -50,3 +50,11 @@ def test_controlled_analysisrun_and_populated_api_use_persisted_evidence(tmp_pat
         assert required <= set(row) and row["evidence_class"] == "CONTROLLED" and analysis_id
     finally:
         app.dependency_overrides.clear(); engine.dispose()
+
+
+def test_live_sandbox_provider_routes_are_disabled_before_transport(monkeypatch):
+    import main
+    calls = []
+    monkeypatch.setattr(main, "call_judge", lambda **_: calls.append(True))
+    response = TestClient(app).post("/api/evaluate", json={"prompt": "q", "answer_a": "a", "answer_b": "b"})
+    assert response.status_code == 403 and calls == []

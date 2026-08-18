@@ -81,7 +81,7 @@ The platform follows a decoupled, production-grade full-stack architecture:
 
 ### Technology Stack
 - **Backend Core**: FastAPI (Asynchronous REST API framework), Pydantic v2 (Schema validation & data parsing), NumPy & SciPy (Inferential statistics & regression), scikit-learn (Cohen's Kappa & K-fold cross-validation), pandas (Dataframe aggregation).
-- **Persistence Layer**: PostgreSQL database managed via SQLAlchemy ORM (Handling **19,201 decision rows** across 4 major model families with auto-increment sequence resynchronization).
+- **Persistence Layer**: PostgreSQL database managed via SQLAlchemy ORM (Handling **19,211 historical decision rows** across 4 major model families with auto-increment sequence resynchronization).
 - **Frontend Core**: React 19, TypeScript 5.0+, Vite 8, React Router DOM v7.
 - **Analytics & Styling**: Recharts (Interactive SVG scatter plots, bar charts, heatmap matrices), Tailwind CSS v4 (Enterprise Bloomberg-terminal minimalist aesthetic with dark/light mode support), Lucide React (System iconography).
 

@@ -46,6 +46,9 @@ class EvaluationRequest(BaseModel):
     presented_answer_a_id: StrictInt = Field(gt=0)
     presented_answer_b_id: StrictInt = Field(gt=0)
     retry_count: StrictInt = Field(default=0, ge=0)
+    # RQ4/RQ5 record which physical slot carried a checksum-linked variant;
+    # this is provenance, not a new scientific answer identity.
+    presentation_provenance: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def validate_identity_and_capabilities(self) -> "EvaluationRequest":
@@ -89,6 +92,9 @@ class ProviderResponse:
     model_version: str | None = None
     provider_response_id: str | None = None
     upstream_provider_model: str | None = None
+    route_provenance: dict[str, Any] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class ProviderAdapter(Protocol):
@@ -117,6 +123,9 @@ class NormalizedEvaluationResult:
     parse_status: str
     error_code: str | None = None
     error_details: str | None = None
+    route_provenance: dict[str, Any] | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class ControlledEvaluationEngine:
@@ -134,7 +143,7 @@ class ControlledEvaluationEngine:
         except ProviderCallError as exc:
             outcome = Outcome.REFUSAL if exc.category == "REFUSAL" else Outcome.API_ERROR
             return self._failure(outcome, started, exc.category, str(exc))
-        except Exception as exc:  # provider adapter failure, not a scientific vote
+        except Exception as exc:  # unknown adapter failures remain terminal; policy never retries generic errors
             return self._failure(Outcome.API_ERROR, started, "PROVIDER_ERROR", str(exc))
         latency_ms = round((perf_counter() - started) * 1000)
         effective_model = response.effective_model or "NOT_RETURNED"
@@ -142,11 +151,11 @@ class ControlledEvaluationEngine:
         try:
             judgement = ProviderJudgement.model_validate(response.raw_response)
         except Exception as exc:
-            return NormalizedEvaluationResult(Outcome.INVALID_RESPONSE, None, None, None, response.raw_response, effective_model, response.model_version, response.provider_response_id, upstream, latency_ms, "INVALID", "INVALID_RESPONSE", str(exc))
+            return NormalizedEvaluationResult(Outcome.INVALID_RESPONSE, None, None, None, response.raw_response, effective_model, response.model_version, response.provider_response_id, upstream, latency_ms, "INVALID", "INVALID_RESPONSE", str(exc), getattr(response, "route_provenance", None), getattr(response, "input_tokens", None), getattr(response, "output_tokens", None))
         return NormalizedEvaluationResult(
             Outcome(judgement.verdict), judgement.criteria_scores.model_dump(), Decimal(str(judgement.confidence)),
             judgement.explanation, response.raw_response, effective_model, response.model_version,
-            response.provider_response_id, upstream, latency_ms, "PARSED",
+            response.provider_response_id, upstream, latency_ms, "PARSED", route_provenance=getattr(response, "route_provenance", None), input_tokens=getattr(response, "input_tokens", None), output_tokens=getattr(response, "output_tokens", None),
         )
 
     @staticmethod
@@ -192,12 +201,13 @@ def derive_dual_pass_decision(first_request: EvaluationRequest, first: Normalize
 class ControlledExecutionService:
     """Persists controlled passes; its only evaluator dependency is an adapter."""
 
-    def __init__(self, persistence: ControlledPersistence, evaluator: ControlledEvaluationEngine) -> None:
-        self.persistence, self.evaluator = persistence, evaluator
+    def __init__(self, persistence: ControlledPersistence, evaluator: ControlledEvaluationEngine, *, evidence_class: str = "CONTROLLED", before_provider_attempt=None, execution_metadata: dict[str, Any] | None = None) -> None:
+        self.persistence, self.evaluator, self.evidence_class = persistence, evaluator, evidence_class
+        self.before_provider_attempt, self.execution_metadata = before_provider_attempt, dict(execution_metadata or {})
 
     def execute_single(self, *, unit: ExperimentalUnit, request: EvaluationRequest, idempotency_key: str) -> ControlledRun:
         self._validate_unit_request(unit, request)
-        run = self.persistence.create_run(unit=unit, idempotency_key=idempotency_key, requested_model=request.requested_model, judge_name=request.judge_name, provider=request.provider.value)
+        run = self.persistence.create_run(unit=unit, idempotency_key=idempotency_key, requested_model=request.requested_model, judge_name=request.judge_name, provider=request.provider.value, metadata_json=self.execution_metadata, evidence_class=self.evidence_class)
         # A stable idempotency key represents one scientific observation.  Never
         # re-enter provider execution for an existing terminal/in-progress run.
         if run.status != "PENDING":
@@ -218,7 +228,7 @@ class ControlledExecutionService:
             "presented_answer_a_id": first_request.original_answer_b_id,
             "presented_answer_b_id": first_request.original_answer_a_id, "pass_number": 2,
         })
-        run = self.persistence.create_run(unit=unit, idempotency_key=idempotency_key, requested_model=first_request.requested_model, judge_name=first_request.judge_name, provider=first_request.provider.value, run_kind="CALIBRATED_DUAL_PASS")
+        run = self.persistence.create_run(unit=unit, idempotency_key=idempotency_key, requested_model=first_request.requested_model, judge_name=first_request.judge_name, provider=first_request.provider.value, run_kind="CALIBRATED_DUAL_PASS", metadata_json=self.execution_metadata, evidence_class=self.evidence_class)
         existing = {p.pass_number: p for p in run.passes}
         # Resume at pass level.  A persisted successful first pass is never
         # sent again merely because a later pass did not complete.
@@ -242,8 +252,8 @@ class ControlledExecutionService:
 
     @staticmethod
     def _result_from_pass(record) -> NormalizedEvaluationResult:
-        outcome = {"ANSWER_A": Outcome.ANSWER_A, "ANSWER_B": Outcome.ANSWER_B, "TIE": Outcome.TIE, "UNKNOWN": Outcome.UNKNOWN}.get(record.raw_verdict, Outcome.INVALID_RESPONSE)
-        return NormalizedEvaluationResult(outcome, record.criteria_scores, record.confidence, record.explanation, record.raw_provider_response, record.effective_model or "NOT_RETURNED", record.model_version, record.api_response_id, record.provider_model or "NOT_RETURNED", record.latency_ms or 0, record.parse_status)
+        outcome = Outcome(record.outcome) if record.outcome else {"ANSWER_A": Outcome.ANSWER_A, "ANSWER_B": Outcome.ANSWER_B, "TIE": Outcome.TIE, "UNKNOWN": Outcome.UNKNOWN}.get(record.raw_verdict, Outcome.INVALID_RESPONSE)
+        return NormalizedEvaluationResult(outcome, record.criteria_scores, record.confidence, record.explanation, record.raw_provider_response, record.effective_model or "NOT_RETURNED", record.model_version, record.api_response_id, record.provider_model or "NOT_RETURNED", record.latency_ms or 0, record.parse_status, route_provenance=record.route_provenance_json)
 
     @staticmethod
     def _validate_unit_request(unit: ExperimentalUnit, request: EvaluationRequest) -> None:
@@ -267,7 +277,7 @@ class ControlledExecutionService:
 
     def _record(self, run: ControlledRun, request: EvaluationRequest, result: NormalizedEvaluationResult) -> None:
         raw = result.raw_response if isinstance(result.raw_response, dict) else {"unparsed_response": repr(result.raw_response)}
-        self.persistence.record_pass(run=run, observation=PassObservation(request.pass_number, request.presented_answer_a_id, request.presented_answer_b_id, result.outcome, confidence=result.confidence, raw_provider_response=raw, reasoning_summary=result.explanation, api_response_id=result.provider_response_id, effective_model=result.effective_model, provider_model=result.upstream_provider_model, model_version=result.model_version, latency_ms=result.latency_ms, criteria_scores=result.criterion_scores, explanation=result.explanation))
+        self.persistence.record_pass(run=run, observation=PassObservation(request.pass_number, request.presented_answer_a_id, request.presented_answer_b_id, result.outcome, confidence=result.confidence, raw_provider_response=raw, reasoning_summary=result.explanation, api_response_id=result.provider_response_id, effective_model=result.effective_model, provider_model=result.upstream_provider_model, model_version=result.model_version, latency_ms=result.latency_ms, criteria_scores=result.criterion_scores, explanation=result.explanation, route_provenance=result.route_provenance, presentation_provenance=getattr(request, "presentation_provenance", None)))
         # The relationship may have been read for resume before the insert.
         # Expire it so callers observe independently persisted passes.
         self.persistence.session.expire(run, ["passes"])
@@ -277,16 +287,33 @@ class ControlledExecutionService:
         if attempt.state == "SUCCEEDED":
             existing = next(p for p in run.passes if p.pass_number == request.pass_number)
             return self._result_from_pass(existing)
+        reservation: dict[str, Any] = {}
         try:
+            if self.before_provider_attempt is not None:
+                reservation = dict(self.before_provider_attempt(run, request) or {})
             result = self.evaluator.evaluate(request)
+        except PermissionError as exc:
+            # A local authorization/budget guard fires before the adapter is
+            # entered.  Preserve that blocked attempt without treating it as
+            # ambiguous or permitting a retry/transport call.
+            self.persistence.finish_attempt(attempt, state="FAILED_FINAL", failure_category="BUDGET_EXCEEDED", details={"retry_count": request.retry_count, "repetition_index": request.repetition_index, "blocked_before_transport": True, "reason": str(exc)})
+            return self.evaluator._failure(Outcome.API_ERROR, perf_counter(), "BUDGET_EXCEEDED", str(exc))
         except BaseException as exc:
             # Process termination after an outbound request is potentially paid
             # and cannot be retried automatically on resume.
             self.persistence.finish_attempt(attempt, state="AMBIGUOUS", failure_category="AMBIGUOUS", details={"exception": type(exc).__name__})
             raise
-        category = {"PROVIDER_ERROR": "CONNECTION"}.get(result.error_code or "", result.error_code) or {Outcome.API_ERROR: "CONNECTION", Outcome.TIMEOUT: "TIMEOUT", Outcome.INVALID_RESPONSE: "INVALID_RESPONSE", Outcome.REFUSAL: "REFUSAL"}.get(result.outcome)
+        category = result.error_code or {Outcome.API_ERROR: "PROVIDER_ERROR", Outcome.TIMEOUT: "TIMEOUT", Outcome.INVALID_RESPONSE: "INVALID_RESPONSE", Outcome.REFUSAL: "REFUSAL"}.get(result.outcome)
         state = "SUCCEEDED" if result.outcome not in {Outcome.API_ERROR, Outcome.TIMEOUT, Outcome.INVALID_RESPONSE, Outcome.REFUSAL} else terminal_state(category or "CONFIGURATION", request.retry_count)
-        self.persistence.finish_attempt(attempt, state=state, failure_category=category, provider_response_id=result.provider_response_id, details={"retry_count": request.retry_count, "planned_backoff_seconds": next_backoff_seconds(category or "CONFIGURATION", request.retry_count), "repetition_index": request.repetition_index})
+        estimated_usd = reservation.get("estimated_usd")
+        actual_usd = None
+        if result.input_tokens is not None and result.output_tokens is not None:
+            # The reservation uses the same frozen prices; actual provider
+            # usage is retained separately whenever the response reports it.
+            from pricing import price_for_model
+            rate = price_for_model(request.judge_name)
+            actual_usd = (Decimal(result.input_tokens) * rate.input_per_token) + (Decimal(result.output_tokens) * rate.output_per_token)
+        self.persistence.finish_attempt(attempt, state=state, failure_category=category, provider_response_id=result.provider_response_id, details={"retry_count": request.retry_count, "planned_backoff_seconds": next_backoff_seconds(category or "CONFIGURATION", request.retry_count), "repetition_index": request.repetition_index, **reservation}, route_provenance=result.route_provenance, input_tokens=result.input_tokens, output_tokens=result.output_tokens, estimated_usd=estimated_usd, actual_usd=actual_usd)
         return result
 
     def _execute_with_retries(self, run: ControlledRun, request: EvaluationRequest) -> NormalizedEvaluationResult:
@@ -294,7 +321,7 @@ class ControlledExecutionService:
         current = request
         while True:
             result = self._execute_pass(run, current)
-            category = {"PROVIDER_ERROR": "CONNECTION"}.get(result.error_code or "", result.error_code) or {Outcome.API_ERROR: "CONNECTION", Outcome.TIMEOUT: "TIMEOUT", Outcome.INVALID_RESPONSE: "INVALID_RESPONSE", Outcome.REFUSAL: "REFUSAL"}.get(result.outcome, "CONFIGURATION")
+            category = result.error_code or {Outcome.API_ERROR: "PROVIDER_ERROR", Outcome.TIMEOUT: "TIMEOUT", Outcome.INVALID_RESPONSE: "INVALID_RESPONSE", Outcome.REFUSAL: "REFUSAL"}.get(result.outcome, "CONFIGURATION")
             if result.outcome not in {Outcome.API_ERROR, Outcome.TIMEOUT, Outcome.INVALID_RESPONSE, Outcome.REFUSAL} or not retry_rule(category).retryable:
                 run.retry_count = current.retry_count
                 return result

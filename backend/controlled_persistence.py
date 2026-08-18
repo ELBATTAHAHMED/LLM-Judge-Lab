@@ -30,6 +30,7 @@ class EvidenceClass(str, Enum):
     LEGACY_EXPLORATORY = "LEGACY_EXPLORATORY"
     LIVE_SANDBOX = "LIVE_SANDBOX"
     CONTROLLED = "CONTROLLED"
+    PILOT = "PILOT"
     PLANNED = "PLANNED"
 
 
@@ -52,9 +53,7 @@ OUTCOME_TO_STORAGE = {
     Outcome.INVALID_RESPONSE: ("ERROR", "INVALID"),
     Outcome.API_ERROR: ("ERROR", "PROVIDER_ERROR"),
     Outcome.TIMEOUT: ("ERROR", "TIMEOUT"),
-    # ``passes.parse_status`` is constrained by the recovered v0003 schema;
-    # refusal remains distinguished in the attempt ledger/error code.
-    Outcome.REFUSAL: ("ERROR", "PROVIDER_ERROR"),
+    Outcome.REFUSAL: ("ERROR", "REFUSAL"),
 }
 
 
@@ -74,6 +73,8 @@ class PassObservation:
     latency_ms: int | None = None
     criteria_scores: dict[str, Any] | None = None
     explanation: str | None = None
+    route_provenance: dict[str, Any] | None = None
+    presentation_provenance: dict[str, Any] | None = None
 
 
 def classify_legacy_prompt_category(category: str | None) -> EvidenceClass:
@@ -145,12 +146,12 @@ class ControlledPersistence:
         row = CounterfactualVariant(experiment_id=experiment.id, original_answer_id=original_answer_id, variant_answer_id=None, variant_text=variant_text, condition_code=condition_code, transformation_method=transformation_method, transformation_version=transformation_version, original_checksum=original_checksum, variant_checksum=variant_checksum, original_word_count=original_word_count, variant_word_count=variant_word_count, original_token_estimate=original_word_count, variant_token_estimate=variant_word_count, validation_status=validation_status, validation_details=validation_details)
         self.session.add(row); self.session.flush(); return row
 
-    def create_run(self, *, unit: ExperimentalUnit, idempotency_key: str, requested_model: str, judge_name: str | None = None, provider: str | None = None, effective_model: str | None = None, model_version: str | None = None, run_kind: str = "STANDARD", metadata_json: dict[str, Any] | None = None) -> ControlledRun:
+    def create_run(self, *, unit: ExperimentalUnit, idempotency_key: str, requested_model: str, judge_name: str | None = None, provider: str | None = None, effective_model: str | None = None, model_version: str | None = None, run_kind: str = "STANDARD", metadata_json: dict[str, Any] | None = None, evidence_class: str = EvidenceClass.CONTROLLED.value) -> ControlledRun:
         existing = self.session.scalar(select(ControlledRun).where(ControlledRun.idempotency_key == idempotency_key))
         if existing is not None:
             return existing
         metadata = dict(metadata_json or {})
-        metadata.update({"evidence_class": EvidenceClass.CONTROLLED.value, "controlled_unit_id": str(unit.id), "manifest_id": str(unit.manifest_id), "condition_code": unit.condition_code, "unit_fingerprint": unit.unit_fingerprint})
+        metadata.update({"evidence_class": evidence_class, "controlled_unit_id": str(unit.id), "manifest_id": str(unit.manifest_id), "condition_code": unit.condition_code, "unit_fingerprint": unit.unit_fingerprint})
         row = ControlledRun(experimental_unit_id=unit.id, experiment_id=unit.experiment_id, prompt_id=unit.prompt_id, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, judge_name=judge_name or unit.judge_model, provider=provider or unit.provider, requested_model=requested_model, effective_model=effective_model, provider_model=unit.provider_model, model_version=model_version, prompt_template_version=unit.prompt_template_version, temperature=unit.temperature, top_p=unit.top_p, seed=unit.seed, repetition_index=unit.repetition_index, run_kind=run_kind, status="PENDING", idempotency_key=idempotency_key, metadata_json=metadata)
         self.session.add(row)
         self.session.flush()
@@ -178,7 +179,7 @@ class ControlledPersistence:
         row = PassAttempt(run_id=run.id, pass_number=pass_number, attempt_index=attempt_index, attempt_id=hashlib.sha256(material.encode()).hexdigest(), state="IN_PROGRESS")
         self.session.add(row); self.session.flush(); return row
 
-    def finish_attempt(self, attempt: PassAttempt, *, state: str, failure_category: str | None = None, provider_response_id: str | None = None, details: dict[str, Any] | None = None) -> PassAttempt:
+    def finish_attempt(self, attempt: PassAttempt, *, state: str, failure_category: str | None = None, provider_response_id: str | None = None, details: dict[str, Any] | None = None, route_provenance: dict[str, Any] | None = None, input_tokens: int | None = None, output_tokens: int | None = None, estimated_usd: Decimal | None = None, actual_usd: Decimal | None = None) -> PassAttempt:
         if state not in {"SUCCEEDED", "FAILED_RETRYABLE", "FAILED_FINAL", "AMBIGUOUS"}:
             raise ValueError(f"invalid terminal attempt state {state}")
         if attempt.state != "IN_PROGRESS":
@@ -190,6 +191,7 @@ class ControlledPersistence:
         attempt.state, attempt.failure_category, attempt.provider_response_id = state, failure_category, provider_response_id
         attempt.retry_decision = "RETRY" if state == "FAILED_RETRYABLE" else "OPERATOR_REVIEW" if state == "AMBIGUOUS" else "FINAL"
         attempt.completed_at, attempt.details_json = datetime.now(timezone.utc), details
+        attempt.route_provenance_json, attempt.input_tokens, attempt.output_tokens, attempt.estimated_usd, attempt.actual_usd = route_provenance, input_tokens, output_tokens, estimated_usd, actual_usd
         self.session.flush(); return attempt
 
     def resolve_ambiguous_attempt(self, *, attempt: PassAttempt, resolution: str, details: dict[str, Any] | None = None) -> PassAttempt:
@@ -227,7 +229,7 @@ class ControlledPersistence:
         existing = self.session.scalar(select(RunPass).where(RunPass.run_id == run.id, RunPass.pass_number == observation.pass_number))
         if existing is not None:
             return existing
-        row = RunPass(run_id=run.id, pass_number=observation.pass_number, presented_answer_a_id=observation.presented_answer_a_id, presented_answer_b_id=observation.presented_answer_b_id, raw_verdict=raw_verdict, winner_answer_id=winner, parse_status=parse_status, confidence=observation.confidence, raw_provider_response=observation.raw_provider_response, reasoning_summary=observation.reasoning_summary, api_response_id=observation.api_response_id, effective_model=observation.effective_model, provider_model=observation.provider_model, model_version=observation.model_version, latency_ms=observation.latency_ms, criteria_scores=observation.criteria_scores, explanation=observation.explanation)
+        row = RunPass(run_id=run.id, pass_number=observation.pass_number, presented_answer_a_id=observation.presented_answer_a_id, presented_answer_b_id=observation.presented_answer_b_id, raw_verdict=raw_verdict, winner_answer_id=winner, parse_status=parse_status, confidence=observation.confidence, raw_provider_response=observation.raw_provider_response, reasoning_summary=observation.reasoning_summary, api_response_id=observation.api_response_id, effective_model=observation.effective_model, provider_model=observation.provider_model, model_version=observation.model_version, latency_ms=observation.latency_ms, criteria_scores=observation.criteria_scores, explanation=observation.explanation, outcome=observation.outcome.value, route_provenance_json=observation.route_provenance, presentation_provenance_json=observation.presentation_provenance)
         self.session.add(row)
         self.session.flush()
         return row

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,7 @@ from controlled_evaluation import (  # noqa: E402
 )
 from controlled_models import ControlledRun  # noqa: E402
 from controlled_persistence import ControlledPersistence, Outcome  # noqa: E402
+from controlled_real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile  # noqa: E402
 from mock_provider import DeterministicMockProvider, MockScenario  # noqa: E402
 from model_registry import Provider, UnsupportedModelError, get_model_spec  # noqa: E402
 from models import Answer, JudgeDecision, Prompt  # noqa: E402
@@ -31,7 +33,7 @@ def isolated_engine(tmp_path):
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "alembic"))
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{db_path.as_posix()}")
     event.listen(engine, "connect", lambda connection, _: connection.execute("PRAGMA foreign_keys=ON"))
     try:
@@ -115,6 +117,38 @@ def test_07_timeout_is_not_unknown_or_tie(isolated_engine):
         # still a timeout rather than a fabricated scientific verdict.
         repo, unit, a, b = setup_unit(session); run = service(repo, [MockScenario.TIMEOUT, MockScenario.TIMEOUT]).execute_single(unit=unit, request=request_for(unit, a, b), idempotency_key="07" * 32)
         assert (run.final_parse_status, run.error_code) == ("TIMEOUT", "TIMEOUT")
+
+
+def test_refusal_remains_a_distinct_persisted_outcome(isolated_engine):
+    Session = sessionmaker(bind=isolated_engine)
+    with Session.begin() as session:
+        repo, unit, a, b = setup_unit(session)
+        run = service(repo, [MockScenario.REFUSAL]).execute_single(unit=unit, request=request_for(unit, a, b), idempotency_key="18" * 32)
+        assert (run.final_parse_status, run.passes[0].outcome, run.passes[0].parse_status) == ("REFUSAL", "REFUSAL", "REFUSAL")
+
+
+def test_budget_guard_counts_retries_as_attempts_without_creating_a_new_scientific_pass(isolated_engine):
+    """A blocked retry is stopped before its fake evaluator can be called."""
+    Session = sessionmaker(bind=isolated_engine)
+    profile = RealExecutionProfile(
+        execution_mode="REAL", authorization_token="fixture", dataset_version_id="fixture",
+        manifest_ids=("fixture",), manifest_hashes=("fixture",), source_commit="fixture", source_tag="fixture",
+        pricing_version="pricing-config-v1", routing_version="fixture", routing_fingerprint="fixture",
+        prompt_version="fixture", prompt_sha256="fixture", retry_policy_version="fixture", failure_policy_version="fixture",
+        analysis_version="fixture", model_ids=("gpt-4o-mini",), configured_upstreams=(),
+        caps=ExecutionCaps(1, 1, 100_000, 1_000, Decimal("10")),
+    )
+    with Session.begin() as session:
+        repo, unit, a, b = setup_unit(session)
+        req = request_for(unit, a, b)
+        ledger = BudgetLedger(profile)
+        first = ledger.reserve(run_id="run", request=req)
+        assert first["estimated_input_tokens"] > 0 and ledger.snapshot()["scientific_passes"] == 1
+        with pytest.raises(PermissionError):
+            ledger.reserve(run_id="run", request=req.model_copy(update={"retry_count": 1}))
+        fake = DeterministicMockProvider([MockScenario.ANSWER_A])
+        run = ControlledExecutionService(repo, ControlledEvaluationEngine(fake), before_provider_attempt=lambda *_: (_ for _ in ()).throw(PermissionError("cap"))).execute_single(unit=unit, request=req, idempotency_key="19" * 32)
+        assert fake.calls == 0 and run.error_code == "BUDGET_EXCEEDED" and run.passes[0].outcome == "API_ERROR"
 
 
 def test_08_requested_and_effective_model_are_both_preserved(isolated_engine):

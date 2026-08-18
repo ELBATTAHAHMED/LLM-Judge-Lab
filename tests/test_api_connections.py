@@ -16,8 +16,10 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-# Ensure stdout handles UTF-8 on Windows console
-if sys.platform == "win32":
+# Ensure stdout handles UTF-8 on Windows console when this paid diagnostic is
+# deliberately run as a script.  Replacing pytest's capture stream during test
+# collection breaks the ordinary, provider-free full suite on Windows.
+if __name__ == "__main__" and sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # Ensure backend directory is in python module search path

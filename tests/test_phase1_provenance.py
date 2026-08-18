@@ -27,7 +27,7 @@ def isolated_engine(tmp_path):
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "alembic"))
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{db_path.as_posix()}")
     event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
     try:
@@ -63,7 +63,7 @@ def test_fresh_migration_reaches_recovered_controlled_schema(isolated_engine):
     required = {"dataset_versions", "experiments", "experimental_conditions", "experiment_manifests", "experimental_units", "counterfactual_variants", "analysis_runs", "runs", "passes"}
     assert required.issubset(set(inspection.get_table_names()))
     with isolated_engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0007_pass_attempt_ledger"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0008_execution_provenance"
     run_columns = {column["name"] for column in inspection.get_columns("runs")}
     assert {"requested_model", "effective_model", "provider", "repetition_index", "final_parse_status", "legacy_decision_id", "experimental_unit_id"}.issubset(run_columns)
 

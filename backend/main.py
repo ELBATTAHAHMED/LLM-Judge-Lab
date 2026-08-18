@@ -15,7 +15,8 @@ import uuid
 import datetime
 import json
 import asyncio
-from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
+import hmac
+from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import numpy as np
@@ -75,13 +76,23 @@ app = FastAPI(
 )
 
 # CORS configurations to allow local frontend communication
+_cors_origins = [origin.strip() for origin in os.getenv("JUDGELAB_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _require_live_sandbox_authorization(x_live_sandbox_token: str | None = Header(default=None)) -> None:
+    """Separate disabled-by-default boundary; never accepts controlled auth."""
+    if os.getenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false").lower() != "true":
+        raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
+    expected = os.getenv("LIVE_SANDBOX_OPERATOR_TOKEN")
+    if not expected or not x_live_sandbox_token or not hmac.compare_digest(expected, x_live_sandbox_token):
+        raise HTTPException(status_code=403, detail="Separate live sandbox operator authorization is required before provider transport.")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -258,13 +269,20 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     # The evidence class is provenance of the analysis payload/run records, not
     # a mutable experiment-planning label.  This permits a PLANNED experiment
     # to publish only after genuine CONTROLLED evidence exists.
-    published = next((row for row in db.query(AnalysisRun).filter(AnalysisRun.status == "COMPLETED").order_by(AnalysisRun.created_at.desc())
-                      if (row.result_json or {}).get("evidence_class") == EvidenceClass.CONTROLLED.value), None)
-    if published is None:
+    published_by_rq: dict[str, AnalysisRun] = {}
+    for row in db.query(AnalysisRun).filter(AnalysisRun.status == "COMPLETED").order_by(AnalysisRun.created_at.desc()):
+        if (row.result_json or {}).get("evidence_class") == EvidenceClass.CONTROLLED.value:
+            published_by_rq.setdefault(row.rq_code, row)
+    if not published_by_rq:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Controlled runs exist, but no authoritative completed analysis has been published.")
-    payload = published.result_json or {}
-    rows = payload.get("results", payload if isinstance(payload, list) else [])
-    if not isinstance(rows, list):
+    rows: list[dict[str, Any]] = []
+    for rq in sorted(published_by_rq):
+        payload = published_by_rq[rq].result_json or {}
+        result_rows = payload.get("results", payload if isinstance(payload, list) else [])
+        if not isinstance(result_rows, list):
+            return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Published controlled analysis has an invalid result contract.")
+        rows.extend(result_rows)
+    if not rows:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Published controlled analysis has an invalid result contract.")
     return ControlledResultsResponse(status="CONTROLLED_RESULTS_AVAILABLE", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=rows, message="Authoritative controlled analysis published from persisted CONTROLLED evidence.")
 
@@ -1141,7 +1159,7 @@ def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_
 
 
 @app.post("/api/evaluate", response_model=EvaluateResponse)
-def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db)) -> dict:
+def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict:
     """
     Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
@@ -1210,7 +1228,7 @@ class CalibratedEvaluationRequest(BaseModel):
 
 
 @app.post("/api/evaluate/calibrated", response_model=CalibratedEvaluationResponse)
-def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
     Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
@@ -1297,7 +1315,7 @@ class MultiJudgeEnsembleResponse(BaseModel):
 
 
 @app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
-def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db)) -> dict[str, Any]:
+def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict[str, Any]:
     """
     Executes concurrent multi-judge ensemble voting across selected LLM judge models.
     Aggregates individual verdicts into a majority-rule consensus verdict.

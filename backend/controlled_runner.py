@@ -227,8 +227,12 @@ class ControlledRunner:
         path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps({"evidence_class": MOCK_EVIDENCE_CLASS, "analysis": analysis}, indent=2, sort_keys=True), encoding="utf-8"); return path
 
     @staticmethod
-    def execute_real(*_args, **_kwargs) -> None:
-        raise PermissionError("Real provider execution is disabled. A future authorized profile and budget gate are required.")
+    def execute_real(*, session: Session | None = None, profile=None, unit: ExperimentalUnit | None = None, request: EvaluationRequest | None = None, idempotency_key: str | None = None, dual_pass: bool = False, transport=None):
+        """Authorized controlled-only entry point; locked unless profile validates."""
+        if session is None or profile is None or unit is None or request is None or not idempotency_key:
+            raise PermissionError("real controlled execution requires a complete authorized profile and identified unit/request")
+        from controlled_real_execution import ControlledRealRunner
+        return ControlledRealRunner(profile=profile, transport=transport).execute(session=session, unit=unit, request=request, idempotency_key=idempotency_key, dual_pass=dual_pass)
 
     @staticmethod
     def enforce_budget(*, calls: int, tokens: int, max_calls: int, max_tokens: int, max_usd_budget: float | None = None) -> None:

@@ -1,13 +1,19 @@
 # Phase 6 controlled execution rehearsal
 
-This runner is deliberately mock-only. `ControlledRunner.execute_real()` always
-raises `PermissionError`; `ExecutionProfile(mock_only=False)` is rejected at
-construction. The only Phase 6 provider is `DeterministicMockProvider`.
+This runner is deliberately mock-only. `ExecutionProfile(mock_only=False)` is
+rejected at construction and Phase 6 itself uses only
+`DeterministicMockProvider`. `ControlledRunner.execute_real()` is now a thin,
+fail-closed delegation to the separate `ControlledRealRunner`; without a
+complete authorized REAL/PILOT profile it raises `PermissionError` before any
+transport.
 
 ## Frozen workload
 
-Snapshot `live-db-0004-frozen`, protocol `phase3-controlled-v1`, prompt
-template `judge-pairwise-structured-v1`, base cap 200 per eligible judge/RQ:
+Snapshot `live-db-0004-frozen`, protocol `phase3-controlled-v1`, final frozen
+prompt template `controlled-judge-pairwise-v1` (SHA-256
+`e1d041bd6a1ec4f27efe6a3377d98ec0321af02b59ee9abedf64bf349ac9b299`),
+base cap 200 per eligible judge/RQ. `judge-pairwise-structured-v1` was an
+earlier Phase 6 rehearsal label and is not the final pre-pilot prompt.
 
 | RQ | Controlled units/runs | Passes / provider-equivalent calls |
 | --- | ---: | ---: |
@@ -51,8 +57,9 @@ synchronization task.
 
 ## Cost preflight
 
-Preflight derives input estimates from the stored answers plus the frozen
-template overhead and reserves 350 output tokens per planned call. It reports
-`PRICING VERIFICATION REQUIRED` rather than using an unfrozen price table.
-`enforce_budget` can reject calls/tokens before execution; USD enforcement
-remains blocked until verified pricing is explicitly frozen.
+The mock-only Phase 6 preflight derives token estimates from stored answers and
+deliberately reports `PRICING VERIFICATION REQUIRED`: it is not a billing
+estimate. This is not a statement about the real execution contract. The
+separate real runner uses the frozen, project-owner-approved
+`pricing-config-v1` configuration and reserves call/token/USD capacity before
+each provider attempt.

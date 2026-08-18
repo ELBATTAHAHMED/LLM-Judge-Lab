@@ -6,15 +6,41 @@ future caller supplies an explicitly authorized transport and execution gate.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
-from controlled_evaluation import EvaluationRequest, ProviderResponse
+from controlled_evaluation import EvaluationRequest, ProviderCallError, ProviderResponse
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, build_messages
 from model_registry import Provider, get_model_spec
 from routing_policy import openrouter_request_controls, validate_router_response
 
 Transport = Callable[[str, Mapping[str, str], dict[str, Any]], dict[str, Any]]
+
+
+def environment_http_transport(endpoint: str, headers: Mapping[str, str], payload: dict[str, Any]) -> dict[str, Any]:
+    """Actual transport, intentionally usable only through a validated runner."""
+    import httpx
+    key_name = "OPENAI_API_KEY" if "api.openai.com" in endpoint else "OPENROUTER_API_KEY"
+    token = os.getenv(key_name)
+    if not token or token.startswith("your_"):
+        raise ProviderCallError("AUTHENTICATION", f"{key_name} is missing")
+    request_headers = {**headers, "Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    try:
+        response = httpx.post(endpoint, headers=request_headers, json=payload, timeout=90)
+    except httpx.TimeoutException as exc:
+        raise TimeoutError(str(exc)) from exc
+    except httpx.NetworkError as exc:
+        raise ProviderCallError("NETWORK_CONNECTION", str(exc)) from exc
+    if response.status_code == 429:
+        raise ProviderCallError("RATE_LIMIT", response.text)
+    if 500 <= response.status_code <= 599:
+        raise ProviderCallError("TEMPORARY_5XX", response.text)
+    if response.status_code in {401, 403}:
+        raise ProviderCallError("AUTHENTICATION", response.text)
+    if response.status_code >= 400:
+        raise ProviderCallError("INVALID_CONFIGURATION", response.text)
+    return response.json()
 
 
 def _json_payload(raw: Any) -> Any:
@@ -72,13 +98,28 @@ class ControlledChatAdapter:
         if request.seed is not None:
             payload["seed"] = request.seed
         endpoint = "https://api.openai.com/v1/chat/completions" if self.provider is Provider.OPENAI else "https://openrouter.ai/api/v1/chat/completions"
-        response = self.transport(endpoint, headers, payload)
+        try:
+            response = self.transport(endpoint, headers, payload)
+        except ProviderCallError:
+            raise
+        except TimeoutError:
+            raise
+        except Exception as exc:
+            raise ProviderCallError("CONNECTION", str(exc)) from exc
+        provenance: dict[str, Any] = {"configured_upstream_provider": None, "observed_upstream_provider": None,
+            "routing_policy_version": None, "routing_fingerprint": None, "fallback_observed": False,
+            "response_id": response.get("id"), "provider": self.provider.value}
         if self.provider is Provider.OPENROUTER:
-            validate_router_response(judge_name=request.judge_name, response=response)
+            try:
+                provenance.update(validate_router_response(judge_name=request.judge_name, response=response))
+            except ValueError as exc:
+                raise ProviderCallError("PROVENANCE_MISMATCH", str(exc)) from exc
         choices = response.get("choices") or []
         message = choices[0].get("message", {}) if choices else {}
         content = message.get("content") if isinstance(message, dict) else None
-        return ProviderResponse(raw_response=_json_payload(content), effective_model=response.get("model"), model_version=response.get("system_fingerprint"), provider_response_id=response.get("id"), upstream_provider_model=response.get("model"))
+        usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
+        provenance["effective_model"] = response.get("model")
+        return ProviderResponse(raw_response=_json_payload(content), effective_model=response.get("model"), model_version=response.get("system_fingerprint"), provider_response_id=response.get("id"), upstream_provider_model=provenance.get("observed_upstream_provider") or response.get("model"), route_provenance=provenance, input_tokens=usage.get("prompt_tokens"), output_tokens=usage.get("completion_tokens"))
 
 
 def adapter_for_judge(judge_name: str, *, transport: Transport | None = None, gate: ProviderExecutionGate = ProviderExecutionGate()) -> ControlledChatAdapter:

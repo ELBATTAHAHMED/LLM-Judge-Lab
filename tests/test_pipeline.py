@@ -146,7 +146,7 @@ def test_calibrated_evaluation_endpoint_validation(client):
         "temperature": 0.0,
     }
     response = client.post("/api/evaluate/calibrated", json=payload)
-    assert response.status_code in (200, 500)
+    assert response.status_code == 403
     if response.status_code == 200:
         data = response.json()
         assert data["status"] == "success"

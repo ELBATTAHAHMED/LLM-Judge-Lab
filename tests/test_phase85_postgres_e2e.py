@@ -30,7 +30,7 @@ from test_phase5_offline_integration import chain, request
 def test_postgres_rq6_and_analysisrun_api_e2e():
     url = os.environ["PHASE85_POSTGRES_E2E_URL"]
     cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(url)
     Session = sessionmaker(bind=engine)
     try:

@@ -36,6 +36,12 @@ def test_rq2_uses_exact_groups_temperatures_repetitions_and_group_bootstrap():
     assert result.denominator == 2 and result.value == .9 and result.bootstrap_iterations == 100
 
 
+def test_rq2_rejects_mixed_route_identity_as_one_exact_configuration():
+    rows = [RQ2Repetition(**evidence("RQ2", f"x{i}"), group_key="wrongly-merged", answer_a_id=1, answer_b_id=2, temperature=0, repetition_index=i, retry_count=0, verdict="ANSWER_A", configured_upstream_provider="a" if i < 4 else "b", observed_upstream_provider="a" if i < 4 else "b", routing_fingerprint="route-a" if i < 4 else "route-b") for i in range(5)]
+    result = analyze_rq2(rows, iterations=20)["consistency"]
+    assert result.status == "INSUFFICIENT_ELIGIBLE_UNITS"
+
+
 def test_rq3_paired_flip_tie_incomplete_and_slot_imbalance_are_separate():
     rows = [RQ3Pair(**evidence("RQ3", "stable"), pass_ab="ANSWER_A", pass_ba="ANSWER_A", slot_wins_a=1), RQ3Pair(**evidence("RQ3", "flip"), pass_ab="ANSWER_A", pass_ba="ANSWER_B", slot_wins_a=2), RQ3Pair(**evidence("RQ3", "tie"), pass_ab="TIE", pass_ba="ANSWER_A"), RQ3Pair(**evidence("RQ3", "missing"), pass_ab="ANSWER_A", pass_ba=None)]
     result = analyze_rq3(rows, seed=8, iterations=100)

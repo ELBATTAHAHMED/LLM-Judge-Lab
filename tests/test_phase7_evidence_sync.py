@@ -19,7 +19,7 @@ def test_controlled_endpoint_returns_explicit_empty_state_in_isolated_database(t
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(ROOT / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{path.as_posix()}")
-    command.upgrade(config, "0007_pass_attempt_ledger")
+    command.upgrade(config, "head")
     engine = create_engine(f"sqlite:///{path.as_posix()}")
     event.listen(engine, "connect", lambda conn, _: conn.execute("PRAGMA foreign_keys=ON"))
     with sessionmaker(bind=engine)() as session:

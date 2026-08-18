@@ -28,7 +28,7 @@ from test_phase5_offline_integration import chain, request
 def isolated_engine(tmp_path):
     path = tmp_path / "phase85.sqlite"
     cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", f"sqlite:///{path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{path.as_posix()}")
     event.listen(engine, "connect", lambda connection, _: connection.execute("PRAGMA foreign_keys=ON"))
     try:

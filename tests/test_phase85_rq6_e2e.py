@@ -22,7 +22,7 @@ from test_phase5_offline_integration import chain, request
 def test_rq6_self_a_and_self_b_are_physical_slots_and_analyze(tmp_path):
     path = tmp_path / "rq6.sqlite"
     cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", f"sqlite:///{path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{path.as_posix()}")
     try:
         with sessionmaker(bind=engine).begin() as db:

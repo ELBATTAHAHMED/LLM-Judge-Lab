@@ -24,7 +24,7 @@ from phase3_planning import database_pairs
 def test_full_16600_postgres_rehearsal_and_second_run_idempotency():
     url = os.environ["PHASE85_FULL_POSTGRES_URL"]
     cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", url)
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     with SessionLocal() as source:
         pairs = database_pairs(source)
     engine = create_engine(url, pool_pre_ping=True)

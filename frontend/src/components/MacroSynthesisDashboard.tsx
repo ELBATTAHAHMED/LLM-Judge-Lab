@@ -56,7 +56,7 @@ export const MacroSynthesisDashboard: React.FC = () => {
     return 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-rose-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-rose-400 dark:border-neutral-700';
   };
 
-  // Dynamic thesis conclusion banner phrase
+  // Legacy exploratory summary; controlled RQ7 is the final mitigation test.
   let agreementPhrase = `maintains agreement (0.000 \u0394\u03BA)`;
   if (data.delta_kappa > 0) {
     agreementPhrase = `increases agreement by +${data.delta_kappa.toFixed(3)} \u0394\u03BA`;
@@ -299,7 +299,7 @@ export const MacroSynthesisDashboard: React.FC = () => {
         <div className="flex items-center space-x-2 text-neutral-700 dark:text-neutral-300">
           <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
           <span>
-            <strong className="font-semibold text-neutral-900 dark:text-white">Thesis Conclusion:</strong> Dual A/B swap &amp; ensemble voting <span className="font-mono font-medium text-teal-600 dark:text-teal-400">{agreementPhrase}</span> and eliminates order vulnerability across MT-Bench domains.
+            <strong className="font-semibold text-neutral-900 dark:text-white">Exploratory observation:</strong> this historical comparison <span className="font-mono font-medium text-teal-600 dark:text-teal-400">{agreementPhrase}</span>. It does not establish that mitigation eliminates position sensitivity; final evidence requires controlled RQ7 results.
           </span>
         </div>
         <div className="flex items-center space-x-1.5 font-mono text-[11px] text-neutral-500 dark:text-neutral-500 shrink-0">

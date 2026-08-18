@@ -33,6 +33,7 @@ class MetricResult:
     unknown_count: int = 0
     invalid_count: int = 0
     failure_count: int = 0
+    refusal_count: int = 0
     missing_count: int = 0
     excluded_count: int = 0
     ci_low: float | None = None
@@ -55,7 +56,7 @@ class MetricResult:
 
 def _counts(labels: Iterable[str | None]) -> dict[str, int]:
     values = list(labels)
-    return {"tie_count": values.count("TIE"), "unknown_count": values.count("UNKNOWN"), "invalid_count": values.count("INVALID_RESPONSE"), "failure_count": sum(v in {"API_ERROR", "TIMEOUT", "REFUSAL", "AMBIGUOUS"} for v in values), "missing_count": sum(v is None or v == "MISSING_PASS" for v in values)}
+    return {"tie_count": values.count("TIE"), "unknown_count": values.count("UNKNOWN"), "invalid_count": values.count("INVALID_RESPONSE"), "failure_count": sum(v in {"API_ERROR", "TIMEOUT", "REFUSAL", "AMBIGUOUS"} for v in values), "refusal_count": values.count("REFUSAL"), "missing_count": sum(v is None or v == "MISSING_PASS" for v in values)}
 
 
 def _not_estimable(name: str, *, eligible_n: int, analyzed_n: int = 0, status: str = "NOT_ESTIMABLE", notes: str = "", labels: Iterable[str | None] = ()) -> MetricResult:
@@ -146,6 +147,12 @@ class RQ2Repetition(ControlledEvidence):
     prompt_template_version: str = "UNKNOWN"
     top_p: float | None = None
     seed_policy: str = "UNKNOWN"
+    effective_model: str = "UNKNOWN"
+    configured_upstream_provider: str | None = None
+    observed_upstream_provider: str | None = None
+    routing_policy_version: str | None = None
+    routing_fingerprint: str | None = None
+    expected_repetitions: int = 5
 
 
 def analyze_rq2(units: Iterable[RQ2Repetition], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]:
@@ -153,9 +160,9 @@ def analyze_rq2(units: Iterable[RQ2Repetition], *, seed: int = 20260818, iterati
     for row in rows: groups[row.group_key].append(row)
     group_values: list[float] = []; labels = [r.verdict for r in rows]; excluded = 0
     for group in groups.values():
-        identity = {(r.answer_a_id, r.answer_b_id, r.judge_name, r.provider, r.requested_model, r.condition, r.temperature, r.prompt_template_version, r.top_p, r.seed_policy) for r in group}
+        identity = {(r.answer_a_id, r.answer_b_id, r.judge_name, r.provider, r.requested_model, r.effective_model, r.configured_upstream_provider, r.observed_upstream_provider, r.routing_policy_version, r.routing_fingerprint, r.condition, r.temperature, r.prompt_template_version, r.top_p, r.seed_policy) for r in group}
         repetitions = {r.repetition_index for r in group}; valid = [r.verdict for r in group if r.verdict in VALID]
-        if len(identity) != 1 or len(repetitions) != len(group) or not valid: excluded += 1; continue
+        if len(identity) != 1 or len(repetitions) != len(group) or len(group) != group[0].expected_repetitions or not valid: excluded += 1; continue
         group_values.append(max(Counter(valid).values()) / len(valid))
     if not group_values: return {"consistency": _not_estimable("rq2_within_unit_consistency", eligible_n=len(groups), status="INSUFFICIENT_ELIGIBLE_UNITS", notes="No complete repeated groups with valid outcomes.", labels=labels)}
     value = mean(group_values); low, high = bootstrap_ci(group_values, lambda xs: mean(xs), seed=seed, iterations=iterations)

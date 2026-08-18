@@ -20,7 +20,7 @@ from phase3_planning import PairRecord  # noqa: E402
 @pytest.fixture()
 def isolated_engine(tmp_path):
     path = tmp_path / "phase6.sqlite"; cfg = Config(str(ROOT / "alembic.ini")); cfg.set_main_option("script_location", str(ROOT / "alembic")); cfg.set_main_option("sqlalchemy.url", f"sqlite:///{path.as_posix()}")
-    command.upgrade(cfg, "0007_pass_attempt_ledger")
+    command.upgrade(cfg, "head")
     engine = create_engine(f"sqlite:///{path.as_posix()}"); event.listen(engine, "connect", lambda c, _: c.execute("PRAGMA foreign_keys=ON"))
     try: yield engine
     finally: engine.dispose()

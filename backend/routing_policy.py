@@ -39,8 +39,8 @@ def openrouter_request_controls(judge_name: str) -> tuple[dict[str, str], dict[s
     )
 
 
-def validate_router_response(*, judge_name: str, response: dict[str, Any]) -> None:
-    """Reject missing/changed upstream provenance before evidence persistence."""
+def validate_router_response(*, judge_name: str, response: dict[str, Any]) -> dict[str, Any]:
+    """Reject missing/changed upstream provenance and return durable subset."""
     route = frozen_openrouter_route(judge_name)
     metadata = response.get("provider") or response.get("metadata") or {}
     upstream = metadata.get("provider") or metadata.get("upstream_provider")
@@ -50,3 +50,11 @@ def validate_router_response(*, judge_name: str, response: dict[str, Any]) -> No
         raise ValueError("OpenRouter response was served by an unexpected upstream provider")
     if metadata.get("fallbacks") or metadata.get("fallback_attempted"):
         raise ValueError("OpenRouter fallback metadata is forbidden for controlled evidence")
+    return {
+        "configured_upstream_provider": route["upstream_provider"],
+        "observed_upstream_provider": upstream,
+        "routing_policy_version": routing_policy_version(),
+        "routing_fingerprint": routing_fingerprint(),
+        "fallback_observed": False,
+        "router_metadata": {key: metadata.get(key) for key in ("provider", "upstream_provider", "fallbacks", "fallback_attempted", "generation_id") if key in metadata},
+    }

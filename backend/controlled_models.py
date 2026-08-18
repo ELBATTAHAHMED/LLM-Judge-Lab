@@ -231,6 +231,10 @@ class RunPass(Base):
     explanation: Mapped[Optional[str]] = mapped_column(Text)
     provider_model: Mapped[Optional[str]] = mapped_column(String(255))
     model_version: Mapped[Optional[str]] = mapped_column(String(255))
+    # v0008: durable scientific outcome and observed provider-route identity.
+    outcome: Mapped[Optional[str]] = mapped_column(String(32))
+    route_provenance_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
+    presentation_provenance_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
 
     run: Mapped[ControlledRun] = relationship(back_populates="passes")
 
@@ -252,6 +256,11 @@ class PassAttempt(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     details_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
+    route_provenance_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
+    input_tokens: Mapped[Optional[int]] = mapped_column(Integer)
+    output_tokens: Mapped[Optional[int]] = mapped_column(Integer)
+    estimated_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 8))
+    actual_usd: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 8))
 
 
 class AnalysisRun(Base):
