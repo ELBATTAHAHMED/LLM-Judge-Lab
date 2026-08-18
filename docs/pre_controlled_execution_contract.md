@@ -47,6 +47,10 @@ routing checks are completed and recorded.
 - Capability policy: temperature/top-p supported for all judges; seed supported
   only for GPT-4o-mini and recorded as NOT_SUPPORTED elsewhere; max output 350.
 - Pricing config: `pricing-config-v1`, externally verified 2026-08-18, USD.
+- Rehearsal architecture: the full mock rehearsal uses the same
+  `ControlledChatAdapter` request builder as future execution. A deterministic
+  fake transport receives the final provider-bound payload; it is the only
+  substituted component and cannot make a network request.
 
 ## Final routing manifests
 
