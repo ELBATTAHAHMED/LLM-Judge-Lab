@@ -7,13 +7,16 @@ provider results; Phase 1 tests use synthetic values exclusively.
 from __future__ import annotations
 
 import hashlib
+import math
 import uuid
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, is_dataclass
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from enum import Enum
+from pathlib import Path
 from typing import Any, Optional
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -24,6 +27,37 @@ from controlled_models import (
     ControlledRun, DatasetVersion, Experiment, ExperimentalCondition,
     ExperimentManifest, ExperimentalUnit, RunPass, CounterfactualVariant, PassAttempt,
 )
+
+
+def to_json_safe(val: Any) -> Any:
+    """Normalize values to standard JSON-serializable primitives for JSON/JSONB storage.
+
+    Monetary Decimal values are converted to exact string representations to preserve
+    arbitrary precision without float rounding errors.
+    """
+    if val is None:
+        return None
+    if isinstance(val, (str, int, bool)):
+        return val
+    if isinstance(val, float):
+        return None if (math.isnan(val) or math.isinf(val)) else val
+    if isinstance(val, Decimal):
+        return str(val)
+    if isinstance(val, (uuid.UUID, Path)):
+        return str(val)
+    if isinstance(val, (datetime, date)):
+        return val.isoformat()
+    if isinstance(val, Enum):
+        return val.value
+    if is_dataclass(val) and not isinstance(val, type):
+        return to_json_safe(asdict(val))
+    if isinstance(val, BaseModel):
+        return to_json_safe(val.model_dump())
+    if isinstance(val, dict):
+        return {str(k): to_json_safe(v) for k, v in val.items()}
+    if isinstance(val, (list, tuple, set)):
+        return [to_json_safe(x) for x in val]
+    return str(val)
 
 
 class EvidenceClass(str, Enum):
@@ -108,19 +142,19 @@ class ControlledPersistence:
         return row
 
     def create_experiment(self, *, dataset_version: DatasetVersion, experiment_name: str, research_question: str, hypothesis: str, mitigation_strategy: str = "NONE", analysis_version: str | None = None, description: str | None = None, metadata_json: dict[str, Any] | None = None) -> Experiment:
-        row = Experiment(dataset_version_id=dataset_version.id, experiment_name=experiment_name, research_question=research_question, hypothesis=hypothesis, mitigation_strategy=mitigation_strategy, analysis_version=analysis_version, description=description, status="PLANNED", metadata_json=metadata_json)
+        row = Experiment(dataset_version_id=dataset_version.id, experiment_name=experiment_name, research_question=research_question, hypothesis=hypothesis, mitigation_strategy=mitigation_strategy, analysis_version=analysis_version, description=description, status="PLANNED", metadata_json=to_json_safe(metadata_json))
         self.session.add(row)
         self.session.flush()
         return row
 
     def create_condition(self, *, experiment: Experiment, condition_code: str, label: str, condition_json: dict[str, Any], protocol_version: str, prompt_template_version: str | None = None) -> ExperimentalCondition:
-        row = ExperimentalCondition(experiment_id=experiment.id, condition_code=condition_code, label=label, condition_json=condition_json, protocol_version=protocol_version, prompt_template_version=prompt_template_version)
+        row = ExperimentalCondition(experiment_id=experiment.id, condition_code=condition_code, label=label, condition_json=to_json_safe(condition_json), protocol_version=protocol_version, prompt_template_version=prompt_template_version)
         self.session.add(row)
         self.session.flush()
         return row
 
     def create_manifest(self, *, experiment: Experiment, rq_code: str, protocol_version: str, analysis_version: str, dataset_snapshot_id: str, dataset_checksum: str, manifest_sha256: str, manifest_json: dict[str, Any]) -> ExperimentManifest:
-        row = ExperimentManifest(experiment_id=experiment.id, rq_code=rq_code, protocol_version=protocol_version, analysis_version=analysis_version, dataset_snapshot_id=dataset_snapshot_id, dataset_checksum=dataset_checksum, manifest_sha256=manifest_sha256, manifest_json=manifest_json, status="PLANNED")
+        row = ExperimentManifest(experiment_id=experiment.id, rq_code=rq_code, protocol_version=protocol_version, analysis_version=analysis_version, dataset_snapshot_id=dataset_snapshot_id, dataset_checksum=dataset_checksum, manifest_sha256=manifest_sha256, manifest_json=to_json_safe(manifest_json), status="PLANNED")
         self.session.add(row)
         self.session.flush()
         return row
@@ -143,7 +177,7 @@ class ControlledPersistence:
             if existing.variant_text != variant_text:
                 raise ValueError("immutable variant checksum/text mismatch")
             return existing
-        row = CounterfactualVariant(experiment_id=experiment.id, original_answer_id=original_answer_id, variant_answer_id=None, variant_text=variant_text, condition_code=condition_code, transformation_method=transformation_method, transformation_version=transformation_version, original_checksum=original_checksum, variant_checksum=variant_checksum, original_word_count=original_word_count, variant_word_count=variant_word_count, original_token_estimate=original_word_count, variant_token_estimate=variant_word_count, validation_status=validation_status, validation_details=validation_details)
+        row = CounterfactualVariant(experiment_id=experiment.id, original_answer_id=original_answer_id, variant_answer_id=None, variant_text=variant_text, condition_code=condition_code, transformation_method=transformation_method, transformation_version=transformation_version, original_checksum=original_checksum, variant_checksum=variant_checksum, original_word_count=original_word_count, variant_word_count=variant_word_count, original_token_estimate=original_word_count, variant_token_estimate=variant_word_count, validation_status=validation_status, validation_details=to_json_safe(validation_details))
         self.session.add(row); self.session.flush(); return row
 
     def create_run(self, *, unit: ExperimentalUnit, idempotency_key: str, requested_model: str, judge_name: str | None = None, provider: str | None = None, effective_model: str | None = None, model_version: str | None = None, run_kind: str = "STANDARD", metadata_json: dict[str, Any] | None = None, evidence_class: str = EvidenceClass.CONTROLLED.value) -> ControlledRun:
@@ -152,7 +186,7 @@ class ControlledPersistence:
             return existing
         metadata = dict(metadata_json or {})
         metadata.update({"evidence_class": evidence_class, "controlled_unit_id": str(unit.id), "manifest_id": str(unit.manifest_id), "condition_code": unit.condition_code, "unit_fingerprint": unit.unit_fingerprint})
-        row = ControlledRun(experimental_unit_id=unit.id, experiment_id=unit.experiment_id, prompt_id=unit.prompt_id, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, judge_name=judge_name or unit.judge_model, provider=provider or unit.provider, requested_model=requested_model, effective_model=effective_model, provider_model=unit.provider_model, model_version=model_version, prompt_template_version=unit.prompt_template_version, temperature=unit.temperature, top_p=unit.top_p, seed=unit.seed, repetition_index=unit.repetition_index, run_kind=run_kind, status="PENDING", idempotency_key=idempotency_key, metadata_json=metadata)
+        row = ControlledRun(experimental_unit_id=unit.id, experiment_id=unit.experiment_id, prompt_id=unit.prompt_id, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, judge_name=judge_name or unit.judge_model, provider=provider or unit.provider, requested_model=requested_model, effective_model=effective_model, provider_model=unit.provider_model, model_version=model_version, prompt_template_version=unit.prompt_template_version, temperature=unit.temperature, top_p=unit.top_p, seed=unit.seed, repetition_index=unit.repetition_index, run_kind=run_kind, status="PENDING", idempotency_key=idempotency_key, metadata_json=to_json_safe(metadata))
         self.session.add(row)
         self.session.flush()
         return row
@@ -190,8 +224,8 @@ class ControlledPersistence:
                 raise ValueError("a scientific pass may have only one successful terminal attempt")
         attempt.state, attempt.failure_category, attempt.provider_response_id = state, failure_category, provider_response_id
         attempt.retry_decision = "RETRY" if state == "FAILED_RETRYABLE" else "OPERATOR_REVIEW" if state == "AMBIGUOUS" else "FINAL"
-        attempt.completed_at, attempt.details_json = datetime.now(timezone.utc), details
-        attempt.route_provenance_json, attempt.input_tokens, attempt.output_tokens, attempt.estimated_usd, attempt.actual_usd = route_provenance, input_tokens, output_tokens, estimated_usd, actual_usd
+        attempt.completed_at, attempt.details_json = datetime.now(timezone.utc), to_json_safe(details)
+        attempt.route_provenance_json, attempt.input_tokens, attempt.output_tokens, attempt.estimated_usd, attempt.actual_usd = to_json_safe(route_provenance), input_tokens, output_tokens, estimated_usd, actual_usd
         self.session.flush(); return attempt
 
     def resolve_ambiguous_attempt(self, *, attempt: PassAttempt, resolution: str, details: dict[str, Any] | None = None) -> PassAttempt:
@@ -216,7 +250,7 @@ class ControlledPersistence:
         else:
             attempt.state, attempt.retry_decision = "FAILED_FINAL", resolution
             if resolution == "AUTHORIZED_RERUN": history["authorized_rerun"] = True
-        attempt.details_json = history
+        attempt.details_json = to_json_safe(history)
         attempt.completed_at = datetime.now(timezone.utc)
         self.session.flush()
         return attempt
@@ -229,7 +263,7 @@ class ControlledPersistence:
         existing = self.session.scalar(select(RunPass).where(RunPass.run_id == run.id, RunPass.pass_number == observation.pass_number))
         if existing is not None:
             return existing
-        row = RunPass(run_id=run.id, pass_number=observation.pass_number, presented_answer_a_id=observation.presented_answer_a_id, presented_answer_b_id=observation.presented_answer_b_id, raw_verdict=raw_verdict, winner_answer_id=winner, parse_status=parse_status, confidence=observation.confidence, raw_provider_response=observation.raw_provider_response, reasoning_summary=observation.reasoning_summary, api_response_id=observation.api_response_id, effective_model=observation.effective_model, provider_model=observation.provider_model, model_version=observation.model_version, latency_ms=observation.latency_ms, criteria_scores=observation.criteria_scores, explanation=observation.explanation, outcome=observation.outcome.value, route_provenance_json=observation.route_provenance, presentation_provenance_json=observation.presentation_provenance)
+        row = RunPass(run_id=run.id, pass_number=observation.pass_number, presented_answer_a_id=observation.presented_answer_a_id, presented_answer_b_id=observation.presented_answer_b_id, raw_verdict=raw_verdict, winner_answer_id=winner, parse_status=parse_status, confidence=observation.confidence, raw_provider_response=to_json_safe(observation.raw_provider_response), reasoning_summary=observation.reasoning_summary, api_response_id=observation.api_response_id, effective_model=observation.effective_model, provider_model=observation.provider_model, model_version=observation.model_version, latency_ms=observation.latency_ms, criteria_scores=to_json_safe(observation.criteria_scores), explanation=observation.explanation, outcome=observation.outcome.value, route_provenance_json=to_json_safe(observation.route_provenance), presentation_provenance_json=to_json_safe(observation.presentation_provenance))
         self.session.add(row)
         self.session.flush()
         return row
@@ -245,7 +279,7 @@ class ControlledPersistence:
         run.error_details = error_details
         run.retry_count = retry_count
         run.final_explanation = final_explanation
-        run.final_criteria = final_criteria
+        run.final_criteria = to_json_safe(final_criteria)
         run.final_confidence = final_confidence
         run.completed_at = datetime.now(timezone.utc)
         run.status = "SUCCEEDED" if outcome in {Outcome.ANSWER_A, Outcome.ANSWER_B, Outcome.TIE, Outcome.UNKNOWN} else "FAILED"
@@ -266,7 +300,7 @@ class ControlledPersistence:
         # ``DECISIVE_FLIP`` is the recovered schema vocabulary, not a causal
         # position-bias claim.  Preserve the scientifically neutral derivation.
         metadata["derived_dual_pass_decision"] = decision
-        run.metadata_json = metadata
+        run.metadata_json = to_json_safe(metadata)
         run.latency_ms = latency_ms
         run.retry_count = retry_count
         run.final_explanation = final_explanation

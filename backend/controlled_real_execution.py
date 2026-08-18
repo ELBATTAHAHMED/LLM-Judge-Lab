@@ -176,7 +176,7 @@ class BudgetLedger:
         self.reserved_output_tokens += estimated_output
         self.reserved_usd += estimated_usd
         return {"estimated_input_tokens": estimated_input, "estimated_output_tokens": estimated_output,
-                "estimated_usd": estimated_usd}
+                "estimated_usd": str(estimated_usd)}
 
     def snapshot(self) -> dict[str, Any]:
         return {"scientific_passes": len(self.scientific_passes), "provider_attempts": self.provider_attempts,

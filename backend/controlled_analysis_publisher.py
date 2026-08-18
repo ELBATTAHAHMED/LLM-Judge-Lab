@@ -6,6 +6,7 @@ from typing import Iterable, Mapping
 from sqlalchemy.orm import Session
 
 from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit
+from controlled_persistence import to_json_safe
 from controlled_analysis_adapter import rq1_from_run, rq2_from_run, rq3_from_run, rq4_from_run, rq5_from_run, rq6_from_run, rq7_observations
 from evidence_contract import EvidenceClass
 from phase4_metrics import ANALYSIS_VERSION, MetricResult
@@ -47,7 +48,7 @@ def publish_analysis_run(*, session: Session, experiment: Experiment, manifest: 
         "source_unit_ids": sorted(str(unit.id) for unit in units),
         "results": serialize_metrics(rq_code=rq_code, metrics=metrics, source_units=units),
     }
-    row = AnalysisRun(experiment_id=experiment.id, manifest_id=manifest.id, rq_code=rq_code, analysis_version=ANALYSIS_VERSION, analysis_seed=analysis_seed, status="COMPLETED", result_json=payload)
+    row = AnalysisRun(experiment_id=experiment.id, manifest_id=manifest.id, rq_code=rq_code, analysis_version=ANALYSIS_VERSION, analysis_seed=analysis_seed, status="COMPLETED", result_json=to_json_safe(payload))
     session.add(row); session.flush()
     return row
 

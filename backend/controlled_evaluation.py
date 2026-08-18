@@ -305,7 +305,8 @@ class ControlledExecutionService:
             raise
         category = result.error_code or {Outcome.API_ERROR: "PROVIDER_ERROR", Outcome.TIMEOUT: "TIMEOUT", Outcome.INVALID_RESPONSE: "INVALID_RESPONSE", Outcome.REFUSAL: "REFUSAL"}.get(result.outcome)
         state = "SUCCEEDED" if result.outcome not in {Outcome.API_ERROR, Outcome.TIMEOUT, Outcome.INVALID_RESPONSE, Outcome.REFUSAL} else terminal_state(category or "CONFIGURATION", request.retry_count)
-        estimated_usd = reservation.get("estimated_usd")
+        estimated_usd_raw = reservation.get("estimated_usd")
+        estimated_usd = Decimal(str(estimated_usd_raw)) if estimated_usd_raw is not None else None
         actual_usd = None
         if result.input_tokens is not None and result.output_tokens is not None:
             # The reservation uses the same frozen prices; actual provider
