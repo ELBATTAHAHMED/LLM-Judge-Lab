@@ -69,7 +69,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
     if (isBiased) {
       return (
         <>
-          Statistically robust positive self-preference bias detected for the{' '}
+          Exploratory source-family association detected for the{' '}
           <strong className="text-neutral-900 dark:text-neutral-200">
             {data.judge_family.toUpperCase()}
           </strong>{' '}
@@ -97,7 +97,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
 
     return (
       <>
-        No statistically robust self-preference bias detected for the{' '}
+        No exploratory source-family association detected for the{' '}
         <strong className="text-neutral-900 dark:text-neutral-200">
           {data.judge_family.toUpperCase()}
         </strong>{' '}
@@ -113,7 +113,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
       <div className="border-b border-neutral-200 dark:border-neutral-800 pb-2.5">
         <div className="flex items-center justify-between">
           <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-            Self-Preference Bias (RQ6)
+            Exploratory Source-Family Association
           </h4>
           <span
             className={`text-[10px] font-mono border px-2 py-0.5 rounded ${

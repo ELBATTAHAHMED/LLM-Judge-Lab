@@ -47,7 +47,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
           <div>
             <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-              Format Preference Breakdown (RQ5)
+              Exploratory Formatting Association
             </h4>
             <p className="text-xs text-neutral-500">
               Selection frequency when candidates differ in Markdown formatting
@@ -63,7 +63,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
 
         {loading ? (
           <div className="h-64 flex items-center justify-center font-mono text-xs text-neutral-500 flex-1">
-            Evaluating format bias telemetry...
+            Loading exploratory formatting telemetry...
           </div>
         ) : error ? (
           <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs flex-1">
@@ -105,7 +105,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Format Bias Confirmed:</strong> Chi-Square test rejects 50/50 uniform selection ({pValueFormatted}). The LLM judge systematically favors candidate answers with heavy markdown headers, bullet lists, and code block formatting over plain text.
+              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory formatting association:</strong> this historical heuristic is not the controlled RQ5 format experiment. Controlled Format Effect status: planned.
             </div>
           </div>
         )}

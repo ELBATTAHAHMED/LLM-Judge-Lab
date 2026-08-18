@@ -6,6 +6,7 @@ import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
 import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square } from 'lucide-react';
+import { EvidenceBadge } from '../components/EvidenceBadge';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
 
@@ -150,7 +151,7 @@ export const LiveLabPage: React.FC = () => {
             Live Evaluation Sandbox
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            Test prompt pairs in real-time with standard G-EVAL or active bias mitigation protocols.
+            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LIVE_SANDBOX" /></span>Interactive/manual evaluations are excluded from frozen controlled RQ1–RQ7 evidence.
           </p>
         </div>
         <button

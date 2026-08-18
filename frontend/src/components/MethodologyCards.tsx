@@ -41,7 +41,7 @@ export const MethodologyCards: React.FC = () => {
         </div>
 
         <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          Linear regression proves the judge exhibits verbosity bias: every 100 extra words in the winning response increases win probability by ~6–8%. Extracting the residual (&epsilon;) mathematically isolates the model's verbosity-independent Pure Quality score.
+          Historical regression describes an exploratory length association. It does not establish a controlled redundant-length effect or a verbosity-independent quality score.
         </p>
       </div>
     </div>

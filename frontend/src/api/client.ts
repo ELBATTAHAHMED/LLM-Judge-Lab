@@ -16,6 +16,7 @@ import type {
   InterJudgeReliability,
   SelfPreferenceResponse,
   MacroBenchmarkResponse,
+  ControlledResultsResponse,
 } from './types';
 
 /**
@@ -70,6 +71,26 @@ export async function calculateLeaderboard(judgeModel: string): Promise<Leaderbo
 export async function getDatasetCount(): Promise<DatasetCountResponse> {
   const response = await apiClient.get<DatasetCountResponse>('/api/stats/dataset-count');
   return response.data;
+}
+
+/** Controlled-only route. It never falls back to legacy, sandbox, or mock data. */
+export async function getControlledResults(): Promise<ControlledResultsResponse> {
+  const response = await apiClient.get<ControlledResultsResponse>('/api/controlled/results');
+  return response.data;
+}
+
+export function useControlledResults() {
+  const [data, setData] = useState<ControlledResultsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const fetch = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setData(await getControlledResults()); }
+    catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to fetch controlled evidence status'); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { fetch(); }, [fetch]);
+  return { data, loading, error, refetch: fetch };
 }
 
 /**

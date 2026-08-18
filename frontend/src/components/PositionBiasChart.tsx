@@ -45,7 +45,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
           <div>
             <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-              Position Preference Breakdown
+              Legacy Slot-Win Distribution
             </h4>
             <p className="text-xs text-neutral-500">
               Selection frequency by physical choice order in prompt
@@ -100,7 +100,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Position Bias Analysis:</strong> Chi-Square test compares position selection against a 50/50 uniform distribution (&chi;&sup2; = {chi2Stat.toFixed(2)}). The judge currently exhibits a preference for <strong className="text-neutral-900 dark:text-neutral-200">{preferredPos}</strong>.
+              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory slot-win imbalance:</strong> this aggregate historical count is not the controlled paired decisive flip rate. It currently has more selections in <strong className="text-neutral-900 dark:text-neutral-200">{preferredPos}</strong>.
             </div>
           </div>
         )}

@@ -1,0 +1,17 @@
+{
+  "version": "controlled-routing-v1",
+  "status": "VERIFIED_EXTERNAL_2026_08_18",
+  "verified_at": "2026-08-18",
+  "source": "Project-owner approved official OpenAI/OpenRouter verification input",
+  "models": {
+    "anthropic/claude-3-haiku": {"upstream_provider": "amazon-bedrock", "structured_output_transport_mode": "PROMPT_ENFORCED"},
+    "deepseek/deepseek-chat": {"upstream_provider": "streamlake", "structured_output_transport_mode": "PROMPT_ENFORCED"},
+    "meta-llama/llama-3.3-70b-instruct": {"upstream_provider": "deepinfra/turbo", "structured_output_transport_mode": "PROMPT_ENFORCED"}
+  },
+  "policy": {
+    "allow_fallbacks": false,
+    "require_parameters": true,
+    "router_metadata_header": "X-OpenRouter-Metadata: enabled"
+  },
+  "note": "Frozen external routing input. Any route, fallback, or upstream mismatch fails controlled provenance validation."
+}

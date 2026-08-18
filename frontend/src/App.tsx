@@ -9,6 +9,7 @@ const SynthesisPage = lazy(() => import('./pages/SynthesisPage').then(m => ({ de
 const DiagnosticsPage = lazy(() => import('./pages/DiagnosticsPage').then(m => ({ default: m.DiagnosticsPage })));
 const QualitativeExplorerPage = lazy(() => import('./pages/QualitativeExplorerPage').then(m => ({ default: m.QualitativeExplorerPage })));
 const LiveLabPage = lazy(() => import('./pages/LiveLabPage').then(m => ({ default: m.LiveLabPage })));
+const ControlledResultsPage = lazy(() => import('./pages/ControlledResultsPage').then(m => ({ default: m.ControlledResultsPage })));
 
 export const App: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ export const App: React.FC = () => {
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="synthesis" element={<SynthesisPage />} />
                 <Route path="diagnostics" element={<DiagnosticsPage />} />
+                <Route path="controlled-results" element={<ControlledResultsPage />} />
                 <Route path="qualitative-explorer" element={<QualitativeExplorerPage />} />
                 <Route path="live-lab" element={<LiveLabPage />} />
                 {/* Catch-all redirect to home */}

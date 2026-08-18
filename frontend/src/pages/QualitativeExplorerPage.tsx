@@ -25,7 +25,7 @@ export const QualitativeExplorerPage: React.FC = () => {
   }[] = [
     {
       id: 'verbosity',
-      label: 'Bucket A: Verbosity Bias',
+      label: 'Bucket A: Length Association',
       countStr: selectedBucket === 'verbosity' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'AI chose longer answer (>50w diff) while human chose shorter/tie',
     },
@@ -37,7 +37,7 @@ export const QualitativeExplorerPage: React.FC = () => {
     },
     {
       id: 'position_bias',
-      label: 'Bucket C: Position Bias',
+      label: 'Bucket C: Slot Association',
       countStr: selectedBucket === 'position_bias' && data ? `${data.length} cases` : 'Stratified cases',
       definition: 'AI judge selected candidate response placed in Position B',
     },
@@ -72,7 +72,7 @@ export const QualitativeExplorerPage: React.FC = () => {
     if (!activeRecord) return;
     const fullTranscript = `=== TRIAL TRANSCRIPT (Prompt #${activeRecord.prompt_id}) ===
 Models: ${activeRecord.model_names}
-Human Ground Truth: ${activeRecord.human_winner}
+Human Preference Reference: ${activeRecord.human_winner}
 AI Judge Verdict: ${activeRecord.ai_winner}
 Word Count Disparity: ${activeRecord.word_count_diff > 0 ? '+' : ''}${activeRecord.word_count_diff} words
 
@@ -111,7 +111,7 @@ ${activeRecord.reasoning_text}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <div>
           <h1 className="text-2xl font-serif text-neutral-900 dark:text-white tracking-tight">
-            Stratified Qualitative Reasoning Explorer
+            Legacy / Exploratory Qualitative Explorer
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
             Inspect verbatim judge reasoning outputs across 4 research strata to audit evaluative vocabulary shifts, hedging language, and cognitive disconnects

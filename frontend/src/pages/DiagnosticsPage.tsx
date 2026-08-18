@@ -10,6 +10,7 @@ import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
 import { InterJudgeComparisonCard } from '../components/InterJudgeComparisonCard';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
 import { RefreshCw, Download } from 'lucide-react';
+import { EvidenceBadge } from '../components/EvidenceBadge';
 
 export const DiagnosticsPage: React.FC = () => {
   const { judgeModel } = useJudge();
@@ -47,10 +48,10 @@ export const DiagnosticsPage: React.FC = () => {
       ['Logical Consistency', 'Position Consistency', `${((consistencyData?.position_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Verdict invariance under A/B swap'],
       ['Logical Consistency', 'Domain Specialization', `${((consistencyData?.cross_category_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Category win rate variance'],
       ['Logical Consistency', 'Position Flips', `${consistencyData?.inconsistencies_count ?? 0}`, 'Flagged pairwise verdict reversals'],
-      ['Position Bias', 'Position A Wins', `${biasData?.position_data?.position_a ?? 0}`, 'Slot A total selections'],
-      ['Position Bias', 'Position B Wins', `${biasData?.position_data?.position_b ?? 0}`, 'Slot B total selections'],
-      ['Position Bias', 'Ties', `${biasData?.position_data?.tie ?? 0}`, 'Tie decisions'],
-      ['Format Bias', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 0}`, 'Markdown heavy selections'],
+      ['Slot-Win Imbalance', 'Position A Wins', `${biasData?.position_data?.position_a ?? 0}`, 'Legacy slot A total selections'],
+      ['Slot-Win Imbalance', 'Position B Wins', `${biasData?.position_data?.position_b ?? 0}`, 'Legacy slot B total selections'],
+      ['Slot-Win Imbalance', 'Ties', `${biasData?.position_data?.tie ?? 0}`, 'Legacy tie decisions'],
+      ['Formatting Association', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 0}`, 'Historical markdown-heavy selections'],
       ['Format Bias', 'Plain Text Chosen', `${biasData?.format_bias?.plain_text_chosen ?? 0}`, 'Plain text selections'],
       ['Format Bias', 'Chi-Square Stat', `${biasData?.format_bias?.chi2_stat ?? 0}`, 'Chi2 goodness of fit'],
       ['Format Bias', 'p-value', `${biasData?.format_bias?.p_value ?? 1}`, 'Raw p-value'],
@@ -86,10 +87,10 @@ export const DiagnosticsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <div>
           <h1 className="text-2xl font-serif text-neutral-900 dark:text-white tracking-tight">
-            Systematic Bias Diagnostics
+            Legacy / Exploratory Diagnostics
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            Real-time diagnostic telemetry evaluating Position-Order Bias (&chi;&sup2;), Verbosity Bias (&rho;), Format Bias (&chi;&sup2;), Inter-Rater Reliability (&kappa;), and Logical Consistency
+            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Historical observational telemetry. It is not final controlled RQ1–RQ7 evidence.
           </p>
         </div>
 

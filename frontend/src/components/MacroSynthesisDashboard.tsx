@@ -118,14 +118,14 @@ export const MacroSynthesisDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between p-2.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-600 dark:text-neutral-400">Human Preference Accuracy</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Agreement with Human Preferences</span>
               <span className="font-bold text-neutral-900 dark:text-neutral-100">
                 {(data.baseline_accuracy * 100).toFixed(1)}%
               </span>
             </div>
 
             <div className="flex items-center justify-between p-2.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-600 dark:text-neutral-400">Position Flip Vulnerability</span>
+              <span className="text-neutral-600 dark:text-neutral-400">Slot-Win Imbalance (legacy proxy)</span>
               <span className="font-bold text-rose-600 dark:text-rose-400">
                 {(data.baseline_flip_rate * 100).toFixed(1)}%
               </span>
@@ -171,7 +171,7 @@ export const MacroSynthesisDashboard: React.FC = () => {
 
             {/* Accuracy Delta */}
             <div className="flex items-center justify-between p-2.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-700 dark:text-neutral-300">Human Preference Accuracy</span>
+              <span className="text-neutral-700 dark:text-neutral-300">Agreement with Human Preferences</span>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-neutral-900 dark:text-white">
                   {(data.calibrated_accuracy * 100).toFixed(1)}%
@@ -184,7 +184,7 @@ export const MacroSynthesisDashboard: React.FC = () => {
 
             {/* Flip Rate Reduction */}
             <div className="flex items-center justify-between p-2.5 rounded bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-100 dark:border-neutral-800">
-              <span className="text-neutral-700 dark:text-neutral-300">Position Flip Vulnerability</span>
+              <span className="text-neutral-700 dark:text-neutral-300">Slot-Win Imbalance (legacy proxy)</span>
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-neutral-900 dark:text-white">
                   {(data.mitigated_flip_rate * 100).toFixed(1)}%

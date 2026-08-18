@@ -386,14 +386,12 @@ def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
 
     # Local Ollama Routing
     if is_local_model(model_name):
-        m = model_name.lower()
-        if "llama" in m or "ollama" in m:
-            target_model = "llama3"
-        else:
-            target_model = model_name.strip()
-
-        if not target_model or target_model.lower() in ("local", "ollama"):
-            target_model = "llama3"
+        target_model = model_name.strip()
+        if not target_model or target_model.lower() in ("local", "ollama") or "local / ollama" in target_model.lower():
+            raise ValueError(
+                "An explicit Ollama model identifier is required; the evaluator will not "
+                "silently substitute the generic 'llama3' model."
+            )
 
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         local_client = openai.OpenAI(
@@ -822,26 +820,30 @@ def call_multi_judge_ensemble(
     order_map = {name: i for i, name in enumerate(model_names)}
     results.sort(key=lambda r: order_map.get(r["model_name"], 999))
 
-    vote_counts = {"A": 0, "B": 0, "TIE": 0, "UNKNOWN": 0}
+    # A failed call is operational telemetry, not an UNKNOWN scientific vote.
+    # Likewise UNKNOWN is retained for traceability but never becomes a valid
+    # A/B/TIE preference in the consensus calculation below.
+    vote_counts = {"A": 0, "B": 0, "TIE": 0, "UNKNOWN": 0, "FAILED": 0}
     total_input_tokens = 0
     total_output_tokens = 0
     successful_models = 0
 
     for r in results:
-        v = r.get("verdict", "UNKNOWN")
-        if v in vote_counts:
-            vote_counts[v] += 1
-        else:
-            vote_counts["UNKNOWN"] += 1
-
         if r.get("status") == "success":
             successful_models += 1
+            v = r.get("verdict", "UNKNOWN")
+            if v in {"A", "B", "TIE", "UNKNOWN"}:
+                vote_counts[v] += 1
+            else:
+                vote_counts["UNKNOWN"] += 1
+        else:
+            vote_counts["FAILED"] += 1
 
         total_input_tokens += r.get("input_tokens", 0)
         total_output_tokens += r.get("output_tokens", 0)
 
     # Determine majority consensus verdict
-    valid_votes = {k: v for k, v in vote_counts.items() if k != "UNKNOWN"}
+    valid_votes = {k: vote_counts[k] for k in ("A", "B", "TIE")}
     max_votes = max(valid_votes.values()) if valid_votes else 0
 
     if max_votes == 0:

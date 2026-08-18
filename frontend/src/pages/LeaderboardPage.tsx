@@ -1,14 +1,17 @@
 import React from 'react';
 import { Database } from 'lucide-react';
-import { useLeaderboard, useDatasetCount } from '../api/client';
+import { useLeaderboard, useDatasetCount, useControlledResults } from '../api/client';
 import { useJudge } from '../context/JudgeContext';
 import { CalibratedLeaderboardTable } from '../components/CalibratedLeaderboardTable';
 import { MethodologyCards } from '../components/MethodologyCards';
+import { EvidenceBadge } from '../components/EvidenceBadge';
+import { ControlledEvidencePanel } from '../components/ControlledEvidencePanel';
 
 export const LeaderboardPage: React.FC = () => {
   const { judgeModel } = useJudge();
   const { data, loading, error, refetch, recalculate } = useLeaderboard(judgeModel);
   const { count, loading: countLoading } = useDatasetCount();
+  const controlled = useControlledResults();
 
   const formattedCount = count !== null && count !== undefined ? count.toLocaleString() : '0';
   const pairwiseCountStr = countLoading
@@ -26,12 +29,14 @@ export const LeaderboardPage: React.FC = () => {
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-serif text-neutral-900 dark:text-white tracking-tight">
-          LLM Latent Quality Leaderboard
+          Legacy / Exploratory Judge-relative Ranking
         </h1>
         <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-          Measuring true model merit across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> pairwise comparisons. Comparing raw win rates against Bradley-Terry MLE parameters (&theta;) and Residual Length Neutralization.
+          <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> historical comparisons. Rankings depend on the evaluation sample, judge, and available comparisons; they are not objective model quality.
         </p>
       </div>
+
+      <ControlledEvidencePanel {...controlled} />
 
       {/* Core Leaderboard Table */}
       <CalibratedLeaderboardTable

@@ -34,6 +34,8 @@ if str(BACKEND_DIR) not in sys.path:
 # Import engine and Base for table creation, and get_db dependency
 from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
 import models  # noqa: E402
+from controlled_models import AnalysisRun, ControlledRun, Experiment, RunPass  # noqa: E402
+from evidence_contract import EvidenceClass  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
@@ -215,6 +217,16 @@ class MacroBenchmarkResponse(BaseModel):
     message: str
 
 
+class ControlledResultsResponse(BaseModel):
+    """Controlled-only endpoint; never falls back to legacy or mock evidence."""
+    status: str
+    evidence_class: Literal["CONTROLLED"]
+    executed_runs: int
+    executed_passes: int
+    results: list[dict[str, Any]] = []
+    message: str
+
+
 # ── GET / & GET /health (Health Check) ───────────────────────────────────────
 
 @app.get("/", response_model=HealthCheckResponse)
@@ -234,6 +246,27 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
             database="disconnected",
             message=f"Backend is running. Database unreachable: {str(e)}",
         )
+
+
+@app.get("/api/controlled/results", response_model=ControlledResultsResponse)
+def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsResponse:
+    """Expose final controlled evidence only after a real controlled analysis exists."""
+    runs = db.query(ControlledRun).filter(ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value).count()
+    passes = db.query(RunPass).join(ControlledRun).filter(ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value).count()
+    if runs == 0 or passes == 0:
+        return ControlledResultsResponse(status="NO_CONTROLLED_EVIDENCE", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Controlled experiment is planned but has not yet been executed.")
+    # The evidence class is provenance of the analysis payload/run records, not
+    # a mutable experiment-planning label.  This permits a PLANNED experiment
+    # to publish only after genuine CONTROLLED evidence exists.
+    published = next((row for row in db.query(AnalysisRun).filter(AnalysisRun.status == "COMPLETED").order_by(AnalysisRun.created_at.desc())
+                      if (row.result_json or {}).get("evidence_class") == EvidenceClass.CONTROLLED.value), None)
+    if published is None:
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Controlled runs exist, but no authoritative completed analysis has been published.")
+    payload = published.result_json or {}
+    rows = payload.get("results", payload if isinstance(payload, list) else [])
+    if not isinstance(rows, list):
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Published controlled analysis has an invalid result contract.")
+    return ControlledResultsResponse(status="CONTROLLED_RESULTS_AVAILABLE", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=rows, message="Authoritative controlled analysis published from persisted CONTROLLED evidence.")
 
 
 # ── Model ID Normalization Utility ────────────────────────────────────────────

@@ -38,7 +38,7 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
       default:
         return {
           title: 'Baseline Alignment Commentary',
-          summary: `The AI judge verdict matches the human preference ground truth (${record.human_winner}). Reasoning text correctly prioritizes factual accuracy, coherence, and conciseness without distortion from verbosity or position bias.`,
+          summary: `The historical AI-judge verdict matches the human preference reference (${record.human_winner}). This is an exploratory qualitative example, not final controlled evidence.`,
         };
     }
   };

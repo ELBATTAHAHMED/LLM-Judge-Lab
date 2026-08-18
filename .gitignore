@@ -38,6 +38,7 @@ yarn-error.log*
 *.sqlite3
 *.db
 jobs_state.json
+/backups/*.dump
 
 # 5. OS & IDE System Files
 .DS_Store

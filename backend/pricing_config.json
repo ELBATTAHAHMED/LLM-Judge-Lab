@@ -1,0 +1,13 @@
+{
+  "version": "pricing-config-v1",
+  "status": "VERIFIED_EXTERNAL_2026_08_18",
+  "currency": "USD",
+  "verification_date": "2026-08-18",
+  "models": [
+    {"judge": "gpt-4o-mini", "provider": "OPENAI", "model": "gpt-4o-mini", "upstream_provider": null, "input_per_million_usd": 0.15, "output_per_million_usd": 0.60},
+    {"judge": "anthropic/claude-3-haiku", "provider": "OPENROUTER", "model": "anthropic/claude-3-haiku", "upstream_provider": "amazon-bedrock", "input_per_million_usd": 0.25, "output_per_million_usd": 1.25},
+    {"judge": "deepseek/deepseek-chat", "provider": "OPENROUTER", "model": "deepseek/deepseek-chat", "upstream_provider": "streamlake", "input_per_million_usd": 0.2002, "output_per_million_usd": 0.8001},
+    {"judge": "meta-llama/llama-3.3-70b-instruct", "provider": "OPENROUTER", "model": "meta-llama/llama-3.3-70b-instruct", "upstream_provider": "deepinfra/turbo", "input_per_million_usd": 0.10, "output_per_million_usd": 0.32}
+  ],
+  "policy": "A REAL execution profile requires explicit authorization, frozen manifest identity, verified routing, verified pricing, and hard call/token/USD limits."
+}

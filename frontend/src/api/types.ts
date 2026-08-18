@@ -181,6 +181,54 @@ export interface MacroBenchmarkResponse {
   message: string;
 }
 
+/**
+ * Future controlled-result API contract.  Values are deliberately nullable:
+ * `NOT_ESTIMABLE` and absent controlled evidence must never be rendered as 0.
+ * The existing dashboard remains on legacy exploratory endpoints until the
+ * later frontend-synchronization phase explicitly connects this contract.
+ */
+export type ControlledEvidenceClass = 'CONTROLLED' | 'DRY_RUN_MOCK';
+export type ControlledMetricStatus = 'ESTIMABLE' | 'NOT_ESTIMABLE' | 'NO_DATA';
+
+export interface ControlledMetricResult {
+  rq: string;
+  judge: string | null;
+  condition: string | null;
+  metric: string;
+  value: number | null;
+  numerator: number | null;
+  denominator: number | null;
+  eligible_n: number;
+  analyzed_n: number;
+  ties: number;
+  unknowns: number;
+  failures: number;
+  excluded: number;
+  ci_low: number | null;
+  ci_high: number | null;
+  status: ControlledMetricStatus | string;
+  analysis_version: string;
+  evidence_class: ControlledEvidenceClass;
+}
+
+export interface ControlledResultsResponse {
+  status: 'NO_CONTROLLED_EVIDENCE' | 'CONTROLLED_RESULTS_PENDING_ANALYSIS' | string;
+  evidence_class: 'CONTROLLED';
+  executed_runs: number;
+  executed_passes: number;
+  results: ControlledMetricResult[];
+  message: string;
+}
+
+/** Runtime guard for an untrusted future API response; no defaulting to zero. */
+export function isControlledMetricResult(value: unknown): value is ControlledMetricResult {
+  if (typeof value !== 'object' || value === null) return false;
+  const row = value as Record<string, unknown>;
+  const required = ['rq', 'judge', 'condition', 'metric', 'value', 'numerator', 'denominator', 'eligible_n', 'analyzed_n', 'ties', 'unknowns', 'failures', 'excluded', 'ci_low', 'ci_high', 'status', 'analysis_version', 'evidence_class'];
+  return required.every((key) => Object.hasOwn(row, key))
+    && (row.evidence_class === 'CONTROLLED' || row.evidence_class === 'DRY_RUN_MOCK');
+}
+
 
 
 

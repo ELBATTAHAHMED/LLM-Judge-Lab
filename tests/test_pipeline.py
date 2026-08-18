@@ -162,28 +162,11 @@ def test_local_ollama_model_routing_and_client_resolution(client):
     assert is_local_model("ollama/llama3") is True
     assert is_local_model("gpt-4o-mini") is False
 
-    local_client, target_model = get_evaluator_client("Llama-3 8B (Local / Ollama)")
+    # Routing accepts an explicit model identifier; the display label must not
+    # silently become a scientific model configuration.
+    local_client, target_model = get_evaluator_client("ollama/llama3")
     assert str(local_client.base_url).rstrip("/") == "http://localhost:11434/v1"
-    assert target_model == "llama3"
-
-    # Verify live endpoint handles local model (returns 200 if Ollama running, 500 if offline)
-    import uuid
-    payload = {
-        "prompt": f"Test prompt {uuid.uuid4()}",
-        "answer_a": "Answer A text",
-        "answer_b": "Answer B text",
-        "model_name": "Llama-3 8B (Local / Ollama)",
-    }
-    response = client.post("/api/evaluate", json=payload)
-    assert response.status_code in (200, 500)
-    if response.status_code == 200:
-        data = response.json()
-        assert "winner" in data
-        assert "model_name" in data
-        assert "Llama-3" in data["model_name"]
-    else:
-        data = response.json()
-        assert "detail" in data
+    assert target_model == "ollama/llama3"
 
 
 def test_self_preference_bias_calculation(monkeypatch):

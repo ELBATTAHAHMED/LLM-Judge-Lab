@@ -1,11 +1,6 @@
 import React from 'react';
-import { useJudge } from '../context/JudgeContext';
-import { formatModelName } from './ModelIcons';
 
 export const DiagnosticScientificCallouts: React.FC = () => {
-  const { judgeModel } = useJudge();
-  const modelName = formatModelName(judgeModel);
-
   return (
     <div className="space-y-4 font-sans">
       {/* Main Thesis Executive Synthesis Panel */}
@@ -20,7 +15,7 @@ export const DiagnosticScientificCallouts: React.FC = () => {
         </div>
 
         <blockquote className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed border-l-2 border-neutral-400 dark:border-neutral-600 pl-3 py-1 font-mono">
-          "Empirical evidence confirms that raw LLM evaluations under {modelName} are confounded by presentation position and length disparities. Statistical testing demonstrates significant sensitivity to presentation order and verbosity bias across benchmark tasks."
+          "Historical exploratory telemetry suggests associations with presentation position and answer length. Frozen controlled experiments are required before making causal RQ claims."
         </blockquote>
       </div>
 

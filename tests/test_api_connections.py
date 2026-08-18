@@ -11,7 +11,9 @@ Tests API key validity and model endpoint reachability for:
 
 import sys
 import io
+import os
 from pathlib import Path
+import pytest
 from dotenv import load_dotenv
 
 # Ensure stdout handles UTF-8 on Windows console
@@ -27,6 +29,12 @@ sys.path.insert(0, str(BACKEND_DIR))
 load_dotenv(ROOT_DIR / ".env")
 
 from judge_engine import get_evaluator_client
+
+# This diagnostic performs paid external inference. It is deliberately absent
+# from the ordinary/offline research test suite and can only run with an
+# explicit operator opt-in in a separately authorized session.
+if os.getenv("RUN_PROVIDER_CONNECTIVITY") != "1":
+    pytestmark = pytest.mark.skip(reason="requires explicitly authorized real provider connectivity")
 
 MODELS = [
     "gpt-4o-mini",

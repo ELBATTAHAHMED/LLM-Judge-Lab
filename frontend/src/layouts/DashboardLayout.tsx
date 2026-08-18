@@ -7,6 +7,7 @@ import {
   Search,
   FlaskConical,
   Award,
+  ClipboardCheck,
   Sun,
   Moon,
   PanelLeftClose,
@@ -96,6 +97,11 @@ export const DashboardLayout: React.FC = () => {
       icon: Activity,
     },
     {
+      path: '/controlled-results',
+      label: 'Controlled Experiments',
+      icon: ClipboardCheck,
+    },
+    {
       path: '/qualitative-explorer',
       label: 'Qualitative Explorer',
       icon: Search,
@@ -116,6 +122,8 @@ export const DashboardLayout: React.FC = () => {
         return 'Executive Synthesis';
       case '/diagnostics':
         return 'Bias Diagnostics';
+      case '/controlled-results':
+        return 'Controlled Experiments';
       case '/qualitative-explorer':
         return 'Qualitative Explorer';
       case '/live-lab':
