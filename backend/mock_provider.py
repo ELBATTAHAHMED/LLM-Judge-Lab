@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Mapping
 
 from controlled_persistence import Outcome
 from controlled_evaluation import ProviderCallError
@@ -71,3 +71,37 @@ class DeterministicMockProvider:
             provider_response_id=f"mock-{self.calls}",
             upstream_provider_model="NOT_RETURNED",
         )
+
+
+class FinalPayloadMockTransport:
+    """Fake HTTP boundary that receives the actual provider-bound payload.
+
+    It intentionally sits below ``ControlledChatAdapter``: prompt construction,
+    capabilities, routing controls, headers, and parser behavior therefore run
+    exactly as they will for a future authorized transport.
+    """
+    def __init__(self, scenarios: list[MockScenario], *, counters: dict[str, Any] | None = None) -> None:
+        self.scenarios = list(scenarios); self.calls = 0; self.counters = counters if counters is not None else {}
+
+    def __call__(self, endpoint: str, headers: Mapping[str, str], payload: dict[str, Any]) -> dict[str, Any]:
+        if not self.scenarios: raise MockProviderError("No final-payload mock scenario configured")
+        self.calls += 1
+        self.counters["provider_bound_requests"] = self.counters.get("provider_bound_requests", 0) + 1
+        self.counters.setdefault("models", {}).setdefault(payload["model"], 0); self.counters["models"][payload["model"]] += 1
+        self.counters.setdefault("prompt_versions", set()).add("controlled-judge-pairwise-v1")
+        if "openrouter.ai" in endpoint:
+            controls = payload.get("provider", {}); upstream = (controls.get("only") or [None])[0]
+            if headers.get("X-OpenRouter-Metadata") != "enabled": raise MockProviderError("missing router metadata header")
+            if controls.get("allow_fallbacks") is not False or controls.get("require_parameters") is not True or upstream is None: raise MockProviderError("invalid frozen router controls")
+            self.counters.setdefault("upstreams", {}).setdefault(upstream, 0); self.counters["upstreams"][upstream] += 1
+        else:
+            upstream = None
+        scenario = self.scenarios.pop(0)
+        if scenario is MockScenario.TIMEOUT: raise TimeoutError("deterministic final-payload timeout")
+        if scenario is MockScenario.PROVIDER_ERROR: raise MockProviderError("deterministic final-payload provider error")
+        if scenario in {MockScenario.RATE_LIMIT, MockScenario.HTTP_5XX, MockScenario.CONNECTION, MockScenario.REFUSAL, MockScenario.AUTH, MockScenario.UNSUPPORTED_CONFIG}:
+            raise ProviderCallError(scenario.value, f"deterministic final-payload {scenario.value}")
+        content: Any = {"not": "a complete judgement"} if scenario is MockScenario.INVALID_JSON else {"verdict": scenario.value, "criteria_scores": {"correctness": 4, "relevance": 4, "completeness": 4, "clarity": 4, "safety": 5}, "confidence": 0.75, "explanation": "Deterministic final-payload mock judgement."}
+        response: dict[str, Any] = {"id": f"final-mock-{self.calls}", "model": payload["model"], "choices": [{"message": {"content": content}}]}
+        if upstream is not None: response["provider"] = {"provider": upstream, "fallbacks": []}
+        return response

@@ -23,7 +23,8 @@ from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutio
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, prompt_hash
 from controlled_models import ControlledRun, CounterfactualVariant, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit
 from controlled_persistence import ControlledPersistence
-from mock_provider import DeterministicMockProvider, MockScenario
+from mock_provider import FinalPayloadMockTransport, MockScenario
+from controlled_providers import ProviderExecutionGate, adapter_for_judge
 from model_registry import MODEL_REGISTRY, Provider
 from models import Answer, Prompt
 from phase3_planning import SOURCE_FAMILIES, PairRecord, PlannedUnit, call_plan, generate_units, manifest, validate_units
@@ -90,7 +91,7 @@ class ControlledRunner:
     def dry_run(self, session: Session, pairs: Iterable[PairRecord], *, snapshot_id: str) -> dict[str, object]:
         plans, summaries = self.plan(pairs, snapshot_id=snapshot_id); errors = self.validate(plans)
         if errors: raise ValueError(f"Invalid dry-run plan: {errors}")
-        source = {pair.pair_key: pair for pair in pairs}; repo = ControlledPersistence(session)
+        source = {pair.pair_key: pair for pair in pairs}; repo = ControlledPersistence(session); transport_counters: dict[str, object] = {}
         dataset = repo.get_or_create_dataset_version(source_name="phase6-real-frozen-input", version=snapshot_id, source_checksum=hashlib.sha256(snapshot_id.encode()).hexdigest(), import_status="SUCCEEDED", notes="MOCK / DRY-RUN — NOT SCIENTIFIC EVIDENCE")
         local: dict[str, tuple[Prompt, Answer, Answer]] = {}; variants: dict[tuple[str, str], Answer] = {}; runs: dict[str, list[tuple[ControlledRun, ExperimentalUnit, PairRecord, PlannedUnit]]] = defaultdict(list)
         for rq, units in plans.items():
@@ -137,10 +138,15 @@ class ControlledRunner:
                         presentation_a, presentation_b = presentation_b, presentation_a
                 unit = repo.register_unit(experiment=experiment, manifest=manifest_row, condition=conditions[planned.condition], prompt_id=prompt.id, answer_a_id=a.id, answer_b_id=b.id, prompt_category=pair.category, judge_model=planned.judge_name, provider=planned.provider, provider_model=planned.requested_model, prompt_template_version=PROMPT_TEMPLATE_VERSION, presentation_order=planned.presentation_order, repetition_index=planned.repetition_index, randomization_block="dry-run", data_split="dry-run", inclusion_status="INCLUDED", temperature=Decimal(str(planned.temperature)), top_p=Decimal("1.0"), seed=seed, answer_a_author_id=pair.answer_a_model, answer_b_author_id=pair.answer_b_model, human_label=pair.human_label, variant_checksum=variant_checksum)
                 req = EvaluationRequest(question=prompt.text, answer_a=presentation_a.text, answer_b=presentation_b.text, judge_name=planned.judge_name, provider=Provider(planned.provider), requested_model=planned.requested_model, temperature=planned.temperature, top_p=1.0, seed=seed, prompt_template_version=PROMPT_TEMPLATE_VERSION, experiment_id=experiment.id, controlled_unit_id=unit.id, repetition_index=unit.repetition_index, pass_number=1, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, presented_answer_a_id=presentation_a.id, presented_answer_b_id=presentation_b.id)
-                executor = ControlledExecutionService(repo, ControlledEvaluationEngine(DeterministicMockProvider(_scenario(planned.unit_id, planned.calls), effective_model=f"mock/{planned.judge_name}")))
+                # The transport is fake, but every request goes through the
+                # final provider adapter, frozen prompt, capability and routing
+                # builder before the fixture sees it.
+                transport = FinalPayloadMockTransport(_scenario(planned.unit_id, planned.calls), counters=transport_counters)
+                gate = ProviderExecutionGate(mode="REAL", authorization_token="mock-only", verified_pricing_version="pricing-config-v1", max_provider_calls=1, max_input_tokens=1, max_output_tokens=1, max_usd=0.0)
+                executor = ControlledExecutionService(repo, ControlledEvaluationEngine(adapter_for_judge(planned.judge_name, transport=transport, gate=gate)))
                 run = executor.execute_dual(unit=unit, first_request=req, idempotency_key=planned.unit_id) if planned.calls == 2 else executor.execute_single(unit=unit, request=req, idempotency_key=planned.unit_id)
                 runs[rq].append((run, unit, pair, planned))
-        return {"evidence_class": MOCK_EVIDENCE_CLASS, "plans": summaries, "runs": runs, "status": self.status(runs)}
+        return {"evidence_class": MOCK_EVIDENCE_CLASS, "plans": summaries, "runs": runs, "status": self.status(runs), "transport_counters": transport_counters}
 
     @staticmethod
     def status(runs: dict[str, list[tuple[ControlledRun, ExperimentalUnit, PairRecord, PlannedUnit]]]) -> dict[str, dict[str, int]]:
