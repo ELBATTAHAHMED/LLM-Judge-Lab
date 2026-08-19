@@ -111,6 +111,7 @@ class ControlledChatAdapter:
         usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
         input_tokens = usage.get("prompt_tokens")
         output_tokens = usage.get("completion_tokens")
+        provider_reported_cost = usage.get("cost")
         response_id = response.get("id")
         effective_model = response.get("model")
 
@@ -135,6 +136,7 @@ class ControlledChatAdapter:
                     route_provenance=provenance,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
+                    provider_reported_cost=provider_reported_cost,
                     provider_response_id=response_id,
                     effective_model=effective_model,
                     raw_response=response,
@@ -153,6 +155,7 @@ class ControlledChatAdapter:
             route_provenance=provenance,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            provider_reported_cost=provider_reported_cost,
         )
 
 

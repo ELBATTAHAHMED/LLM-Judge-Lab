@@ -95,6 +95,7 @@ class ProviderResponse:
     route_provenance: dict[str, Any] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    provider_reported_cost: Decimal | float | str | None = None
 
 
 class ProviderAdapter(Protocol):
@@ -111,6 +112,7 @@ class ProviderCallError(RuntimeError):
         route_provenance: dict[str, Any] | None = None,
         input_tokens: int | None = None,
         output_tokens: int | None = None,
+        provider_reported_cost: Decimal | float | str | None = None,
         provider_response_id: str | None = None,
         effective_model: str | None = None,
         raw_response: Any = None,
@@ -119,6 +121,7 @@ class ProviderCallError(RuntimeError):
         self.route_provenance = route_provenance
         self.input_tokens = input_tokens
         self.output_tokens = output_tokens
+        self.provider_reported_cost = provider_reported_cost
         self.provider_response_id = provider_response_id
         self.effective_model = effective_model
         self.raw_response = raw_response
@@ -143,6 +146,7 @@ class NormalizedEvaluationResult:
     route_provenance: dict[str, Any] | None = None
     input_tokens: int | None = None
     output_tokens: int | None = None
+    provider_reported_cost: Decimal | float | str | None = None
 
 
 class ControlledEvaluationEngine:
@@ -166,6 +170,7 @@ class ControlledEvaluationEngine:
                 route_provenance=exc.route_provenance,
                 input_tokens=exc.input_tokens,
                 output_tokens=exc.output_tokens,
+                provider_reported_cost=exc.provider_reported_cost,
             )
         except Exception as exc:  # unknown adapter failures remain terminal; policy never retries generic errors
             return self._failure(Outcome.API_ERROR, started, "PROVIDER_ERROR", str(exc))
@@ -175,11 +180,11 @@ class ControlledEvaluationEngine:
         try:
             judgement = ProviderJudgement.model_validate(response.raw_response)
         except Exception as exc:
-            return NormalizedEvaluationResult(Outcome.INVALID_RESPONSE, None, None, None, response.raw_response, effective_model, response.model_version, response.provider_response_id, upstream, latency_ms, "INVALID", "INVALID_RESPONSE", str(exc), getattr(response, "route_provenance", None), getattr(response, "input_tokens", None), getattr(response, "output_tokens", None))
+            return NormalizedEvaluationResult(Outcome.INVALID_RESPONSE, None, None, None, response.raw_response, effective_model, response.model_version, response.provider_response_id, upstream, latency_ms, "INVALID", "INVALID_RESPONSE", str(exc), getattr(response, "route_provenance", None), getattr(response, "input_tokens", None), getattr(response, "output_tokens", None), getattr(response, "provider_reported_cost", None))
         return NormalizedEvaluationResult(
             Outcome(judgement.verdict), judgement.criteria_scores.model_dump(), Decimal(str(judgement.confidence)),
             judgement.explanation, response.raw_response, effective_model, response.model_version,
-            response.provider_response_id, upstream, latency_ms, "PARSED", route_provenance=getattr(response, "route_provenance", None), input_tokens=getattr(response, "input_tokens", None), output_tokens=getattr(response, "output_tokens", None),
+            response.provider_response_id, upstream, latency_ms, "PARSED", route_provenance=getattr(response, "route_provenance", None), input_tokens=getattr(response, "input_tokens", None), output_tokens=getattr(response, "output_tokens", None), provider_reported_cost=getattr(response, "provider_reported_cost", None),
         )
 
     @staticmethod
@@ -331,14 +336,41 @@ class ControlledExecutionService:
         state = "SUCCEEDED" if result.outcome not in {Outcome.API_ERROR, Outcome.TIMEOUT, Outcome.INVALID_RESPONSE, Outcome.REFUSAL} else terminal_state(category or "CONFIGURATION", request.retry_count)
         estimated_usd_raw = reservation.get("estimated_usd")
         estimated_usd = Decimal(str(estimated_usd_raw)) if estimated_usd_raw is not None else None
-        actual_usd = None
+
+        cost_metadata: dict[str, Any] = {}
+        provider_reported_usd: Decimal | None = None
+        if result.provider_reported_cost is not None:
+            try:
+                provider_reported_usd = Decimal(str(result.provider_reported_cost))
+                cost_metadata["provider_reported_usd"] = str(provider_reported_usd)
+                cost_metadata["cost_source"] = "PROVIDER_REPORTED"
+            except Exception:
+                provider_reported_usd = None
+
+        local_computed_usd: Decimal | None = None
         if result.input_tokens is not None and result.output_tokens is not None:
-            # The reservation uses the same frozen prices; actual provider
-            # usage is retained separately whenever the response reports it.
             from pricing import price_for_model
             rate = price_for_model(request.judge_name)
-            actual_usd = (Decimal(result.input_tokens) * rate.input_per_token) + (Decimal(result.output_tokens) * rate.output_per_token)
-        self.persistence.finish_attempt(attempt, state=state, failure_category=category, provider_response_id=result.provider_response_id, details={"retry_count": request.retry_count, "planned_backoff_seconds": next_backoff_seconds(category or "CONFIGURATION", request.retry_count), "repetition_index": request.repetition_index, **reservation}, route_provenance=result.route_provenance, input_tokens=result.input_tokens, output_tokens=result.output_tokens, estimated_usd=estimated_usd, actual_usd=actual_usd)
+            local_computed_usd = (Decimal(result.input_tokens) * rate.input_per_token) + (Decimal(result.output_tokens) * rate.output_per_token)
+            cost_metadata["locally_computed_usd"] = str(local_computed_usd)
+            if provider_reported_usd is None:
+                cost_metadata["cost_source"] = "LOCAL_COMPUTED"
+
+        if provider_reported_usd is not None and local_computed_usd is not None:
+            delta = abs(provider_reported_usd - local_computed_usd)
+            cost_metadata["cost_delta_usd"] = str(delta)
+
+        # Authoritative actual_usd column: provider-reported cost when available, otherwise local computed cost
+        actual_usd = provider_reported_usd if provider_reported_usd is not None else local_computed_usd
+
+        attempt_details = {
+            "retry_count": request.retry_count,
+            "planned_backoff_seconds": next_backoff_seconds(category or "CONFIGURATION", request.retry_count),
+            "repetition_index": request.repetition_index,
+            **reservation,
+            **cost_metadata,
+        }
+        self.persistence.finish_attempt(attempt, state=state, failure_category=category, provider_response_id=result.provider_response_id, details=attempt_details, route_provenance=result.route_provenance, input_tokens=result.input_tokens, output_tokens=result.output_tokens, estimated_usd=estimated_usd, actual_usd=actual_usd)
         return result
 
     def _execute_with_retries(self, run: ControlledRun, request: EvaluationRequest) -> NormalizedEvaluationResult:

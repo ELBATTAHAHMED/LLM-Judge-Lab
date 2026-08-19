@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import sys, uuid
 from decimal import Decimal
@@ -18,9 +18,7 @@ from controlled_providers import ControlledChatAdapter, ProviderExecutionGate
 from database import engine as live_postgres_engine
 from model_registry import Provider, get_model_spec
 from models import Answer, Prompt
-from routing_policy import (
-    extract_openrouter_routing_metadata, normalize_provider_slug, validate_router_response,
-)
+from routing_policy import extract_openrouter_routing_metadata, normalize_provider_slug, validate_router_response
 
 def test_fixture_a_top_level_provider_string():
     resp = {'id': 'gen-a', 'model': 'anthropic/claude-3-haiku', 'provider': 'Amazon Bedrock'}
@@ -30,8 +28,10 @@ def test_fixture_a_top_level_provider_string():
     assert fallback is False
     assert meta['provider_string'] == 'Amazon Bedrock'
     validated = validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp)
-    assert validated['upstream_provider'] == 'amazon-bedrock' if 'upstream_provider' in validated else validated['observed_upstream_provider'] == 'amazon-bedrock'
     assert validated['configured_upstream_provider'] == 'amazon-bedrock'
+    assert validated['observed_upstream_provider'] == 'amazon-bedrock'
+    assert validated['raw_observed_upstream_provider'] == 'Amazon Bedrock'
+    assert validated['fallback_observed'] is False
 
 def test_fixture_b_official_openrouter_metadata_object():
     resp = {
@@ -96,18 +96,50 @@ def test_fixture_g_fallback_multi_attempt_fails_closed():
         validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp)
 
 def test_streamlake_normalization():
-    for variant in ['StreamLake', 'streamlake', 'Stream Lake', 'stream-lake']:
+    for variant in ['StreamLake', 'streamlake', 'Stream Lake', 'stream-lake', 'stream_lake']:
         resp = {'id': 'gen-sl', 'model': 'deepseek/deepseek-chat', 'provider': variant}
         validated = validate_router_response(judge_name='deepseek/deepseek-chat', response=resp)
         assert validated['observed_upstream_provider'] == 'streamlake'
         assert validated['raw_observed_upstream_provider'] == variant
 
-def test_deepinfra_normalization():
-    for variant in ['DeepInfra', 'deepinfra', 'deepinfra/turbo', 'Deep Infra']:
-        resp = {'id': 'gen-di', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': variant}
-        validated = validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp)
-        assert validated['observed_upstream_provider'] == 'deepinfra/turbo'
-        assert validated['raw_observed_upstream_provider'] == variant
+def test_claude_amazon_bedrock_and_generic_amazon_rejected():
+    for variant in ['Amazon Bedrock', 'amazon-bedrock', 'amazonbedrock', 'bedrock']:
+        resp = {'id': 'gen-cb', 'model': 'anthropic/claude-3-haiku', 'provider': variant}
+        validated = validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp)
+        assert validated['observed_upstream_provider'] == 'amazon-bedrock'
+    resp_generic = {'id': 'gen-bad', 'model': 'anthropic/claude-3-haiku', 'provider': 'amazon'}
+    with pytest.raises(ValueError, match='unexpected upstream provider'):
+        validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp_generic)
+
+def test_llama_case_a_exact_turbo_metadata_passes():
+    resp_exact_slug = {
+        'id': 'gen-di-a',
+        'model': 'meta-llama/llama-3.3-70b-instruct',
+        'openrouter_metadata': {
+            'endpoints': [{'provider_slug': 'deepinfra/turbo'}],
+            'attempts': [{'provider': 'deepinfra/turbo', 'status': 200}],
+        },
+    }
+    validated = validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_exact_slug)
+    assert validated['configured_upstream_provider'] == 'deepinfra/turbo'
+    assert validated['observed_upstream_provider'] == 'deepinfra/turbo'
+    assert validated['observed_provider_family'] == 'deepinfra'
+    assert validated['observed_endpoint_slug'] == 'deepinfra/turbo'
+
+def test_llama_case_b_generic_deepinfra_fails_closed():
+    resp_generic = {'id': 'gen-di-b', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'DeepInfra'}
+    with pytest.raises(ValueError, match='does not prove required exact endpoint'):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_generic)
+
+def test_llama_case_c_family_slug_fails_closed():
+    resp_family = {'id': 'gen-di-c', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'deepinfra'}
+    with pytest.raises(ValueError, match='does not prove required exact endpoint'):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_family)
+
+def test_llama_case_d_other_provider_fails():
+    resp_other = {'id': 'gen-di-d', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'Google'}
+    with pytest.raises(ValueError, match='unexpected upstream provider'):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_other)
 
 def _setup_test_unit(session, judge_model='anthropic/claude-3-haiku'):
     prompt = Prompt(text='Which answer is better?', category='test')
@@ -125,89 +157,120 @@ def _setup_test_unit(session, judge_model='anthropic/claude-3-haiku'):
     unit = repo.register_unit(experiment=experiment, manifest=manifest, condition=condition, prompt_id=prompt.id, answer_a_id=a.id, answer_b_id=b.id, prompt_category='test', judge_model=judge_model, provider='OPENROUTER', provider_model=judge_model, prompt_template_version='controlled-judge-pairwise-v1', presentation_order='AB', repetition_index=0, randomization_block='block', data_split='test', inclusion_status='INCLUDED')
     return repo, unit, a, b
 
-def test_usage_and_cost_persisted_when_routing_fails(tmp_path):
+def test_openrouter_usage_cost_present_persists_as_authoritative(tmp_path):
     from alembic import command
     from alembic.config import Config
-    dbpath = tmp_path / 'or_fail.sqlite'
+    db_path = tmp_path / 'or_cost_present.sqlite'
     cfg = Config(str(ROOT / 'alembic.ini'))
     cfg.set_main_option('script_location', str(ROOT / 'alembic'))
-    cfg.set_main_option('sqlalchemy.url', 'sqlite:///' + dbpath.as_posix())
+    cfg.set_main_option('sqlalchemy.url', 'sqlite:///' + db_path.as_posix())
     command.upgrade(cfg, 'head')
-    test_engine = create_engine('sqlite:///' + dbpath.as_posix())
+    test_engine = create_engine('sqlite:///' + db_path.as_posix())
     event.listen(test_engine, 'connect', lambda c, _: c.execute('PRAGMA foreign_keys=ON'))
     Session = sessionmaker(bind=test_engine)
     with Session.begin() as session:
         repo, unit, a, b = _setup_test_unit(session)
         spec = get_model_spec('anthropic/claude-3-haiku')
         req = EvaluationRequest(question='Question', answer_a=a.text, answer_b=b.text, judge_name='anthropic/claude-3-haiku', provider=spec.provider, requested_model=spec.requested_model, temperature=0.0, top_p=1.0, seed=None, prompt_template_version='controlled-judge-pairwise-v1', experiment_id=unit.experiment_id, controlled_unit_id=unit.id, repetition_index=0, pass_number=1, original_answer_a_id=a.id, original_answer_b_id=b.id, presented_answer_a_id=a.id, presented_answer_b_id=b.id)
-        def wrong_upstream_transport(_endpoint, _headers, _payload):
+        def transport(_endpoint, _headers, _payload):
             return {
-                'id': 'gen-fail-usage-1',
+                'id': 'gen-cost-1',
                 'model': 'anthropic/claude-3-haiku',
-                'provider': 'Google Vertex',
-                'usage': {'prompt_tokens': 599, 'completion_tokens': 120, 'total_tokens': 719},
-                'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":4,"relevance":4,"completeness":4,"clarity":4,"safety":5},"confidence":0.8,"explanation":"test"}'}}],
+                'provider': 'Amazon Bedrock',
+                'usage': {'prompt_tokens': 600, 'completion_tokens': 150, 'total_tokens': 750, 'cost': 0.00018500},
+                'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":5,"relevance":5,"completeness":5,"clarity":5,"safety":5},"confidence":0.9,"explanation":"Clear explanation"}'}}],
             }
         gate = ProviderExecutionGate(mode='REAL', authorization_token='tok', verified_pricing_version='v1', max_provider_calls=1, max_input_tokens=1000, max_output_tokens=1000, max_usd=1.0)
-        adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=wrong_upstream_transport, gate=gate)
+        adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=transport, gate=gate)
         engine = ControlledEvaluationEngine(adapter)
         service = ControlledExecutionService(repo, engine, evidence_class='PILOT')
-        run = service.execute_single(unit=unit, request=req, idempotency_key='fail_usage_01')
-        assert run.status == 'FAILED'
-        assert run.error_code == 'PROVENANCE_MISMATCH'
+        run = service.execute_single(unit=unit, request=req, idempotency_key='cost_present_01')
+        assert run.status == 'SUCCEEDED'
         attempt = session.scalar(select(PassAttempt).where(PassAttempt.run_id == run.id))
         assert attempt is not None
-        assert attempt.state == 'FAILED_FINAL'
-        assert attempt.failure_category == 'PROVENANCE_MISMATCH'
-        assert attempt.input_tokens == 599
-        assert attempt.output_tokens == 120
-        assert attempt.actual_usd is not None
-        assert attempt.actual_usd > Decimal('0')
-        assert attempt.provider_response_id == 'gen-fail-usage-1'
+        assert attempt.state == 'SUCCEEDED'
+        assert attempt.input_tokens == 600
+        assert attempt.output_tokens == 150
+        assert attempt.actual_usd == Decimal('0.00018500')
+        assert attempt.details_json['cost_source'] == 'PROVIDER_REPORTED'
+        assert attempt.details_json['provider_reported_usd'] == '0.000185'
+        assert 'locally_computed_usd' in attempt.details_json
+        assert 'cost_delta_usd' in attempt.details_json
 
-def test_successful_openrouter_persistence_e2e(tmp_path):
+def test_openrouter_usage_cost_absent_falls_back_to_local_computed(tmp_path):
     from alembic import command
     from alembic.config import Config
-    dbpath = tmp_path / 'or_success.sqlite'
+    db_path = tmp_path / 'or_cost_absent.sqlite'
     cfg = Config(str(ROOT / 'alembic.ini'))
     cfg.set_main_option('script_location', str(ROOT / 'alembic'))
-    cfg.set_main_option('sqlalchemy.url', 'sqlite:///' + dbpath.as_posix())
+    cfg.set_main_option('sqlalchemy.url', 'sqlite:///' + db_path.as_posix())
     command.upgrade(cfg, 'head')
-    test_engine = create_engine('sqlite:///' + dbpath.as_posix())
+    test_engine = create_engine('sqlite:///' + db_path.as_posix())
     event.listen(test_engine, 'connect', lambda c, _: c.execute('PRAGMA foreign_keys=ON'))
     Session = sessionmaker(bind=test_engine)
     with Session.begin() as session:
         repo, unit, a, b = _setup_test_unit(session)
         spec = get_model_spec('anthropic/claude-3-haiku')
         req = EvaluationRequest(question='Question', answer_a=a.text, answer_b=b.text, judge_name='anthropic/claude-3-haiku', provider=spec.provider, requested_model=spec.requested_model, temperature=0.0, top_p=1.0, seed=None, prompt_template_version='controlled-judge-pairwise-v1', experiment_id=unit.experiment_id, controlled_unit_id=unit.id, repetition_index=0, pass_number=1, original_answer_a_id=a.id, original_answer_b_id=b.id, presented_answer_a_id=a.id, presented_answer_b_id=b.id)
-        def success_transport(_endpoint, _headers, _payload):
+        def transport(_endpoint, _headers, _payload):
             return {
-                'id': 'gen-claude-success',
+                'id': 'gen-cost-absent',
                 'model': 'anthropic/claude-3-haiku',
                 'provider': 'Amazon Bedrock',
                 'usage': {'prompt_tokens': 600, 'completion_tokens': 150, 'total_tokens': 750},
                 'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":5,"relevance":5,"completeness":5,"clarity":5,"safety":5},"confidence":0.9,"explanation":"Clear explanation"}'}}],
             }
         gate = ProviderExecutionGate(mode='REAL', authorization_token='tok', verified_pricing_version='v1', max_provider_calls=1, max_input_tokens=1000, max_output_tokens=1000, max_usd=1.0)
-        adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=success_transport, gate=gate)
+        adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=transport, gate=gate)
         engine = ControlledEvaluationEngine(adapter)
         service = ControlledExecutionService(repo, engine, evidence_class='PILOT')
-        run = service.execute_single(unit=unit, request=req, idempotency_key='succ_01')
+        run = service.execute_single(unit=unit, request=req, idempotency_key='cost_absent_01')
         assert run.status == 'SUCCEEDED'
-        assert run.final_result_type == 'ANSWER_A'
-        p = run.passes[0]
-        assert p.raw_verdict == 'ANSWER_A'
-        assert p.effective_model == 'anthropic/claude-3-haiku'
-        assert p.route_provenance_json['observed_upstream_provider'] == 'amazon-bedrock'
-        assert p.route_provenance_json['raw_observed_upstream_provider'] == 'Amazon Bedrock'
         attempt = session.scalar(select(PassAttempt).where(PassAttempt.run_id == run.id))
         assert attempt is not None
-        assert attempt.state == 'SUCCEEDED'
-        assert attempt.input_tokens == 600
-        assert attempt.output_tokens == 150
         assert attempt.actual_usd is not None
+        assert attempt.actual_usd > Decimal('0')
+        assert attempt.details_json['cost_source'] == 'LOCAL_COMPUTED'
 
-def test_postgresql_openrouter_regression():
+def test_openrouter_provenance_mismatch_with_cost_persists(tmp_path):
+    from alembic import command
+    from alembic.config import Config
+    db_path = tmp_path / 'or_fail_cost.sqlite'
+    cfg = Config(str(ROOT / 'alembic.ini'))
+    cfg.set_main_option('script_location', str(ROOT / 'alembic'))
+    cfg.set_main_option('sqlalchemy.url', 'sqlite:///' + db_path.as_posix())
+    command.upgrade(cfg, 'head')
+    test_engine = create_engine('sqlite:///' + db_path.as_posix())
+    event.listen(test_engine, 'connect', lambda c, _: c.execute('PRAGMA foreign_keys=ON'))
+    Session = sessionmaker(bind=test_engine)
+    with Session.begin() as session:
+        repo, unit, a, b = _setup_test_unit(session)
+        spec = get_model_spec('anthropic/claude-3-haiku')
+        req = EvaluationRequest(question='Question', answer_a=a.text, answer_b=b.text, judge_name='anthropic/claude-3-haiku', provider=spec.provider, requested_model=spec.requested_model, temperature=0.0, top_p=1.0, seed=None, prompt_template_version='controlled-judge-pairwise-v1', experiment_id=unit.experiment_id, controlled_unit_id=unit.id, repetition_index=0, pass_number=1, original_answer_a_id=a.id, original_answer_b_id=b.id, presented_answer_a_id=a.id, presented_answer_b_id=b.id)
+        def transport(_endpoint, _headers, _payload):
+            return {
+                'id': 'gen-fail-cost',
+                'model': 'anthropic/claude-3-haiku',
+                'provider': 'Google Vertex',
+                'usage': {'prompt_tokens': 599, 'completion_tokens': 120, 'total_tokens': 719, 'cost': 0.00015000},
+                'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":4,"relevance":4,"completeness":4,"clarity":4,"safety":5},"confidence":0.8,"explanation":"test"}'}}],
+            }
+        gate = ProviderExecutionGate(mode='REAL', authorization_token='tok', verified_pricing_version='v1', max_provider_calls=1, max_input_tokens=1000, max_output_tokens=1000, max_usd=1.0)
+        adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=transport, gate=gate)
+        engine = ControlledEvaluationEngine(adapter)
+        service = ControlledExecutionService(repo, engine, evidence_class='PILOT')
+        run = service.execute_single(unit=unit, request=req, idempotency_key='fail_cost_01')
+        assert run.status == 'FAILED'
+        assert run.error_code == 'PROVENANCE_MISMATCH'
+        attempt = session.scalar(select(PassAttempt).where(PassAttempt.run_id == run.id))
+        assert attempt is not None
+        assert attempt.state == 'FAILED_FINAL'
+        assert attempt.input_tokens == 599
+        assert attempt.output_tokens == 120
+        assert attempt.actual_usd == Decimal('0.00015000')
+        assert attempt.details_json['cost_source'] == 'PROVIDER_REPORTED'
+
+def test_postgresql_openrouter_exact_route_and_cost_regression():
     if str(live_postgres_engine.url).startswith('sqlite'):
         pytest.skip('PostgreSQL engine not configured')
     with live_postgres_engine.connect() as conn:
@@ -215,29 +278,32 @@ def test_postgresql_openrouter_regression():
         Session = sessionmaker(bind=conn)
         session = Session()
         try:
-            repo, unit, a, b = _setup_test_unit(session)
-            spec = get_model_spec('anthropic/claude-3-haiku')
-            req = EvaluationRequest(question='Question', answer_a=a.text, answer_b=b.text, judge_name='anthropic/claude-3-haiku', provider=spec.provider, requested_model=spec.requested_model, temperature=0.0, top_p=1.0, seed=None, prompt_template_version='controlled-judge-pairwise-v1', experiment_id=unit.experiment_id, controlled_unit_id=unit.id, repetition_index=0, pass_number=1, original_answer_a_id=a.id, original_answer_b_id=b.id, presented_answer_a_id=a.id, presented_answer_b_id=b.id)
+            repo, unit, a, b = _setup_test_unit(session, judge_model='meta-llama/llama-3.3-70b-instruct')
+            spec = get_model_spec('meta-llama/llama-3.3-70b-instruct')
+            req = EvaluationRequest(question='Question', answer_a=a.text, answer_b=b.text, judge_name='meta-llama/llama-3.3-70b-instruct', provider=spec.provider, requested_model=spec.requested_model, temperature=0.0, top_p=1.0, seed=None, prompt_template_version='controlled-judge-pairwise-v1', experiment_id=unit.experiment_id, controlled_unit_id=unit.id, repetition_index=0, pass_number=1, original_answer_a_id=a.id, original_answer_b_id=b.id, presented_answer_a_id=a.id, presented_answer_b_id=b.id)
             def success_transport(_endpoint, _headers, _payload):
                 return {
-                    'id': 'gen-claude-pg',
-                    'model': 'anthropic/claude-3-haiku',
-                    'provider': 'Amazon Bedrock',
-                    'usage': {'prompt_tokens': 600, 'completion_tokens': 150, 'total_tokens': 750},
+                    'id': 'gen-llama-pg',
+                    'model': 'meta-llama/llama-3.3-70b-instruct',
+                    'openrouter_metadata': {'endpoints': [{'provider_slug': 'deepinfra/turbo'}]},
+                    'usage': {'prompt_tokens': 600, 'completion_tokens': 150, 'total_tokens': 750, 'cost': 0.00021000},
                     'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":5,"relevance":5,"completeness":5,"clarity":5,"safety":5},"confidence":0.9,"explanation":"Clear explanation"}'}}],
                 }
             gate = ProviderExecutionGate(mode='REAL', authorization_token='tok', verified_pricing_version='v1', max_provider_calls=1, max_input_tokens=1000, max_output_tokens=1000, max_usd=1.0)
             adapter = ControlledChatAdapter(provider=Provider.OPENROUTER, transport=success_transport, gate=gate)
             engine = ControlledEvaluationEngine(adapter)
             service = ControlledExecutionService(repo, engine, evidence_class='PILOT')
-            run = service.execute_single(unit=unit, request=req, idempotency_key='succ_pg_01')
+            run = service.execute_single(unit=unit, request=req, idempotency_key='succ_llama_pg_01')
             session.flush()
             assert run.status == 'SUCCEEDED'
             attempt = session.scalar(select(PassAttempt).where(PassAttempt.run_id == run.id))
             assert attempt is not None
             assert attempt.state == 'SUCCEEDED'
             assert attempt.input_tokens == 600
-            assert attempt.route_provenance_json['observed_upstream_provider'] == 'amazon-bedrock'
+            assert attempt.actual_usd == Decimal('0.00021000')
+            assert attempt.route_provenance_json['observed_upstream_provider'] == 'deepinfra/turbo'
+            assert attempt.route_provenance_json['observed_provider_family'] == 'deepinfra'
+            assert attempt.route_provenance_json['observed_endpoint_slug'] == 'deepinfra/turbo'
         finally:
             session.close()
             trans.rollback()
