@@ -31,6 +31,7 @@ def test_fixture_a_top_level_provider_string():
     assert validated['configured_upstream_provider'] == 'amazon-bedrock'
     assert validated['observed_upstream_provider'] == 'amazon-bedrock'
     assert validated['raw_observed_upstream_provider'] == 'Amazon Bedrock'
+    assert validated['route_verification_basis'] == 'RESPONSE_CONFIRMED_EXACT_PROVIDER'
     assert validated['fallback_observed'] is False
 
 def test_fixture_b_official_openrouter_metadata_object():
@@ -48,6 +49,7 @@ def test_fixture_b_official_openrouter_metadata_object():
     assert fallback is False
     validated = validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp)
     assert validated['observed_upstream_provider'] == 'amazon-bedrock'
+    assert validated['route_verification_basis'] == 'RESPONSE_CONFIRMED_EXACT_PROVIDER'
 
 def test_fixture_c_both_forms_present_precedence():
     resp = {
@@ -101,45 +103,77 @@ def test_streamlake_normalization():
         validated = validate_router_response(judge_name='deepseek/deepseek-chat', response=resp)
         assert validated['observed_upstream_provider'] == 'streamlake'
         assert validated['raw_observed_upstream_provider'] == variant
+        assert validated['route_verification_basis'] == 'RESPONSE_CONFIRMED_EXACT_PROVIDER'
 
 def test_claude_amazon_bedrock_and_generic_amazon_rejected():
     for variant in ['Amazon Bedrock', 'amazon-bedrock', 'amazonbedrock', 'bedrock']:
         resp = {'id': 'gen-cb', 'model': 'anthropic/claude-3-haiku', 'provider': variant}
         validated = validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp)
         assert validated['observed_upstream_provider'] == 'amazon-bedrock'
+        assert validated['route_verification_basis'] == 'RESPONSE_CONFIRMED_EXACT_PROVIDER'
     resp_generic = {'id': 'gen-bad', 'model': 'anthropic/claude-3-haiku', 'provider': 'amazon'}
     with pytest.raises(ValueError, match='unexpected upstream provider'):
         validate_router_response(judge_name='anthropic/claude-3-haiku', response=resp_generic)
 
-def test_llama_case_a_exact_turbo_metadata_passes():
-    resp_exact_slug = {
+def test_llama_case_a_request_enforced_turbo_response_confirmed_family():
+    payload_a = {'provider': {'order': ['deepinfra/turbo'], 'only': ['deepinfra/turbo'], 'allow_fallbacks': False, 'require_parameters': True}}
+    resp_a = {
         'id': 'gen-di-a',
         'model': 'meta-llama/llama-3.3-70b-instruct',
+        'provider': 'DeepInfra',
         'openrouter_metadata': {
-            'endpoints': [{'provider_slug': 'deepinfra/turbo'}],
-            'attempts': [{'provider': 'deepinfra/turbo', 'status': 200}],
+            'strategy': 'direct',
+            'attempt': 1,
+            'endpoints': {'available': [{'provider': 'DeepInfra', 'selected': True}]},
         },
     }
-    validated = validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_exact_slug)
+    validated = validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_a, request_payload=payload_a)
+    assert validated['configured_upstream_provider'] == 'deepinfra/turbo'
+    assert validated['observed_upstream_provider'] == 'deepinfra/turbo'
+    assert validated['observed_provider_family'] == 'deepinfra'
+    assert validated['observed_endpoint_slug'] is None
+    assert validated['route_verification_basis'] == 'REQUEST_ENFORCED_EXACT_ENDPOINT_RESPONSE_CONFIRMED_FAMILY'
+
+def test_llama_case_b_outbound_only_contains_family_only_fails():
+    payload_b = {'provider': {'order': ['deepinfra'], 'only': ['deepinfra'], 'allow_fallbacks': False}}
+    resp = {'id': 'gen-di-b', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'DeepInfra'}
+    with pytest.raises(ValueError, match="did not enforce required exact endpoint 'deepinfra/turbo'"):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp, request_payload=payload_b)
+
+def test_llama_case_c_outbound_only_missing_fails():
+    payload_c = {'provider': {'allow_fallbacks': False}}
+    resp = {'id': 'gen-di-c', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'DeepInfra'}
+    with pytest.raises(ValueError, match="did not enforce required exact endpoint 'deepinfra/turbo'"):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp, request_payload=payload_c)
+
+def test_llama_case_d_outbound_allow_fallbacks_true_fails():
+    payload_d = {'provider': {'order': ['deepinfra/turbo'], 'only': ['deepinfra/turbo'], 'allow_fallbacks': True}}
+    resp = {'id': 'gen-di-d', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'DeepInfra'}
+    with pytest.raises(ValueError, match='Outbound request allowed fallbacks'):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp, request_payload=payload_d)
+
+def test_llama_case_e_other_provider_fails():
+    payload_e = {'provider': {'order': ['deepinfra/turbo'], 'only': ['deepinfra/turbo'], 'allow_fallbacks': False}}
+    resp = {'id': 'gen-di-e', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'Google'}
+    with pytest.raises(ValueError, match='unexpected upstream provider'):
+        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp, request_payload=payload_e)
+
+def test_llama_case_f_exact_endpoint_slug_in_response_passes():
+    payload_f = {'provider': {'order': ['deepinfra/turbo'], 'only': ['deepinfra/turbo'], 'allow_fallbacks': False}}
+    resp_exact = {
+        'id': 'gen-di-f',
+        'model': 'meta-llama/llama-3.3-70b-instruct',
+        'openrouter_metadata': {
+            'endpoints': [{'provider_slug': 'deepinfra/turbo', 'selected': True}],
+            'attempts': [{'provider_slug': 'deepinfra/turbo', 'status': 200}],
+        },
+    }
+    validated = validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_exact, request_payload=payload_f)
     assert validated['configured_upstream_provider'] == 'deepinfra/turbo'
     assert validated['observed_upstream_provider'] == 'deepinfra/turbo'
     assert validated['observed_provider_family'] == 'deepinfra'
     assert validated['observed_endpoint_slug'] == 'deepinfra/turbo'
-
-def test_llama_case_b_generic_deepinfra_fails_closed():
-    resp_generic = {'id': 'gen-di-b', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'DeepInfra'}
-    with pytest.raises(ValueError, match='does not prove required exact endpoint'):
-        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_generic)
-
-def test_llama_case_c_family_slug_fails_closed():
-    resp_family = {'id': 'gen-di-c', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'deepinfra'}
-    with pytest.raises(ValueError, match='does not prove required exact endpoint'):
-        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_family)
-
-def test_llama_case_d_other_provider_fails():
-    resp_other = {'id': 'gen-di-d', 'model': 'meta-llama/llama-3.3-70b-instruct', 'provider': 'Google'}
-    with pytest.raises(ValueError, match='unexpected upstream provider'):
-        validate_router_response(judge_name='meta-llama/llama-3.3-70b-instruct', response=resp_other)
+    assert validated['route_verification_basis'] == 'RESPONSE_CONFIRMED_EXACT_ENDPOINT'
 
 def _setup_test_unit(session, judge_model='anthropic/claude-3-haiku'):
     prompt = Prompt(text='Which answer is better?', category='test')
@@ -285,7 +319,8 @@ def test_postgresql_openrouter_exact_route_and_cost_regression():
                 return {
                     'id': 'gen-llama-pg',
                     'model': 'meta-llama/llama-3.3-70b-instruct',
-                    'openrouter_metadata': {'endpoints': [{'provider_slug': 'deepinfra/turbo'}]},
+                    'provider': 'DeepInfra',
+                    'openrouter_metadata': {'endpoints': {'available': [{'provider': 'DeepInfra', 'selected': True}]}},
                     'usage': {'prompt_tokens': 600, 'completion_tokens': 150, 'total_tokens': 750, 'cost': 0.00021000},
                     'choices': [{'message': {'content': '{"verdict":"ANSWER_A","criteria_scores":{"correctness":5,"relevance":5,"completeness":5,"clarity":5,"safety":5},"confidence":0.9,"explanation":"Clear explanation"}'}}],
                 }
@@ -303,7 +338,8 @@ def test_postgresql_openrouter_exact_route_and_cost_regression():
             assert attempt.actual_usd == Decimal('0.00021000')
             assert attempt.route_provenance_json['observed_upstream_provider'] == 'deepinfra/turbo'
             assert attempt.route_provenance_json['observed_provider_family'] == 'deepinfra'
-            assert attempt.route_provenance_json['observed_endpoint_slug'] == 'deepinfra/turbo'
+            assert attempt.route_provenance_json['observed_endpoint_slug'] is None
+            assert attempt.route_provenance_json['route_verification_basis'] == 'REQUEST_ENFORCED_EXACT_ENDPOINT_RESPONSE_CONFIRMED_FAMILY'
         finally:
             session.close()
             trans.rollback()

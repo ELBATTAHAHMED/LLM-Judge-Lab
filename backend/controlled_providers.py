@@ -128,7 +128,7 @@ class ControlledChatAdapter:
 
         if self.provider is Provider.OPENROUTER:
             try:
-                provenance.update(validate_router_response(judge_name=request.judge_name, response=response))
+                provenance.update(validate_router_response(judge_name=request.judge_name, response=response, request_payload=payload))
             except ValueError as exc:
                 raise ProviderCallError(
                     "PROVENANCE_MISMATCH",
