@@ -106,20 +106,54 @@ class ControlledChatAdapter:
             raise
         except Exception as exc:
             raise ProviderCallError("CONNECTION", str(exc)) from exc
-        provenance: dict[str, Any] = {"configured_upstream_provider": None, "observed_upstream_provider": None,
-            "routing_policy_version": None, "routing_fingerprint": None, "fallback_observed": False,
-            "response_id": response.get("id"), "provider": self.provider.value}
+
+        # Extract usage and response metadata immediately after successful HTTP response
+        usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
+        input_tokens = usage.get("prompt_tokens")
+        output_tokens = usage.get("completion_tokens")
+        response_id = response.get("id")
+        effective_model = response.get("model")
+
+        provenance: dict[str, Any] = {
+            "configured_upstream_provider": None,
+            "observed_upstream_provider": None,
+            "routing_policy_version": None,
+            "routing_fingerprint": None,
+            "fallback_observed": False,
+            "response_id": response_id,
+            "provider": self.provider.value,
+            "effective_model": effective_model,
+        }
+
         if self.provider is Provider.OPENROUTER:
             try:
                 provenance.update(validate_router_response(judge_name=request.judge_name, response=response))
             except ValueError as exc:
-                raise ProviderCallError("PROVENANCE_MISMATCH", str(exc)) from exc
+                raise ProviderCallError(
+                    "PROVENANCE_MISMATCH",
+                    str(exc),
+                    route_provenance=provenance,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    provider_response_id=response_id,
+                    effective_model=effective_model,
+                    raw_response=response,
+                ) from exc
+
         choices = response.get("choices") or []
         message = choices[0].get("message", {}) if choices else {}
         content = message.get("content") if isinstance(message, dict) else None
-        usage = response.get("usage") if isinstance(response.get("usage"), dict) else {}
-        provenance["effective_model"] = response.get("model")
-        return ProviderResponse(raw_response=_json_payload(content), effective_model=response.get("model"), model_version=response.get("system_fingerprint"), provider_response_id=response.get("id"), upstream_provider_model=provenance.get("observed_upstream_provider") or response.get("model"), route_provenance=provenance, input_tokens=usage.get("prompt_tokens"), output_tokens=usage.get("completion_tokens"))
+
+        return ProviderResponse(
+            raw_response=_json_payload(content),
+            effective_model=effective_model,
+            model_version=response.get("system_fingerprint"),
+            provider_response_id=response_id,
+            upstream_provider_model=provenance.get("observed_upstream_provider") or effective_model,
+            route_provenance=provenance,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
 
 
 def adapter_for_judge(judge_name: str, *, transport: Transport | None = None, gate: ProviderExecutionGate = ProviderExecutionGate()) -> ControlledChatAdapter:

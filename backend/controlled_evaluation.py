@@ -103,8 +103,25 @@ class ProviderAdapter(Protocol):
 
 class ProviderCallError(RuntimeError):
     """Typed, provider-neutral transport/configuration failure."""
-    def __init__(self, category: str, message: str = "") -> None:
+    def __init__(
+        self,
+        category: str,
+        message: str = "",
+        *,
+        route_provenance: dict[str, Any] | None = None,
+        input_tokens: int | None = None,
+        output_tokens: int | None = None,
+        provider_response_id: str | None = None,
+        effective_model: str | None = None,
+        raw_response: Any = None,
+    ) -> None:
         self.category = category
+        self.route_provenance = route_provenance
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+        self.provider_response_id = provider_response_id
+        self.effective_model = effective_model
+        self.raw_response = raw_response
         super().__init__(message or category)
 
 
@@ -142,7 +159,14 @@ class ControlledEvaluationEngine:
             return self._failure(Outcome.TIMEOUT, started, "TIMEOUT", str(exc))
         except ProviderCallError as exc:
             outcome = Outcome.REFUSAL if exc.category == "REFUSAL" else Outcome.API_ERROR
-            return self._failure(outcome, started, exc.category, str(exc))
+            return NormalizedEvaluationResult(
+                outcome, None, None, None, exc.raw_response, exc.effective_model or "NOT_RETURNED", None,
+                exc.provider_response_id, "NOT_RETURNED", round((perf_counter() - started) * 1000),
+                OUTCOME_PARSE_STATUS[outcome], exc.category, str(exc),
+                route_provenance=exc.route_provenance,
+                input_tokens=exc.input_tokens,
+                output_tokens=exc.output_tokens,
+            )
         except Exception as exc:  # unknown adapter failures remain terminal; policy never retries generic errors
             return self._failure(Outcome.API_ERROR, started, "PROVIDER_ERROR", str(exc))
         latency_ms = round((perf_counter() - started) * 1000)
