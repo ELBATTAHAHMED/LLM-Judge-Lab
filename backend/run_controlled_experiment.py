@@ -86,14 +86,22 @@ def build_controlled_profile(
         if not dataset:
             raise RuntimeError("No DatasetVersion found in database")
 
+        import subprocess
+        try:
+            commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT_DIR, text=True).strip()
+            tag = subprocess.check_output(["git", "describe", "--tags", "--exact-match", "HEAD"], cwd=ROOT_DIR, text=True).strip()
+        except Exception:
+            commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT_DIR, text=True).strip()
+            tag = "pre-controlled-pilot-v8"
+
         return RealExecutionProfile(
             execution_mode="REAL",
             authorization_token=authorization_token,
             dataset_version_id=str(dataset.id),
             manifest_ids=manifest_ids,
             manifest_hashes=manifest_hashes,
-            source_commit="3c6159016ed28ccc260241d1fb7a57bdad0b245f",
-            source_tag="pre-controlled-pilot-v8",
+            source_commit=commit,
+            source_tag=tag,
             pricing_version=PRICING_CONFIG.get("version", "pricing-config-v1"),
             routing_version=routing_policy_version(),
             routing_fingerprint=routing_fingerprint(),
