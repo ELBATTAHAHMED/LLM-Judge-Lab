@@ -18,7 +18,13 @@ def test_controlled_profile_matches_frozen_scientific_identity():
     profile = build_controlled_profile(authorization_token="test-tok", max_usd=Decimal("7.50"))
     assert profile.execution_mode == "REAL"
     assert profile.evidence_class == "CONTROLLED"
-    assert profile.source_tag in {"pre-controlled-pilot-v8", "pre-controlled-phase9b-v1", "controlled-launch-v1", "controlled-phase9b-resume-v2"}
+    assert profile.source_tag in {
+        "pre-controlled-pilot-v8",
+        "pre-controlled-phase9b-v1",
+        "controlled-launch-v1",
+        "controlled-phase9b-resume-v2",
+        "controlled-phase9b-reconciled-v1",
+    }
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
     assert profile.routing_fingerprint == "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b"
@@ -89,11 +95,11 @@ def test_resume_skips_already_completed_controlled_units():
             if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
         ]
         completed_unit_ids = {r.experimental_unit_id for r in completed_runs}
-        assert len(completed_unit_ids) == 8016
+        assert len(completed_unit_ids) == 7862  # RQ2 units only; pre-fix RQ5 units are superseded
 
         all_units = session.query(ExperimentalUnit).all()
         pending = [u for u in all_units if u.id not in completed_unit_ids]
-        assert len(pending) == 13400 - 8016
-        assert len(pending) == 5384
+        assert len(pending) == 13400 - 7862
+        assert len(pending) == 5538
     finally:
         session.close()
