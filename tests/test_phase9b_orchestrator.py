@@ -18,7 +18,7 @@ def test_controlled_profile_matches_frozen_scientific_identity():
     profile = build_controlled_profile(authorization_token="test-tok", max_usd=Decimal("7.50"))
     assert profile.execution_mode == "REAL"
     assert profile.evidence_class == "CONTROLLED"
-    assert profile.source_tag in {"pre-controlled-pilot-v8", "pre-controlled-phase9b-v1", "controlled-launch-v1"}
+    assert profile.source_tag in {"pre-controlled-pilot-v8", "pre-controlled-phase9b-v1", "controlled-launch-v1", "controlled-phase9b-resume-v2"}
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
     assert profile.routing_fingerprint == "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b"
@@ -28,18 +28,72 @@ def test_controlled_profile_matches_frozen_scientific_identity():
     assert set(profile.configured_upstreams) == {"amazon-bedrock", "streamlake", "deepinfra/turbo"}
     profile.assert_authorized()
 
+
 def test_preflight_runs_without_provider_calls(capsys):
     run_preflight()
     captured = capsys.readouterr().out
     assert "16,600 scientific calls across 13,400 units" in captured
+    assert "Offline payload validation: 13,400 / 13,400 units (16,600 / 16,600 passes) VALID [100% OK]" in captured
     assert "gpt-4o-mini" in captured
     assert "anthropic/claude-3-haiku" in captured
     assert "deepseek/deepseek-chat" in captured
     assert "meta-llama/llama-3.3-70b-instruct" in captured
     assert "[SAFE]" in captured
 
-def test_status_shows_zero_controlled_runs_and_preserves_pilot_isolation(capsys):
+
+def test_status_shows_controlled_progress_and_preserves_pilot_isolation(capsys):
     print_status()
     captured = capsys.readouterr().out
-    assert "TOTAL CONTROLLED PROGRESS: 0 / 13,400 units (0 / 16,600 passes)" in captured
+    assert "PHASE 9B CONTROLLED EXECUTION STATUS" in captured
+    assert "TOTAL CONTROLLED PROGRESS:" in captured
     assert "Published AnalysisRuns: 0 / 7" in captured
+
+
+def test_materialize_evaluation_request_remediates_empty_answer_b():
+    from database import SessionLocal
+    from controlled_models import ExperimentalUnit
+    from run_controlled_experiment import materialize_evaluation_request
+
+    session = SessionLocal()
+    try:
+        # Previously failing units in raw dataset where raw answer_b_id=1056 has len 0
+        unit_rq5 = session.get(ExperimentalUnit, "49d79bed-4be3-4f45-87e1-e0ce3d918741")
+        assert unit_rq5 is not None
+        req5, is_dual5 = materialize_evaluation_request(session, unit_rq5)
+        assert is_dual5 is True
+        assert len(req5.answer_a) > 0
+        assert len(req5.answer_b) == 798  # counterfactual variant text
+        assert req5.presentation_provenance == {"variant_slot": "B"}
+
+        unit_rq4 = session.get(ExperimentalUnit, "01926de6-9111-46ec-98c9-84f47f5c064d")
+        assert unit_rq4 is not None
+        req4, is_dual4 = materialize_evaluation_request(session, unit_rq4)
+        assert is_dual4 is True
+        assert len(req4.answer_a) > 0
+        assert len(req4.answer_b) == 1530  # counterfactual variant text
+        assert req4.presentation_provenance == {"variant_slot": "B"}
+    finally:
+        session.close()
+
+
+def test_resume_skips_already_completed_controlled_units():
+    from database import SessionLocal
+    from controlled_models import ControlledRun, ExperimentalUnit
+
+    session = SessionLocal()
+    try:
+        completed_runs = [
+            r for r in session.query(ControlledRun).filter(
+                ControlledRun.status == "SUCCEEDED",
+            ).all()
+            if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
+        ]
+        completed_unit_ids = {r.experimental_unit_id for r in completed_runs}
+        assert len(completed_unit_ids) == 8016
+
+        all_units = session.query(ExperimentalUnit).all()
+        pending = [u for u in all_units if u.id not in completed_unit_ids]
+        assert len(pending) == 13400 - 8016
+        assert len(pending) == 5384
+    finally:
+        session.close()
