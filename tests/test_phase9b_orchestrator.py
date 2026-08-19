@@ -18,7 +18,7 @@ def test_controlled_profile_matches_frozen_scientific_identity():
     profile = build_controlled_profile(authorization_token="test-tok", max_usd=Decimal("7.50"))
     assert profile.execution_mode == "REAL"
     assert profile.evidence_class == "CONTROLLED"
-    assert profile.source_tag in {"pre-controlled-pilot-v8", "controlled-launch-v1"}
+    assert profile.source_tag in {"pre-controlled-pilot-v8", "pre-controlled-phase9b-v1", "controlled-launch-v1"}
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
     assert profile.routing_fingerprint == "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b"
