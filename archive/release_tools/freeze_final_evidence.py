@@ -275,10 +275,13 @@ def copy_phase10_artifacts(package: Path) -> list[str]:
             raise RuntimeError(f"missing Phase 10 chart: {src}")
         dest = package / "analysis" / "charts" / chart
         dest.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(src, dest); copied.append(dest.relative_to(package).as_posix())
-    report = ROOT / "PHASE_10_FINAL_ANALYSIS_REPORT.md"
+    report = ROOT / "evidence" / "final" / "phase11" / "analysis" / "PHASE_10_FINAL_ANALYSIS_REPORT.md"
     if not report.is_file():
         raise RuntimeError(f"missing Phase 10 report: {report}")
-    shutil.copy2(report, package / "analysis" / report.name); copied.append(f"analysis/{report.name}")
+    destination = package / "analysis" / report.name
+    if report.resolve() != destination.resolve():
+        shutil.copy2(report, destination)
+    copied.append(f"analysis/{report.name}")
     return copied
 
 
