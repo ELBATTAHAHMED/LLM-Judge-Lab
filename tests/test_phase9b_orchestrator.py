@@ -25,6 +25,7 @@ def test_controlled_profile_matches_frozen_scientific_identity():
         "controlled-phase9b-resume-v2",
         "controlled-phase9b-reconciled-v1",
         "controlled-phase9b-rq5-reconciled-v1",
+        "controlled-phase9b-rq5-reconciled-v2",
     }
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
@@ -53,8 +54,8 @@ def test_status_shows_controlled_progress_and_preserves_pilot_isolation(capsys):
     captured = capsys.readouterr().out
     assert "PHASE 9B CONTROLLED EXECUTION STATUS" in captured
     assert "TOTAL PLANNED UNITS ACCOUNTED: 13,400 / 13,400" in captured
-    assert "Scientifically Succeeded Units:       12,412" in captured
-    assert "Pending Provider-Eligible Units (RQ5): 226" in captured
+    assert "Scientifically Succeeded Units:       12,602" in captured
+    assert "Pending Provider-Eligible Units (RQ5): 0" in captured
     assert "Published AnalysisRuns:                  0 / 7" in captured
 
 
@@ -97,7 +98,7 @@ def test_resume_skips_already_completed_controlled_units():
             if r.status == "SUCCEEDED" and (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
         ]
         succeeded_unit_ids = {r.experimental_unit_id for r in succeeded_runs}
-        assert len(succeeded_unit_ids) == 12412
+        assert len(succeeded_unit_ids) == 12602
 
         superseded_runs = [
             r for r in all_runs
@@ -118,24 +119,15 @@ def test_resume_skips_already_completed_controlled_units():
 
         all_units = session.query(ExperimentalUnit).all()
         pending = [u for u in all_units if u.id not in terminal_unit_ids]
-        assert len(pending) == 226
-
-        manifest_by_id = {m.id: m for m in session.query(ExperimentManifest).all()}
-        pending_rqs = {manifest_by_id[u.manifest_id].rq_code for u in pending}
-        assert pending_rqs == {"RQ5"}
+        assert len(pending) == 0
     finally:
         session.close()
 
 
-def test_mock_resume_dispatches_only_226_rq5_units_and_second_run_zero(tmp_path):
-    """Offline simulation of the resume loop proving 226 units / 452 passes on run 1 and 0 on run 2."""
+def test_mock_resume_all_units_complete_zero_dispatched():
+    """Verify that with all 13,400 units complete, resume dispatches 0 units / 0 calls."""
     from database import SessionLocal
     from controlled_models import ControlledRun, ExperimentalUnit, ExperimentManifest
-    from run_controlled_experiment import materialize_evaluation_request
-    from controlled_evaluation import EvaluationRequest, ControlledExecutionService, ControlledEvaluationEngine
-    from controlled_persistence import ControlledPersistence, Outcome, PassObservation
-    from mock_provider import DeterministicMockProvider, MockScenario
-    import hashlib
 
     session = SessionLocal()
     try:
@@ -151,49 +143,7 @@ def test_mock_resume_dispatches_only_226_rq5_units_and_second_run_zero(tmp_path)
             if r.status in {"SUCCEEDED", "FAILED"} or (r.status == "PARTIAL" and len(r.passes) == 2)
         }
         pending_units = [u for u in units if u.id not in terminal_unit_ids]
-        assert len(pending_units) == 226
-
-        # Verify all 226 pending payloads materialize cleanly with CounterfactualVariant
-        for u in pending_units:
-            req, is_dual = materialize_evaluation_request(session, u, manifest_rq=manifest_rq)
-            assert is_dual is True
-            assert req.pass_number == 1
-            assert len(req.answer_a) > 0
-            assert len(req.answer_b) > 0
-            assert req.presentation_provenance == {"variant_slot": "B"}
-
-        # Simulate execution inside savepoint
-        savepoint = session.begin_nested()
-        try:
-            repo = ControlledPersistence(session)
-            dispatched_units = 0
-            dispatched_passes = 0
-            for u in pending_units:
-                req, is_dual = materialize_evaluation_request(session, u, manifest_rq=manifest_rq)
-                c_key = hashlib.sha256(f"controlled:{u.id}:dual".encode()).hexdigest()
-                unit_mock_engine = ControlledEvaluationEngine(DeterministicMockProvider([MockScenario.ANSWER_A, MockScenario.ANSWER_A]))
-                unit_service = ControlledExecutionService(repo, unit_mock_engine, evidence_class="CONTROLLED")
-                r = unit_service.execute_dual(unit=u, first_request=req, idempotency_key=c_key)
-                dispatched_units += 1
-                dispatched_passes += len(r.passes)
-
-            session.flush()
-            assert dispatched_units == 226
-            assert dispatched_passes == 452
-
-            # Run 2: Re-check pending units and verify 0
-            c_runs2 = [
-                r for r in session.query(ControlledRun).all()
-                if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
-            ]
-            term_ids2 = {
-                r.experimental_unit_id for r in c_runs2
-                if r.status in {"SUCCEEDED", "FAILED"} or (r.status == "PARTIAL" and len(r.passes) == 2)
-            }
-            pending2 = [u for u in units if u.id not in term_ids2]
-            assert len(pending2) == 0
-        finally:
-            savepoint.rollback()
+        assert len(pending_units) == 0
     finally:
         session.close()
 
@@ -213,29 +163,25 @@ def test_exact_failed_unit_offline_no_collision():
         unit = session.get(ExperimentalUnit, "002b7338-20b7-4d93-a384-d8a8fb88e724")
         assert unit is not None
 
-        old_run = session.query(ControlledRun).filter(ControlledRun.experimental_unit_id == unit.id).first()
-        assert old_run is not None
-        old_attempt_ids = {a.attempt_id for a in session.query(PassAttempt).filter(PassAttempt.run_id == old_run.id).all()}
-        assert len(old_attempt_ids) > 0
+        superseded_run = session.query(ControlledRun).filter(
+            ControlledRun.experimental_unit_id == unit.id,
+            ControlledRun.status == "SKIPPED",
+        ).first()
+        assert superseded_run is not None
+        superseded_attempt_ids = {a.attempt_id for a in session.query(PassAttempt).filter(PassAttempt.run_id == superseded_run.id).all()}
+        assert len(superseded_attempt_ids) > 0
 
-        req, is_dual = materialize_evaluation_request(session, unit, manifest_rq={unit.manifest_id: "RQ5"})
-        canonical_key = hashlib.sha256(f"controlled:{unit.id}:dual".encode()).hexdigest()
-
-        savepoint = session.begin_nested()
-        try:
-            mock_engine = ControlledEvaluationEngine(DeterministicMockProvider([MockScenario.ANSWER_A, MockScenario.ANSWER_A]))
-            repo = ControlledPersistence(session)
-            service = ControlledExecutionService(repo, mock_engine, evidence_class="CONTROLLED")
-            new_run = service.execute_dual(unit=unit, first_request=req, idempotency_key=canonical_key)
-            session.flush()
-
-            assert new_run.parent_run_id == old_run.id
-            new_attempts = session.query(PassAttempt).filter(PassAttempt.run_id == new_run.id).all()
-            assert len(new_attempts) == 2
-            for a in new_attempts:
-                assert a.attempt_id not in old_attempt_ids
-        finally:
-            savepoint.rollback()
+        # Current controlled run
+        controlled_run = session.query(ControlledRun).filter(
+            ControlledRun.experimental_unit_id == unit.id,
+            ControlledRun.status == "SUCCEEDED",
+        ).first()
+        assert controlled_run is not None
+        assert controlled_run.parent_run_id == superseded_run.id
+        controlled_attempt_ids = {a.attempt_id for a in session.query(PassAttempt).filter(PassAttempt.run_id == controlled_run.id).all()}
+        assert len(controlled_attempt_ids) == 2
+        for aid in controlled_attempt_ids:
+            assert aid not in superseded_attempt_ids
     finally:
         session.close()
 
