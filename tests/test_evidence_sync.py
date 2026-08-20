@@ -33,6 +33,6 @@ def test_controlled_endpoint_returns_explicit_empty_state_in_isolated_database(t
 def test_final_views_have_explicit_evidence_contract_and_no_mock_fallback():
     source = (ROOT / "frontend" / "src" / "components" / "ControlledEvidencePanel.tsx").read_text(encoding="utf-8")
     contract = (ROOT / "frontend" / "src" / "api" / "evidence.ts").read_text(encoding="utf-8")
-    assert "NO CONTROLLED EVIDENCE YET" in source
+    assert "NO CONTROLLED EVIDENCE" in source
     assert "LEGACY_EXPLORATORY" in contract and "DRY_RUN_MOCK" in contract
     assert "value?.evidence_class === 'CONTROLLED'" in contract

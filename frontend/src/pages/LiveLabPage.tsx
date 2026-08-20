@@ -6,7 +6,7 @@ import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { EvidenceBadge } from '../components/EvidenceBadge';
 import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
-import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square } from 'lucide-react';
+import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square, LockKeyhole } from 'lucide-react';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
 
@@ -48,6 +48,7 @@ export const LiveLabPage: React.FC = () => {
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
   const [operatorToken, setOperatorToken] = useState('');
+  const [isAccessOpen, setIsAccessOpen] = useState(false);
   const [modelName, setModelName] = useState(judgeModel);
   const [evalMode, setEvalMode] = useState<'standard' | 'calibrated' | 'ensemble'>('standard');
   const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
@@ -172,14 +173,42 @@ export const LiveLabPage: React.FC = () => {
             <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LIVE_SANDBOX" /></span>LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleReset}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs font-mono self-start sm:self-auto"
-        >
-          <RefreshCw className="w-3 h-3" />
-          <span>Reset Sample Data</span>
-        </button>
+        <div className="relative flex items-center gap-1 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsAccessOpen((open) => !open)}
+            aria-label="Configure live access"
+            title="Configure live access"
+            className="rounded p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
+          >
+            <LockKeyhole className="h-3.5 w-3.5" />
+          </button>
+          {isAccessOpen && (
+            <div className="absolute right-0 top-9 z-30 w-72 rounded border border-neutral-200 bg-white p-3 shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
+              <label htmlFor="live-operator-token" className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
+                Operator token
+              </label>
+              <input
+                id="live-operator-token"
+                type="password"
+                autoComplete="off"
+                value={operatorToken}
+                onChange={(e) => setOperatorToken(e.target.value)}
+                placeholder="Required to run an evaluation"
+                className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500"
+              />
+              <p className="mt-1 text-[10px] text-neutral-500">Held in memory only; never stored, committed, or logged.</p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleReset}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs font-mono"
+          >
+            <RefreshCw className="w-3 h-3" />
+            <span>Reset Sample Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Form and Execution Grid */}
@@ -293,22 +322,6 @@ export const LiveLabPage: React.FC = () => {
                 </div>
               </div>
             </div>
-
-            <details className="pb-3 border-b border-neutral-200 dark:border-neutral-800 group">
-              <summary className="cursor-pointer text-[11px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">🔒 Live access configuration</summary>
-              <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mt-3 mb-1">
-                Operator token
-              </label>
-              <input
-                type="password"
-                autoComplete="off"
-                value={operatorToken}
-                onChange={(e) => setOperatorToken(e.target.value)}
-                placeholder="Required to run an evaluation"
-                className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500"
-              />
-              <p className="mt-1 text-[10px] text-neutral-500">Held in memory only; never stored, committed, or logged.</p>
-            </details>
 
             {evalMode === 'ensemble' && (
               <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-2">

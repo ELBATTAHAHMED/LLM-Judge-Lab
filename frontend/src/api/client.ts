@@ -65,13 +65,33 @@ export async function getDatasetCount(): Promise<DatasetCountResponse> {
   return response.data;
 }
 
+/**
+ * Controlled evidence is immutable for the lifetime of a loaded application.
+ * Sharing the in-flight request avoids React StrictMode's development remount
+ * issuing two expensive reads of the pinned final evidence endpoint.
+ */
+let controlledResultsCache: ControlledResultsResponse | null = null;
+let controlledResultsInFlight: Promise<ControlledResultsResponse> | null = null;
+
 /** Controlled-only route. It never falls back to legacy, sandbox, or mock data. */
 export async function getControlledResults(): Promise<ControlledResultsResponse> {
-  const response = await apiClient.get<ControlledResultsResponse>('/api/controlled/results');
-  if (!isControlledResultsResponse(response.data)) {
-    throw new Error('Controlled evidence response failed its scientific contract validation.');
-  }
-  return response.data;
+  if (controlledResultsCache) return controlledResultsCache;
+  if (controlledResultsInFlight) return controlledResultsInFlight;
+
+  controlledResultsInFlight = apiClient
+    .get<ControlledResultsResponse>('/api/controlled/results')
+    .then((response) => {
+      if (!isControlledResultsResponse(response.data)) {
+        throw new Error('Controlled evidence response failed its scientific contract validation.');
+      }
+      controlledResultsCache = response.data;
+      return response.data;
+    })
+    .finally(() => {
+      controlledResultsInFlight = null;
+    });
+
+  return controlledResultsInFlight;
 }
 
 export function useControlledResults() {

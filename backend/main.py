@@ -284,11 +284,18 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
 @app.get("/api/controlled/results", response_model=ControlledResultsResponse)
 def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsResponse:
     """Expose final controlled evidence only after a real controlled analysis exists."""
-    controlled_runs = db.query(ControlledRun).filter(
+    # Accounting needs only these identifiers/status fields.  Selecting ORM
+    # entities here would also deserialize stored provider responses and other
+    # provenance blobs for every one of the 13,400 controlled runs.
+    controlled_runs = db.query(
+        ControlledRun.id,
+        ControlledRun.experimental_unit_id,
+        ControlledRun.status,
+    ).filter(
         ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value
     ).all()
     run_ids = [run.id for run in controlled_runs]
-    controlled_passes = db.query(RunPass).filter(RunPass.run_id.in_(run_ids)).all() if run_ids else []
+    controlled_passes = db.query(RunPass.run_id, RunPass.outcome).filter(RunPass.run_id.in_(run_ids)).all() if run_ids else []
     if not controlled_runs or not controlled_passes:
         return ControlledResultsResponse(status="NO_CONTROLLED_EVIDENCE", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), results=[], message="Controlled experiment is planned but has not yet been executed.")
 
@@ -306,12 +313,19 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     terminal_ids = {run.id for run in succeeded} | valid_partial_ids | {run.id for run in failed}
 
     units = {
-        unit.id: unit for unit in db.query(ExperimentalUnit).filter(
+        unit.id: unit for unit in db.query(
+            ExperimentalUnit.id,
+            ExperimentalUnit.manifest_id,
+            ExperimentalUnit.condition_code,
+        ).filter(
             ExperimentalUnit.id.in_([run.experimental_unit_id for run in controlled_runs])
         ).all()
     }
     manifests = {
-        manifest.id: manifest for manifest in db.query(ExperimentManifest).filter(
+        manifest.id: manifest for manifest in db.query(
+            ExperimentManifest.id,
+            ExperimentManifest.rq_code,
+        ).filter(
             ExperimentManifest.id.in_([unit.manifest_id for unit in units.values()])
         ).all()
     }
@@ -346,7 +360,10 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         if not isinstance(result_rows, list):
             return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Published controlled analysis has an invalid result contract.")
         for result in result_rows:
-            row = dict(result)
+            # Provenance remains intact in the pinned AnalysisRun and Phase 11 package.
+            # The UI needs metric summaries, not thousands of UUIDs per row; omitting
+            # this unused field avoids a multi-megabyte response and slow render.
+            row = {key: value for key, value in dict(result).items() if key != "source_unit_ids"}
             metric_key = str(row.get("metric_key", ""))
             if metric_key.startswith("judge:"):
                 _, judge, _ = metric_key.split(":", 2)
