@@ -50,6 +50,8 @@ def test_noncanonical_controlled_analysisrun_cannot_replace_final_evidence(tmp_p
             "planned_units": 1, "succeeded_units": 1, "valid_partial_units": 0,
             "failed_units": 0, "pending_units": 0, "planned_pass_slots": 1,
             "valid_returned_passes": 1, "failed_pass_slots": 0,
+            "provider_error_pass_slots": 0, "invalid_response_pass_slots": 0,
+            "paired_excluded_valid_pass_slots": 0,
         }
         assert "Canonical final AnalysisRun records are missing" in body["message"]
     finally:

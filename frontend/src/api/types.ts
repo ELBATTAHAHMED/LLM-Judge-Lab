@@ -234,6 +234,9 @@ export interface ControlledResultsAccounting {
   planned_pass_slots: number;
   valid_returned_passes: number;
   failed_pass_slots: number;
+  provider_error_pass_slots?: number;
+  invalid_response_pass_slots?: number;
+  paired_excluded_valid_pass_slots?: number;
 }
 
 export interface ControlledResultsResponse {

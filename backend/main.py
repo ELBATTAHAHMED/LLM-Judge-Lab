@@ -36,7 +36,7 @@ from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E4
 import models  # noqa: E402
 from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
 from evidence_contract import EvidenceClass  # noqa: E402
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, canonical_final_analysis_runs  # noqa: E402
+from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, canonical_final_analysis_runs  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
@@ -246,6 +246,9 @@ class ControlledResultsAccounting(BaseModel):
     planned_pass_slots: int
     valid_returned_passes: int
     failed_pass_slots: int
+    provider_error_pass_slots: int = 0
+    invalid_response_pass_slots: int = 0
+    paired_excluded_valid_pass_slots: int = 0
 
 
 class ControlledResultsResponse(BaseModel):
@@ -286,7 +289,7 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     """Expose final controlled evidence only after a real controlled analysis exists."""
     # Accounting needs only these identifiers/status fields.  Selecting ORM
     # entities here would also deserialize stored provider responses and other
-    # provenance blobs for every one of the 13,400 controlled runs.
+    # provenance blobs for every controlled run.
     controlled_runs = db.query(
         ControlledRun.id,
         ControlledRun.experimental_unit_id,
@@ -314,9 +317,10 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
 
     units = {
         unit.id: unit for unit in db.query(
-            ExperimentalUnit.id,
-            ExperimentalUnit.manifest_id,
-            ExperimentalUnit.condition_code,
+        ExperimentalUnit.id,
+        ExperimentalUnit.manifest_id,
+        ExperimentalUnit.condition_code,
+        ExperimentalUnit.presentation_order,
         ).filter(
             ExperimentalUnit.id.in_([run.experimental_unit_id for run in controlled_runs])
         ).all()
@@ -332,11 +336,37 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     def planned_slots(run: ControlledRun) -> int:
         unit = units[run.experimental_unit_id]
         rq_code = manifests[unit.manifest_id].rq_code
-        return 2 if rq_code in {"RQ3", "RQ4", "RQ5"} or unit.condition_code == "DUAL_SWAP" else 1
+        return 2 if rq_code in {"RQ3", "RQ4", "RQ5"} or unit.condition_code == "DUAL_SWAP" or unit.presentation_order == "AB_BA" else 1
 
-    valid_runs = [*succeeded, *(run for run in controlled_runs if run.id in valid_partial_ids)]
+    # Phase 11's frozen accounting treats a pass from a terminally incomplete
+    # paired run as excluded even when that individual pass has a parsable
+    # outcome.  The repaired RQ6 protocol reports its actual valid pass
+    # outcomes directly, as required by its counterbalanced analysis contract.
+    counterbalanced_rq6_manifest_id = uuid.UUID(CANONICAL_FINAL_MANIFESTS["RQ6"])
+    counterbalanced_runs = [run for run in controlled_runs if units[run.experimental_unit_id].manifest_id == counterbalanced_rq6_manifest_id]
+    historical_runs = [run for run in controlled_runs if run.id not in {counterbalanced.id for counterbalanced in counterbalanced_runs}]
+    historical_valid_runs = [*[
+        run for run in historical_runs if run.status == "SUCCEEDED"
+    ], *[
+        run for run in historical_runs if run.id in valid_partial_ids
+    ]]
     planned_pass_slots = sum(planned_slots(run) for run in controlled_runs)
-    valid_returned_passes = sum(planned_slots(run) for run in valid_runs)
+    historical_valid_run_ids = {run.id for run in historical_valid_runs}
+    counterbalanced_run_ids = {run.id for run in counterbalanced_runs}
+    valid_returned_passes = (
+        sum(planned_slots(run) for run in historical_valid_runs)
+        + sum(pass_.outcome in valid_outcomes for pass_ in controlled_passes if pass_.run_id in counterbalanced_run_ids)
+    )
+    provider_error_pass_slots = sum(pass_.outcome == "API_ERROR" for pass_ in controlled_passes)
+    invalid_response_pass_slots = sum(pass_.outcome == "INVALID_RESPONSE" for pass_ in controlled_passes)
+    paired_excluded_valid_pass_slots = sum(
+        pass_.outcome in valid_outcomes
+        for pass_ in controlled_passes
+        if pass_.run_id not in counterbalanced_run_ids and pass_.run_id not in historical_valid_run_ids
+    )
+    nonvalid_or_excluded_slots = planned_pass_slots - valid_returned_passes
+    if nonvalid_or_excluded_slots != provider_error_pass_slots + invalid_response_pass_slots + paired_excluded_valid_pass_slots:
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), results=[], message="Controlled pass accounting has an unclassified non-valid slot.")
     accounting = ControlledResultsAccounting(
         planned_units=len(controlled_runs),
         succeeded_units=len(succeeded),
@@ -345,7 +375,10 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         pending_units=len(controlled_runs) - len(terminal_ids),
         planned_pass_slots=planned_pass_slots,
         valid_returned_passes=valid_returned_passes,
-        failed_pass_slots=planned_pass_slots - valid_returned_passes,
+        failed_pass_slots=nonvalid_or_excluded_slots,
+        provider_error_pass_slots=provider_error_pass_slots,
+        invalid_response_pass_slots=invalid_response_pass_slots,
+        paired_excluded_valid_pass_slots=paired_excluded_valid_pass_slots,
     )
     canonical_rows = db.query(AnalysisRun).filter(
         AnalysisRun.id.in_([uuid.UUID(run_id) for run_id in CANONICAL_FINAL_ANALYSIS_RUNS.values()])
