@@ -192,6 +192,7 @@ export type ControlledMetricStatus = 'ESTIMABLE' | 'NOT_ESTIMABLE' | 'NO_DATA';
 
 export interface ControlledMetricResult {
   rq: string;
+  metric_key?: string;
   judge: string | null;
   condition: string | null;
   metric: string;
@@ -211,13 +212,33 @@ export interface ControlledMetricResult {
   evidence_class: ControlledEvidenceClass;
 }
 
+export interface ControlledResultsAccounting {
+  planned_units: number;
+  succeeded_units: number;
+  valid_partial_units: number;
+  failed_units: number;
+  pending_units: number;
+  planned_pass_slots: number;
+  valid_returned_passes: number;
+  failed_pass_slots: number;
+}
+
 export interface ControlledResultsResponse {
   status: 'NO_CONTROLLED_EVIDENCE' | 'CONTROLLED_RESULTS_PENDING_ANALYSIS' | string;
   evidence_class: 'CONTROLLED';
   executed_runs: number;
   executed_passes: number;
+  accounting: ControlledResultsAccounting | null;
+  analysis_runs: Record<string, string>;
   results: ControlledMetricResult[];
   message: string;
+}
+
+export function isControlledResultsAccounting(value: unknown): value is ControlledResultsAccounting {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return ['planned_units', 'succeeded_units', 'valid_partial_units', 'failed_units', 'pending_units', 'planned_pass_slots', 'valid_returned_passes', 'failed_pass_slots']
+    .every((key) => typeof row[key] === 'number');
 }
 
 /** Runtime guard for an untrusted future API response; no defaulting to zero. */
@@ -225,8 +246,22 @@ export function isControlledMetricResult(value: unknown): value is ControlledMet
   if (typeof value !== 'object' || value === null) return false;
   const row = value as Record<string, unknown>;
   const required = ['rq', 'judge', 'condition', 'metric', 'value', 'numerator', 'denominator', 'eligible_n', 'analyzed_n', 'ties', 'unknowns', 'failures', 'excluded', 'ci_low', 'ci_high', 'status', 'analysis_version', 'evidence_class'];
-  return required.every((key) => Object.hasOwn(row, key))
+  return required.every((key) => Object.hasOwn(row, key) && row[key] !== undefined)
     && (row.evidence_class === 'CONTROLLED' || row.evidence_class === 'DRY_RUN_MOCK');
+}
+
+/** Reject malformed responses rather than giving the UI placeholder scientific values. */
+export function isControlledResultsResponse(value: unknown): value is ControlledResultsResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  const row = value as Record<string, unknown>;
+  return row.evidence_class === 'CONTROLLED'
+    && typeof row.status === 'string'
+    && typeof row.executed_runs === 'number'
+    && typeof row.executed_passes === 'number'
+    && Array.isArray(row.results)
+    && row.results.every(isControlledMetricResult)
+    && (row.accounting === null || isControlledResultsAccounting(row.accounting))
+    && typeof row.analysis_runs === 'object' && row.analysis_runs !== null && !Array.isArray(row.analysis_runs);
 }
 
 

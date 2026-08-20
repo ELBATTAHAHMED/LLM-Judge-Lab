@@ -35,7 +35,7 @@ if str(BACKEND_DIR) not in sys.path:
 # Import engine and Base for table creation, and get_db dependency
 from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
 import models  # noqa: E402
-from controlled_models import AnalysisRun, ControlledRun, Experiment, RunPass  # noqa: E402
+from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
 from evidence_contract import EvidenceClass  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
@@ -228,12 +228,26 @@ class MacroBenchmarkResponse(BaseModel):
     message: str
 
 
+class ControlledResultsAccounting(BaseModel):
+    """Final-science accounting derived only from CONTROLLED run evidence."""
+    planned_units: int
+    succeeded_units: int
+    valid_partial_units: int
+    failed_units: int
+    pending_units: int
+    planned_pass_slots: int
+    valid_returned_passes: int
+    failed_pass_slots: int
+
+
 class ControlledResultsResponse(BaseModel):
     """Controlled-only endpoint; never falls back to legacy or mock evidence."""
     status: str
     evidence_class: Literal["CONTROLLED"]
     executed_runs: int
     executed_passes: int
+    accounting: ControlledResultsAccounting | None = None
+    analysis_runs: dict[str, str] = {}
     results: list[dict[str, Any]] = []
     message: str
 
@@ -262,10 +276,55 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
 @app.get("/api/controlled/results", response_model=ControlledResultsResponse)
 def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsResponse:
     """Expose final controlled evidence only after a real controlled analysis exists."""
-    runs = db.query(ControlledRun).filter(ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value).count()
-    passes = db.query(RunPass).join(ControlledRun).filter(ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value).count()
-    if runs == 0 or passes == 0:
-        return ControlledResultsResponse(status="NO_CONTROLLED_EVIDENCE", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Controlled experiment is planned but has not yet been executed.")
+    controlled_runs = db.query(ControlledRun).filter(
+        ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value
+    ).all()
+    run_ids = [run.id for run in controlled_runs]
+    controlled_passes = db.query(RunPass).filter(RunPass.run_id.in_(run_ids)).all() if run_ids else []
+    if not controlled_runs or not controlled_passes:
+        return ControlledResultsResponse(status="NO_CONTROLLED_EVIDENCE", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), results=[], message="Controlled experiment is planned but has not yet been executed.")
+
+    passes_by_run: dict[Any, list[RunPass]] = {}
+    for pass_ in controlled_passes:
+        passes_by_run.setdefault(pass_.run_id, []).append(pass_)
+    valid_outcomes = {"ANSWER_A", "ANSWER_B", "TIE", "UNKNOWN"}
+    valid_partial_ids = {
+        run.id for run in controlled_runs
+        if run.status == "PARTIAL" and len(passes_by_run.get(run.id, [])) == 2
+        and all(pass_.outcome in valid_outcomes for pass_ in passes_by_run[run.id])
+    }
+    succeeded = [run for run in controlled_runs if run.status == "SUCCEEDED"]
+    failed = [run for run in controlled_runs if run.status == "FAILED" or (run.status == "PARTIAL" and run.id not in valid_partial_ids)]
+    terminal_ids = {run.id for run in succeeded} | valid_partial_ids | {run.id for run in failed}
+
+    units = {
+        unit.id: unit for unit in db.query(ExperimentalUnit).filter(
+            ExperimentalUnit.id.in_([run.experimental_unit_id for run in controlled_runs])
+        ).all()
+    }
+    manifests = {
+        manifest.id: manifest for manifest in db.query(ExperimentManifest).filter(
+            ExperimentManifest.id.in_([unit.manifest_id for unit in units.values()])
+        ).all()
+    }
+    def planned_slots(run: ControlledRun) -> int:
+        unit = units[run.experimental_unit_id]
+        rq_code = manifests[unit.manifest_id].rq_code
+        return 2 if rq_code in {"RQ3", "RQ4", "RQ5"} or unit.condition_code == "DUAL_SWAP" else 1
+
+    valid_runs = [*succeeded, *(run for run in controlled_runs if run.id in valid_partial_ids)]
+    planned_pass_slots = sum(planned_slots(run) for run in controlled_runs)
+    valid_returned_passes = sum(planned_slots(run) for run in valid_runs)
+    accounting = ControlledResultsAccounting(
+        planned_units=len(controlled_runs),
+        succeeded_units=len(succeeded),
+        valid_partial_units=len(valid_partial_ids),
+        failed_units=len(failed),
+        pending_units=len(controlled_runs) - len(terminal_ids),
+        planned_pass_slots=planned_pass_slots,
+        valid_returned_passes=valid_returned_passes,
+        failed_pass_slots=planned_pass_slots - valid_returned_passes,
+    )
     # The evidence class is provenance of the analysis payload/run records, not
     # a mutable experiment-planning label.  This permits a PLANNED experiment
     # to publish only after genuine CONTROLLED evidence exists.
@@ -274,17 +333,38 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         if (row.result_json or {}).get("evidence_class") == EvidenceClass.CONTROLLED.value:
             published_by_rq.setdefault(row.rq_code, row)
     if not published_by_rq:
-        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Controlled runs exist, but no authoritative completed analysis has been published.")
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Controlled runs exist, but no authoritative completed analysis has been published.")
     rows: list[dict[str, Any]] = []
     for rq in sorted(published_by_rq):
         payload = published_by_rq[rq].result_json or {}
         result_rows = payload.get("results", payload if isinstance(payload, list) else [])
         if not isinstance(result_rows, list):
-            return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Published controlled analysis has an invalid result contract.")
-        rows.extend(result_rows)
+            return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Published controlled analysis has an invalid result contract.")
+        for result in result_rows:
+            row = dict(result)
+            metric_key = str(row.get("metric_key", ""))
+            if metric_key.startswith("judge:"):
+                _, judge, _ = metric_key.split(":", 2)
+                row["judge"] = judge
+            if metric_key.startswith("baseline_"):
+                row["condition"] = "BASELINE SINGLE-PASS"
+            elif metric_key.startswith("dual_swap_"):
+                row["condition"] = "DUAL_SWAP"
+            elif metric_key.endswith("_delta"):
+                row["condition"] = "DUAL_SWAP − BASELINE SINGLE-PASS"
+            rows.append(row)
     if not rows:
-        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=[], message="Published controlled analysis has an invalid result contract.")
-    return ControlledResultsResponse(status="CONTROLLED_RESULTS_AVAILABLE", evidence_class="CONTROLLED", executed_runs=runs, executed_passes=passes, results=rows, message="Authoritative controlled analysis published from persisted CONTROLLED evidence.")
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Published controlled analysis has an invalid result contract.")
+    return ControlledResultsResponse(
+        status="CONTROLLED_RESULTS_AVAILABLE",
+        evidence_class="CONTROLLED",
+        executed_runs=len(controlled_runs),
+        executed_passes=len(controlled_passes),
+        accounting=accounting,
+        analysis_runs={rq: str(run.id) for rq, run in sorted(published_by_rq.items())},
+        results=rows,
+        message="Authoritative controlled analysis published from persisted CONTROLLED evidence.",
+    )
 
 
 # ── Model ID Normalization Utility ────────────────────────────────────────────

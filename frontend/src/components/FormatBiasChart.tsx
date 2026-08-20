@@ -105,7 +105,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory formatting association:</strong> this historical heuristic is not the controlled RQ5 format experiment. Controlled Format Effect status: planned.
+              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory formatting association:</strong> this historical heuristic is not the final controlled RQ5 experiment. See Controlled Experiments for the frozen Controlled Presentation-Format Effect.
             </div>
           </div>
         )}

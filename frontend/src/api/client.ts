@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useState, useEffect, useCallback } from 'react';
+import { isControlledResultsResponse } from './types';
 import type {
   LeaderboardItem,
   BiasStatsResponse,
@@ -76,6 +77,9 @@ export async function getDatasetCount(): Promise<DatasetCountResponse> {
 /** Controlled-only route. It never falls back to legacy, sandbox, or mock data. */
 export async function getControlledResults(): Promise<ControlledResultsResponse> {
   const response = await apiClient.get<ControlledResultsResponse>('/api/controlled/results');
+  if (!isControlledResultsResponse(response.data)) {
+    throw new Error('Controlled evidence response failed its scientific contract validation.');
+  }
   return response.data;
 }
 

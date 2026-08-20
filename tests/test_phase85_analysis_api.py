@@ -48,6 +48,12 @@ def test_controlled_analysisrun_and_populated_api_use_persisted_evidence(tmp_pat
         row = body["results"][0]
         required = {"rq", "judge", "condition", "metric", "value", "numerator", "denominator", "eligible_n", "analyzed_n", "ties", "unknowns", "failures", "excluded", "ci_low", "ci_high", "status", "analysis_version", "evidence_class"}
         assert required <= set(row) and row["evidence_class"] == "CONTROLLED" and analysis_id
+        assert body["accounting"] == {
+            "planned_units": 1, "succeeded_units": 1, "valid_partial_units": 0,
+            "failed_units": 0, "pending_units": 0, "planned_pass_slots": 1,
+            "valid_returned_passes": 1, "failed_pass_slots": 0,
+        }
+        assert body["analysis_runs"] == {"RQ1": analysis_id}
     finally:
         app.dependency_overrides.clear(); engine.dispose()
 

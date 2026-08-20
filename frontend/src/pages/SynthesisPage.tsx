@@ -1,12 +1,13 @@
 import React from 'react';
-import { MacroSynthesisDashboard } from '../components/MacroSynthesisDashboard';
-import { EvidenceBadge } from '../components/EvidenceBadge';
+import { useControlledResults } from '../api/client';
+import { ControlledEvidencePanel } from '../components/ControlledEvidencePanel';
 
 export const SynthesisPage: React.FC = () => {
+  const controlled = useControlledResults();
   return (
     <div className="max-w-[1400px] mx-auto space-y-8 py-4 font-sans">
-      <div><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /><p className="mt-2 text-xs text-neutral-500">Historical exploratory comparison only. Controlled mitigation evaluation is planned and has not yet run.</p></div>
-      <MacroSynthesisDashboard />
+      <div><h1 className="text-2xl font-serif">Final Scientific Synthesis</h1><p className="mt-1 text-xs text-neutral-500">Controlled RQ1–RQ7 evidence only; legacy exploratory dashboards are not used for final scientific conclusions.</p></div>
+      <ControlledEvidencePanel {...controlled} />
     </div>
   );
 };
