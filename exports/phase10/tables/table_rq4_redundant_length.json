@@ -1,0 +1,67 @@
+[
+  {
+    "scope": "OVERALL",
+    "judge": "ALL_JUDGES",
+    "eligible_units": 800,
+    "analyzed_units": 685,
+    "variant_win_rate": 0.0044,
+    "variant_ci_low": null,
+    "variant_ci_high": 0.0102,
+    "original_win_rate": 0.0044,
+    "original_ci_low": null,
+    "original_ci_high": 0.0102,
+    "rejected_variant_count": 115
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "gpt-4o-mini",
+    "eligible_units": 200,
+    "analyzed_units": 198,
+    "variant_win_rate": null,
+    "variant_ci_low": null,
+    "variant_ci_high": null,
+    "original_win_rate": null,
+    "original_ci_low": null,
+    "original_ci_high": null,
+    "rejected_variant_count": 2
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "anthropic/claude-3-haiku",
+    "eligible_units": 200,
+    "analyzed_units": 157,
+    "variant_win_rate": 0.0191,
+    "variant_ci_low": null,
+    "variant_ci_high": 0.0446,
+    "original_win_rate": 0.0191,
+    "original_ci_low": null,
+    "original_ci_high": 0.0446,
+    "rejected_variant_count": 43
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "deepseek/deepseek-chat",
+    "eligible_units": 200,
+    "analyzed_units": 156,
+    "variant_win_rate": null,
+    "variant_ci_low": null,
+    "variant_ci_high": null,
+    "original_win_rate": null,
+    "original_ci_low": null,
+    "original_ci_high": null,
+    "rejected_variant_count": 44
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "meta-llama/llama-3.3-70b-instruct",
+    "eligible_units": 200,
+    "analyzed_units": 174,
+    "variant_win_rate": null,
+    "variant_ci_low": null,
+    "variant_ci_high": null,
+    "original_win_rate": null,
+    "original_ci_low": null,
+    "original_ci_high": null,
+    "rejected_variant_count": 26
+  }
+]

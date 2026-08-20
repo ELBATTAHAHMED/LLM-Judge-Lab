@@ -1,0 +1,79 @@
+[
+  {
+    "rq_code": "RQ1",
+    "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:38:33.183965+01:00"
+  },
+  {
+    "rq_code": "RQ2",
+    "analysis_run_id": "25949bbe-b962-4808-9830-f106bb3d1d42",
+    "manifest_id": "0581763f-1fff-4092-a2f2-c60170eb8dbf",
+    "experiment_id": "3f6294f6-cf5e-4c27-8c21-f162b93c594d",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:38:50.344137+01:00"
+  },
+  {
+    "rq_code": "RQ3",
+    "analysis_run_id": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
+    "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+    "experiment_id": "3b8ef1ab-f149-4458-9580-02c41fdea781",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:39:10.624915+01:00"
+  },
+  {
+    "rq_code": "RQ4",
+    "analysis_run_id": "13510c83-354c-49b1-811f-5e96a6b985e7",
+    "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+    "experiment_id": "d02a90f5-8096-48aa-9297-ee51e93a10ca",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:39:17.272517+01:00"
+  },
+  {
+    "rq_code": "RQ5",
+    "analysis_run_id": "bbfbcf03-1791-4892-a39c-418831260f35",
+    "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+    "experiment_id": "f7ebd809-6ad4-4ba0-8f19-2f24200ddeed",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:39:24.407909+01:00"
+  },
+  {
+    "rq_code": "RQ6",
+    "analysis_run_id": "ca9a1668-58b9-4a9d-8b0d-991c2b7a38ec",
+    "manifest_id": "5491bd7b-2f59-4922-a4c2-ecbe38c57e0a",
+    "experiment_id": "a3484b84-870d-4f01-85ad-df7d160c7efd",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:39:31.888825+01:00"
+  },
+  {
+    "rq_code": "RQ7",
+    "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+    "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+    "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+    "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+    "analysis_version": "phase4-analysis-v1",
+    "analysis_seed": 20260818,
+    "status": "COMPLETED",
+    "created_at": "2026-08-20T15:39:31.983516+01:00"
+  }
+]

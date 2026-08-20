@@ -1,0 +1,6 @@
+scope,judge,eligible_groups,analyzed_groups,excluded_groups,consistency,ci_low,ci_high,temperature_comparison_estimable,notes
+OVERALL,ALL_JUDGES,1712,1474,238,0.9656,0.9604,0.9707,False,Manifest uses single controlled baseline temperature configuration; no temperature contrast.
+PER_JUDGE,gpt-4o-mini,405,395,10,0.9818,0.9742,0.9889,False,Single controlled baseline configuration.
+PER_JUDGE,anthropic/claude-3-haiku,407,384,23,0.9398,0.9263,0.9526,False,Single controlled baseline configuration.
+PER_JUDGE,deepseek/deepseek-chat,493,307,186,0.9581,0.9453,0.97,False,Single controlled baseline configuration.
+PER_JUDGE,meta-llama/llama-3.3-70b-instruct,407,388,19,0.9804,0.9722,0.9876,False,Single controlled baseline configuration.

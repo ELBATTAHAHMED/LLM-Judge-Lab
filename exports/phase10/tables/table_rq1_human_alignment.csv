@@ -1,0 +1,6 @@
+scope,judge,eligible_n,analyzed_n,excluded_n,failure_n,tie_n,agreement,agreement_ci_low,agreement_ci_high,cohens_kappa,kappa_ci_low,kappa_ci_high,tie_rate
+OVERALL,ALL_JUDGES,800,770,0,18,178,0.5844,0.5506,0.6195,0.3121,0.2579,0.3652,0.2312
+PER_JUDGE,gpt-4o-mini,200,199,0,0,79,0.5528,0.4874,0.6231,0.303,0.1999,0.4032,0.397
+PER_JUDGE,anthropic/claude-3-haiku,200,188,0,4,60,0.4362,0.367,0.5053,0.1503,0.0563,0.2457,0.3191
+PER_JUDGE,deepseek/deepseek-chat,200,187,0,13,10,0.6845,0.6203,0.7487,0.4017,0.2894,0.5109,0.0535
+PER_JUDGE,meta-llama/llama-3.3-70b-instruct,200,196,0,1,29,0.6633,0.5969,0.7296,0.42,0.312,0.527,0.148

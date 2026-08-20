@@ -1,0 +1,54 @@
+[
+  {
+    "judge": "gpt-4o-mini",
+    "rq1_human_agreement": 0.5528,
+    "rq1_cohens_kappa": 0.303,
+    "rq2_consistency": 0.9818,
+    "rq3_decisive_flip_rate": 0.0517,
+    "rq3_slot_imbalance": 0.0345,
+    "rq4_redundant_length_variant_win": null,
+    "rq5_format_variant_win": null,
+    "rq6_source_family_preference": "NOT_ESTIMABLE (Unbalanced Slots)",
+    "rq7_mitigation_agreement_delta": 0.0572,
+    "rq7_mitigation_coverage_delta": -0.195
+  },
+  {
+    "judge": "anthropic/claude-3-haiku",
+    "rq1_human_agreement": 0.4362,
+    "rq1_cohens_kappa": 0.1503,
+    "rq2_consistency": 0.9398,
+    "rq3_decisive_flip_rate": 0.5225,
+    "rq3_slot_imbalance": 0.5045,
+    "rq4_redundant_length_variant_win": 0.0191,
+    "rq5_format_variant_win": 0.0455,
+    "rq6_source_family_preference": "NOT_ESTIMABLE (Unbalanced Slots)",
+    "rq7_mitigation_agreement_delta": 0.1538,
+    "rq7_mitigation_coverage_delta": -0.43
+  },
+  {
+    "judge": "deepseek/deepseek-chat",
+    "rq1_human_agreement": 0.6845,
+    "rq1_cohens_kappa": 0.4017,
+    "rq2_consistency": 0.9581,
+    "rq3_decisive_flip_rate": 0.0915,
+    "rq3_slot_imbalance": 0.0305,
+    "rq4_redundant_length_variant_win": null,
+    "rq5_format_variant_win": null,
+    "rq6_source_family_preference": "NOT_ESTIMABLE (Unbalanced Slots)",
+    "rq7_mitigation_agreement_delta": 0.0285,
+    "rq7_mitigation_coverage_delta": -0.12
+  },
+  {
+    "judge": "meta-llama/llama-3.3-70b-instruct",
+    "rq1_human_agreement": 0.6633,
+    "rq1_cohens_kappa": 0.42,
+    "rq2_consistency": 0.9804,
+    "rq3_decisive_flip_rate": 0.0779,
+    "rq3_slot_imbalance": 0.0649,
+    "rq4_redundant_length_variant_win": null,
+    "rq5_format_variant_win": null,
+    "rq6_source_family_preference": 0.4692,
+    "rq7_mitigation_agreement_delta": 0.0569,
+    "rq7_mitigation_coverage_delta": -0.165
+  }
+]

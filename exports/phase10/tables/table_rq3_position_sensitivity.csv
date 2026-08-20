@@ -1,0 +1,6 @@
+scope,judge,eligible_pairs,decisive_pairs_analyzed,decisive_flip_rate,flip_ci_low,flip_ci_high,all_paired_disagreement_rate,all_disagreement_ci_low,all_disagreement_ci_high,slot_win_imbalance,incomplete_pairs
+OVERALL,ALL_JUDGES,800,545,0.167,0.1376,0.1982,0.2487,0.2183,0.2804,0.1193,0
+PER_JUDGE,gpt-4o-mini,200,116,0.0517,0.0172,0.0948,0.23,0.175,0.29,0.0345,0
+PER_JUDGE,anthropic/claude-3-haiku,200,111,0.5225,0.4324,0.6216,0.5137,0.4372,0.5847,0.5045,0
+PER_JUDGE,deepseek/deepseek-chat,200,164,0.0915,0.0488,0.1402,0.1229,0.0782,0.1732,0.0305,0
+PER_JUDGE,meta-llama/llama-3.3-70b-instruct,200,154,0.0779,0.039,0.1234,0.134,0.0876,0.1856,0.0649,0

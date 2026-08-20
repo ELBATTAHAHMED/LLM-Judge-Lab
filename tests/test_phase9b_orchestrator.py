@@ -57,7 +57,7 @@ def test_status_shows_controlled_progress_and_preserves_pilot_isolation(capsys):
     assert "TOTAL PLANNED UNITS ACCOUNTED: 13,400 / 13,400" in captured
     assert "Scientifically Succeeded Units:       12,602" in captured
     assert "Pending Provider-Eligible Units (RQ5): 0" in captured
-    assert "Published AnalysisRuns:                  0 / 7" in captured
+    assert "Published AnalysisRuns:                  7 / 7" in captured
 
 
 def test_materialize_evaluation_request_remediates_empty_answer_b():

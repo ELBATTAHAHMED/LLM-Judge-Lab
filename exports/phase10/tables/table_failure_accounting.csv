@@ -1,0 +1,9 @@
+rq,planned_units,succeeded_units,partial_units,failed_units,planned_passes,valid_passes,failed_pass_slots,unit_failure_rate,primary_failure_cause
+RQ1,800,782,0,18,800,782,18,0.0225,Rate limit / upstream transient
+RQ2,8000,7862,0,138,8000,7862,138,0.0173,Rate limit / upstream transient
+RQ3,800,573,204,23,1600,1554,46,0.0288,Dual-pass retry exhaustion
+RQ4,800,699,64,37,1600,1526,74,0.0462,Dual-pass retry exhaustion
+RQ5,800,724,56,20,1600,1560,40,0.025,Dual-pass retry exhaustion
+RQ6,600,596,0,4,600,596,4,0.0067,Rate limit / upstream transient
+RQ7,1600,1366,199,35,2400,2348,52,0.0219,Baseline & Dual-pass retry exhaustion
+TOTAL,13400,12602,523,275,16600,16228,372,0.0205,Controlled Retry-v2 Policy Exhaustion
