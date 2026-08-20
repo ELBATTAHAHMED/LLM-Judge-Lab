@@ -41,7 +41,7 @@ export const MethodologyCards: React.FC = () => {
         </div>
 
         <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          Historical regression describes an exploratory length association. It does not establish a controlled redundant-length effect or a verbosity-independent quality score.
+          The displayed regression describes a length association. It does not establish a controlled redundant-length effect or a verbosity-independent quality score.
         </p>
       </div>
     </div>

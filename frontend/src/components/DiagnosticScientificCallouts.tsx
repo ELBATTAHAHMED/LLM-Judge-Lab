@@ -15,7 +15,7 @@ export const DiagnosticScientificCallouts: React.FC = () => {
         </div>
 
         <blockquote className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed border-l-2 border-neutral-400 dark:border-neutral-600 pl-3 py-1 font-mono">
-          "Historical exploratory telemetry suggests associations with presentation position and answer length. Frozen controlled experiments are required before making causal RQ claims."
+          "The displayed telemetry suggests associations with presentation position and answer length. Frozen controlled experiments are required before making causal RQ claims."
         </blockquote>
       </div>
 

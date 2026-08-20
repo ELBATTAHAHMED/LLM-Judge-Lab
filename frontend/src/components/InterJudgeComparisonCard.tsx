@@ -135,7 +135,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
           {error}
         </div>
       ) : !hasData ? (
-        <div className="p-6 text-center font-mono text-xs text-neutral-500">No eligible exploratory overlap for this comparison.</div>
+        <div className="p-6 text-center font-mono text-xs text-neutral-500">No eligible overlap for this comparison.</div>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-center">

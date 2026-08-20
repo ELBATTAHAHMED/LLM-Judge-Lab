@@ -171,7 +171,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
       <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
         <div>
           <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-            Exploratory Length Association
+            Length Association
           </h4>
           <p className="text-xs text-neutral-500">
             {regStats

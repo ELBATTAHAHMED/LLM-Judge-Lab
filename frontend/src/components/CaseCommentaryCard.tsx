@@ -38,7 +38,7 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
       default:
         return {
           title: 'Baseline Alignment Commentary',
-          summary: `The historical AI-judge verdict matches the human preference reference (${record.human_winner}). This is an exploratory qualitative example, not final controlled evidence.`,
+          summary: `The AI-judge verdict matches the human preference reference (${record.human_winner}). This qualitative example is not final controlled evidence.`,
         };
     }
   };

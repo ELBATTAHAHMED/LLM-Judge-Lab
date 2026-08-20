@@ -48,7 +48,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
           <div>
             <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-              Exploratory Formatting Association
+              Formatting Association
             </h4>
             <p className="text-xs text-neutral-500">
               Selection frequency when candidates differ in Markdown formatting
@@ -64,14 +64,14 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
 
         {loading ? (
           <div className="h-64 flex items-center justify-center font-mono text-xs text-neutral-500 flex-1">
-            Loading exploratory formatting telemetry...
+            Loading formatting telemetry...
           </div>
         ) : error ? (
           <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs flex-1">
             {error}
           </div>
         ) : !hasData ? (
-          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible exploratory formatting observations.</div>
+          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible formatting observations.</div>
         ) : (
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             <div className="h-56 w-full">
@@ -108,7 +108,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory formatting association:</strong> this historical heuristic is not the final controlled RQ5 experiment. See Controlled Experiments for the frozen Controlled Presentation-Format Effect.
+              <strong className="text-neutral-900 dark:text-neutral-200">Formatting association:</strong> this aggregate heuristic is not the final controlled RQ5 experiment. See Controlled Experiments for the frozen Controlled Presentation-Format Effect.
             </div>
           </div>
         )}

@@ -16,7 +16,7 @@ const Tradeoff: React.FC<{ label: string; before?: ControlledMetricResult; after
 export const ControlledEvidencePanel: React.FC<{ data: ControlledResultsResponse | null; loading: boolean; error: string | null }> = ({ data, loading, error }) => {
   const [selectedRq, setSelectedRq] = useState('RQ1');
   if (loading) return <section className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Checking final RQ evidence…</section>;
-  if (error) return <section className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Final results unavailable. No legacy, pilot, or synthetic values are shown: {error}</section>;
+  if (error) return <section className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Final results unavailable. No alternate evidence values are shown: {error}</section>;
   const empty = !data || data.status === 'NO_CONTROLLED_EVIDENCE';
   const pendingAnalysis = data?.status === 'CONTROLLED_RESULTS_PENDING_ANALYSIS';
   if (empty) return <section className="rounded-lg border border-dashed border-neutral-300 p-4 dark:border-neutral-700"><div className="flex items-center gap-2"><strong className="text-sm">NO CONTROLLED EVIDENCE</strong><EvidenceBadge evidenceClass="PLANNED" /></div><p className="mt-1 text-xs text-neutral-500">No final controlled analysis is available. Executed runs: {data?.executed_runs ?? 0}; passes: {data?.executed_passes ?? 0}.</p></section>;

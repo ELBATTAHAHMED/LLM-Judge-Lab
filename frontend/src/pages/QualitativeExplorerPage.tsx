@@ -112,10 +112,10 @@ ${activeRecord.reasoning_text}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <div>
           <h1 className="text-2xl font-serif text-neutral-900 dark:text-white tracking-tight">
-            Legacy / Exploratory Qualitative Explorer
+            Qualitative Explorer
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            <EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /> <span className="ml-2">Historical qualitative material, not final controlled RQ evidence.</span>
+            <EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /> <span className="ml-2">Qualitative material, not final controlled RQ evidence.</span>
           </p>
         </div>
 

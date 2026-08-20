@@ -69,7 +69,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
     if (isBiased) {
       return (
         <>
-          Exploratory source-family association detected for the{' '}
+          Source-family association detected for the{' '}
           <strong className="text-neutral-900 dark:text-neutral-200">
             {data.judge_family.toUpperCase()}
           </strong>{' '}
@@ -97,7 +97,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
 
     return (
       <>
-        No exploratory source-family association detected for the{' '}
+        No source-family association detected for the{' '}
         <strong className="text-neutral-900 dark:text-neutral-200">
           {data.judge_family.toUpperCase()}
         </strong>{' '}
@@ -113,7 +113,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
       <div className="border-b border-neutral-200 dark:border-neutral-800 pb-2.5">
         <div className="flex items-center justify-between">
           <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-            Exploratory Source-Family Association
+            Source-Family Association
           </h4>
           <span
             className={`text-[10px] font-mono border px-2 py-0.5 rounded ${
@@ -132,7 +132,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
           </span>
         </div>
         <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-0.5">
-          Legacy exploratory association only; final RQ6 is NOT ESTIMABLE (`UNBALANCED_PRESENTATION`).
+          Final RQ6 is NOT ESTIMABLE (`UNBALANCED_PRESENTATION`).
         </p>
       </div>
 

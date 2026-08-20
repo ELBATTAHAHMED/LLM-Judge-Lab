@@ -48,10 +48,10 @@ export const DiagnosticsPage: React.FC = () => {
       ['Logical Consistency', 'Position Consistency', consistencyData?.position_consistency_rate != null ? `${(consistencyData.position_consistency_rate * 100).toFixed(1)}%` : 'N/A', 'Verdict invariance under A/B swap'],
       ['Logical Consistency', 'Domain Specialization', consistencyData?.cross_category_consistency_rate != null ? `${(consistencyData.cross_category_consistency_rate * 100).toFixed(1)}%` : 'N/A', 'Category win rate variance'],
       ['Logical Consistency', 'Position Flips', `${consistencyData?.inconsistencies_count ?? 'N/A'}`, 'Flagged pairwise verdict reversals'],
-      ['Slot-Win Imbalance', 'Position A Wins', `${biasData?.position_data?.position_a ?? 'N/A'}`, 'Legacy slot A total selections'],
-      ['Slot-Win Imbalance', 'Position B Wins', `${biasData?.position_data?.position_b ?? 'N/A'}`, 'Legacy slot B total selections'],
-      ['Slot-Win Imbalance', 'Ties', `${biasData?.position_data?.tie ?? 'N/A'}`, 'Legacy tie decisions'],
-      ['Formatting Association', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 'N/A'}`, 'Historical markdown-heavy selections'],
+      ['Slot-Win Imbalance', 'Position A Wins', `${biasData?.position_data?.position_a ?? 'N/A'}`, 'Position A total selections'],
+      ['Slot-Win Imbalance', 'Position B Wins', `${biasData?.position_data?.position_b ?? 'N/A'}`, 'Position B total selections'],
+      ['Slot-Win Imbalance', 'Ties', `${biasData?.position_data?.tie ?? 'N/A'}`, 'Tie decisions'],
+      ['Formatting Association', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 'N/A'}`, 'Markdown-heavy selections'],
       ['Formatting Association', 'Plain Text Chosen', `${biasData?.format_bias?.plain_text_chosen ?? 'N/A'}`, 'Plain text selections'],
       ['Formatting Association', 'Chi-Square Stat', `${biasData?.format_bias?.chi2_stat ?? 'N/A'}`, 'Chi2 goodness of fit'],
       ['Formatting Association', 'p-value', `${biasData?.format_bias?.p_value ?? 'N/A'}`, 'Raw p-value'],
@@ -87,10 +87,10 @@ export const DiagnosticsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-4">
         <div>
           <h1 className="text-2xl font-serif text-neutral-900 dark:text-white tracking-tight">
-            Legacy / Exploratory Diagnostics
+            Diagnostics
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Model-specific historical telemetry from retained database decisions. It is not final controlled RQ1–RQ7 evidence; each metric shows N/A when no eligible observations exist.
+            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Model-specific telemetry from retained database decisions. It is not final controlled RQ1–RQ7 evidence; each metric shows N/A when no eligible observations exist.
           </p>
         </div>
 

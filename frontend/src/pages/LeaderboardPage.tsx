@@ -29,10 +29,10 @@ export const LeaderboardPage: React.FC = () => {
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-serif text-neutral-900 dark:text-white tracking-tight">
-          Legacy / Exploratory Judge-relative Ranking
+          Judge-relative Ranking
         </h1>
         <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-          <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> historical comparisons. Rankings depend on the evaluation sample, judge, and available comparisons; they are not objective model quality.
+          <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> comparisons. Rankings depend on the evaluation sample, judge, and available comparisons; they are not objective model quality.
         </p>
       </div>
 

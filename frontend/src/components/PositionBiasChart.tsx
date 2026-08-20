@@ -46,7 +46,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
         <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-2">
           <div>
             <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
-              Legacy Slot-Win Distribution
+              Slot-Win Distribution
             </h4>
             <p className="text-xs text-neutral-500">
               Selection frequency by physical choice order in prompt
@@ -66,7 +66,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
         ) : error ? (
           <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs flex-1">{error}</div>
         ) : !hasData ? (
-          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible exploratory slot-win observations.</div>
+          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible slot-win observations.</div>
         ) : (
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             <div className="h-56 w-full">
@@ -103,7 +103,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             </div>
 
             <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400">
-              <strong className="text-neutral-900 dark:text-neutral-200">Exploratory slot-win imbalance:</strong> this aggregate historical count is not the controlled paired decisive flip rate. It currently has more selections in <strong className="text-neutral-900 dark:text-neutral-200">{preferredPos}</strong>.
+              <strong className="text-neutral-900 dark:text-neutral-200">Slot-win imbalance:</strong> this aggregate count is not the controlled paired decisive flip rate. It currently has more selections in <strong className="text-neutral-900 dark:text-neutral-200">{preferredPos}</strong>.
             </div>
           </div>
         )}
