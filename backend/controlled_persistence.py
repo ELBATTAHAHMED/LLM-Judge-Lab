@@ -186,7 +186,19 @@ class ControlledPersistence:
             return existing
         metadata = dict(metadata_json or {})
         metadata.update({"evidence_class": evidence_class, "controlled_unit_id": str(unit.id), "manifest_id": str(unit.manifest_id), "condition_code": unit.condition_code, "unit_fingerprint": unit.unit_fingerprint})
-        row = ControlledRun(experimental_unit_id=unit.id, experiment_id=unit.experiment_id, prompt_id=unit.prompt_id, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, judge_name=judge_name or unit.judge_model, provider=provider or unit.provider, requested_model=requested_model, effective_model=effective_model, provider_model=unit.provider_model, model_version=model_version, prompt_template_version=unit.prompt_template_version, temperature=unit.temperature, top_p=unit.top_p, seed=unit.seed, repetition_index=unit.repetition_index, run_kind=run_kind, status="PENDING", idempotency_key=idempotency_key, metadata_json=to_json_safe(metadata))
+
+        parent_run_id = None
+        superseded_run = self.session.scalar(
+            select(ControlledRun).where(
+                ControlledRun.experimental_unit_id == unit.id,
+                ControlledRun.status == "SKIPPED",
+            )
+        )
+        if superseded_run is not None:
+            parent_run_id = superseded_run.id
+            metadata["superseded_run_id"] = str(superseded_run.id)
+
+        row = ControlledRun(experimental_unit_id=unit.id, experiment_id=unit.experiment_id, parent_run_id=parent_run_id, prompt_id=unit.prompt_id, original_answer_a_id=unit.answer_a_id, original_answer_b_id=unit.answer_b_id, judge_name=judge_name or unit.judge_model, provider=provider or unit.provider, requested_model=requested_model, effective_model=effective_model, provider_model=unit.provider_model, model_version=model_version, prompt_template_version=unit.prompt_template_version, temperature=unit.temperature, top_p=unit.top_p, seed=unit.seed, repetition_index=unit.repetition_index, run_kind=run_kind, status="PENDING", idempotency_key=idempotency_key, metadata_json=to_json_safe(metadata))
         self.session.add(row)
         self.session.flush()
         return row

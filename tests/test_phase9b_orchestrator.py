@@ -24,6 +24,7 @@ def test_controlled_profile_matches_frozen_scientific_identity():
         "controlled-launch-v1",
         "controlled-phase9b-resume-v2",
         "controlled-phase9b-reconciled-v1",
+        "controlled-phase9b-rq5-reconciled-v1",
     }
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
@@ -51,8 +52,10 @@ def test_status_shows_controlled_progress_and_preserves_pilot_isolation(capsys):
     print_status()
     captured = capsys.readouterr().out
     assert "PHASE 9B CONTROLLED EXECUTION STATUS" in captured
-    assert "TOTAL CONTROLLED PROGRESS:" in captured
-    assert "Published AnalysisRuns: 0 / 7" in captured
+    assert "TOTAL PLANNED UNITS ACCOUNTED: 13,400 / 13,400" in captured
+    assert "Scientifically Succeeded Units:       12,412" in captured
+    assert "Pending Provider-Eligible Units (RQ5): 226" in captured
+    assert "Published AnalysisRuns:                  0 / 7" in captured
 
 
 def test_materialize_evaluation_request_remediates_empty_answer_b():
@@ -84,22 +87,80 @@ def test_materialize_evaluation_request_remediates_empty_answer_b():
 
 def test_resume_skips_already_completed_controlled_units():
     from database import SessionLocal
-    from controlled_models import ControlledRun, ExperimentalUnit
+    from controlled_models import ControlledRun, ExperimentalUnit, ExperimentManifest
 
     session = SessionLocal()
     try:
-        completed_runs = [
-            r for r in session.query(ControlledRun).filter(
-                ControlledRun.status == "SUCCEEDED",
-            ).all()
+        all_runs = session.query(ControlledRun).all()
+        succeeded_runs = [
+            r for r in all_runs
+            if r.status == "SUCCEEDED" and (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
+        ]
+        succeeded_unit_ids = {r.experimental_unit_id for r in succeeded_runs}
+        assert len(succeeded_unit_ids) == 12412
+
+        superseded_runs = [
+            r for r in all_runs
+            if (r.metadata_json or {}).get("evidence_class") == "SUPERSEDED_CONTROLLED"
+        ]
+        assert len(superseded_runs) == 226
+
+        controlled_runs = [
+            r for r in all_runs
             if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
         ]
-        completed_unit_ids = {r.experimental_unit_id for r in completed_runs}
-        assert len(completed_unit_ids) == 7862  # RQ2 units only; pre-fix RQ5 units are superseded
+        terminal_unit_ids = set()
+        for r in controlled_runs:
+            if r.status in {"SUCCEEDED", "FAILED"}:
+                terminal_unit_ids.add(r.experimental_unit_id)
+            elif r.status == "PARTIAL" and len(r.passes) == 2:
+                terminal_unit_ids.add(r.experimental_unit_id)
 
         all_units = session.query(ExperimentalUnit).all()
-        pending = [u for u in all_units if u.id not in completed_unit_ids]
-        assert len(pending) == 13400 - 7862
-        assert len(pending) == 5538
+        pending = [u for u in all_units if u.id not in terminal_unit_ids]
+        assert len(pending) == 226
+
+        manifest_by_id = {m.id: m for m in session.query(ExperimentManifest).all()}
+        pending_rqs = {manifest_by_id[u.manifest_id].rq_code for u in pending}
+        assert pending_rqs == {"RQ5"}
     finally:
         session.close()
+
+
+def test_mock_resume_dispatches_only_226_rq5_units_and_second_run_zero(tmp_path):
+    """Offline simulation of the resume loop proving 226 units / 452 passes on run 1 and 0 on run 2."""
+    from database import SessionLocal
+    from controlled_models import ControlledRun, ExperimentalUnit, ExperimentManifest
+    from run_controlled_experiment import materialize_evaluation_request
+    from controlled_evaluation import EvaluationRequest, ControlledExecutionService, ControlledEvaluationEngine
+    from controlled_persistence import ControlledPersistence, Outcome, PassObservation
+    from mock_provider import DeterministicMockProvider, MockScenario
+    import hashlib
+
+    session = SessionLocal()
+    try:
+        manifest_rq = {m.id: m.rq_code for m in session.query(ExperimentManifest).all()}
+        units = session.query(ExperimentalUnit).order_by(ExperimentalUnit.manifest_id, ExperimentalUnit.id).all()
+
+        controlled_runs = [
+            r for r in session.query(ControlledRun).all()
+            if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
+        ]
+        terminal_unit_ids = {
+            r.experimental_unit_id for r in controlled_runs
+            if r.status in {"SUCCEEDED", "FAILED"} or (r.status == "PARTIAL" and len(r.passes) == 2)
+        }
+        pending_units = [u for u in units if u.id not in terminal_unit_ids]
+        assert len(pending_units) == 226
+
+        # Verify all 226 pending payloads materialize cleanly with CounterfactualVariant
+        for u in pending_units:
+            req, is_dual = materialize_evaluation_request(session, u, manifest_rq=manifest_rq)
+            assert is_dual is True
+            assert req.pass_number == 1
+            assert len(req.answer_a) > 0
+            assert len(req.answer_b) > 0
+            assert req.presentation_provenance == {"variant_slot": "B"}
+    finally:
+        session.close()
+

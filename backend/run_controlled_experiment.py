@@ -337,37 +337,78 @@ def print_status() -> None:
         print("\n============================================================")
         print("          PHASE 9B CONTROLLED EXECUTION STATUS             ")
         print("============================================================")
-        total_units = 0
-        total_completed = 0
-        total_passes = 0
+        total_planned_units = 0
+        total_succeeded = 0
+        total_valid_partial = 0
+        total_terminal_failed = 0
+        total_superseded = 0
+        total_pending = 0
+        total_completed_passes = 0
 
         for m in manifests:
             units = session.query(ExperimentalUnit).filter(ExperimentalUnit.manifest_id == m.id).all()
             unit_ids = [u.id for u in units]
             n_units = len(units)
-            total_units += n_units
+            total_planned_units += n_units
 
-            succeeded_runs = [
-                r for r in session.query(ControlledRun).filter(
-                    ControlledRun.experimental_unit_id.in_(unit_ids),
-                    ControlledRun.status == "SUCCEEDED",
-                ).all()
+            all_unit_runs = session.query(ControlledRun).filter(
+                ControlledRun.experimental_unit_id.in_(unit_ids)
+            ).all()
+
+            controlled_runs = [
+                r for r in all_unit_runs
                 if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
             ]
+            superseded_runs = [
+                r for r in all_unit_runs
+                if (r.metadata_json or {}).get("evidence_class") == "SUPERSEDED_CONTROLLED"
+            ]
+
+            succeeded_runs = [r for r in controlled_runs if r.status == "SUCCEEDED"]
+            # Valid partial: dual-pass runs with 2 valid passes (e.g. position flips / ties)
+            valid_partial_runs = [
+                r for r in controlled_runs
+                if r.status == "PARTIAL" and len(r.passes) == 2 and all(p.outcome in {"ANSWER_A", "ANSWER_B", "TIE", "UNKNOWN"} for p in r.passes)
+            ]
+            failed_runs = [
+                r for r in controlled_runs
+                if r.status == "FAILED" or (r.status == "PARTIAL" and any(p.outcome not in {"ANSWER_A", "ANSWER_B", "TIE", "UNKNOWN"} for p in r.passes))
+            ]
+
+            terminal_ids = {r.experimental_unit_id for r in controlled_runs if r.status in {"SUCCEEDED", "FAILED"} or (r.status == "PARTIAL" and len(r.passes) == 2)}
+            pending_in_rq = [u for u in units if u.id not in terminal_ids]
+
+            n_succeeded = len(succeeded_runs)
+            n_valid_partial = len(valid_partial_runs)
+            n_failed = len(failed_runs)
+            n_superseded = len(superseded_runs)
+            n_pending = len(pending_in_rq)
 
             run_ids = [r.id for r in succeeded_runs]
-            n_completed = len(succeeded_runs)
-            total_completed += n_completed
-
             n_passes = session.query(func.count(RunPass.id)).filter(RunPass.run_id.in_(run_ids)).scalar() or 0 if run_ids else 0
-            total_passes += n_passes
 
-            print(f"  {m.rq_code}: {n_completed:,} / {n_units:,} units completed ({n_passes:,} passes)")
+            total_succeeded += n_succeeded
+            total_valid_partial += n_valid_partial
+            total_terminal_failed += n_failed
+            total_superseded += n_superseded
+            total_pending += n_pending
+            total_completed_passes += n_passes
+
+            print(
+                f"  {m.rq_code}: {n_succeeded:,} SUCCEEDED | {n_valid_partial:,} valid PARTIAL | "
+                f"{n_failed:,} FAILED | {n_pending:,} pending | {n_superseded:,} superseded / {n_units:,} planned"
+            )
 
         print("------------------------------------------------------------")
-        print(f"TOTAL CONTROLLED PROGRESS: {total_completed:,} / {total_units:,} units ({total_passes:,} / 16,600 passes)")
+        print(f"TOTAL PLANNED UNITS ACCOUNTED: {total_planned_units:,} / 13,400")
+        print(f"  - Scientifically Succeeded Units:       {total_succeeded:,}")
+        print(f"  - Scientifically Complete PARTIAL Units: {total_valid_partial:,} (Dual-pass position flips / ties)")
+        print(f"  - Terminal Failed Units (Exhausted):    {total_terminal_failed:,}")
+        print(f"  - Superseded Historical Units (RQ5):    {total_superseded:,}")
+        print(f"  - Pending Provider-Eligible Units (RQ5): {total_pending:,}")
+        print(f"TOTAL COMPLETED SCIENTIFIC PASSES:        {total_completed_passes:,} / 16,600 passes")
         analysis_cnt = session.query(func.count(AnalysisRun.id)).scalar() or 0
-        print(f"Published AnalysisRuns: {analysis_cnt} / 7")
+        print(f"Published AnalysisRuns:                  {analysis_cnt} / 7")
         print("============================================================\n")
     finally:
         session.close()
@@ -389,23 +430,26 @@ def execute_controlled_experiment(
         manifest_rq = {m.id: m.rq_code for m in session.query(ExperimentManifest).all()}
         units = session.query(ExperimentalUnit).order_by(ExperimentalUnit.manifest_id, ExperimentalUnit.id).all()
 
-        # Find already completed unit IDs in CONTROLLED evidence (never PILOT)
-        completed_runs = [
-            r for r in session.query(ControlledRun).filter(
-                ControlledRun.status == "SUCCEEDED",
-            ).all()
+        # Find units with terminal CONTROLLED evidence (never PILOT or SUPERSEDED_CONTROLLED)
+        controlled_runs = [
+            r for r in session.query(ControlledRun).all()
             if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
         ]
-        completed_unit_ids = {r.experimental_unit_id for r in completed_runs}
+        terminal_unit_ids = set()
+        for r in controlled_runs:
+            if r.status in {"SUCCEEDED", "FAILED"}:
+                terminal_unit_ids.add(r.experimental_unit_id)
+            elif r.status == "PARTIAL" and len(r.passes) == 2:
+                terminal_unit_ids.add(r.experimental_unit_id)
 
-        pending_units = [u for u in units if u.id not in completed_unit_ids]
+        pending_units = [u for u in units if u.id not in terminal_unit_ids]
         if limit is not None:
             pending_units = pending_units[:limit]
 
         log.info(
-            "Phase 9B Controlled Execution starting: %d total units, %d already completed, %d to execute",
+            "Phase 9B Controlled Execution starting: %d total units, %d terminal/complete, %d to execute",
             len(units),
-            len(completed_unit_ids),
+            len(terminal_unit_ids),
             len(pending_units),
         )
 
