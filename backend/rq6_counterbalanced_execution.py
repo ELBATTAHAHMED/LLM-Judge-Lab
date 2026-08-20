@@ -36,7 +36,7 @@ from routing_policy import frozen_openrouter_route, routing_fingerprint, routing
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PREFLIGHT_PATH = ROOT / "preflight" / "rq6_counterbalanced_source_family_v1.json"
+RQ6_EVIDENCE_MANIFEST_PATH = ROOT / "evidence" / "final" / "rq6_counterbalanced" / "selection_manifest.json"
 DESIGN_IDENTITY = "counterbalanced-source-family-v1"
 ANALYSIS_IDENTITY = "counterbalanced-source-family-analysis-v1"
 EXPECTED_MANIFEST_SHA256 = "27ec2c49ee8129802bd924e96734b4efb03249e506e7fbd9968977575b42c5cc"
@@ -63,7 +63,7 @@ def _sha256_manifest_body(manifest: Mapping[str, Any]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def load_preflight_manifest(path: Path = PREFLIGHT_PATH) -> dict[str, Any]:
+def load_preflight_manifest(path: Path = RQ6_EVIDENCE_MANIFEST_PATH) -> dict[str, Any]:
     material = json.loads(path.read_text(encoding="utf-8"))
     if material.get("manifest_sha256") != EXPECTED_MANIFEST_SHA256:
         raise ValueError("RQ6 preflight manifest SHA-256 does not match the authorized design")

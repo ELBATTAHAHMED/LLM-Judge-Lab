@@ -1,0 +1,52 @@
+{
+  "scope": "Post-Phase-11 counterbalanced RQ6 provenance addendum. This record does not amend, reseal, or replace evidence/final/phase11/.",
+  "evidence_class": "CONTROLLED",
+  "design_identity": "counterbalanced-source-family-v1",
+  "analysis_identity": "counterbalanced-source-family-analysis-v1",
+  "selection_manifest": {
+    "path": "evidence/final/rq6_counterbalanced/selection_manifest.json",
+    "sha256": "27ec2c49ee8129802bd924e96734b4efb03249e506e7fbd9968977575b42c5cc",
+    "selected_units": 480,
+    "planned_pass_slots": 960,
+    "presentation_schedule": "AB and BA for every selected logical unit"
+  },
+  "persisted_lineage": {
+    "experiment_id": "4dbc9251-2b24-4d39-8384-850fa1e5ed79",
+    "experiment_name": "rq6-counterbalanced-source-family-v1",
+    "manifest_id": "6a8f5b74-3e26-4d28-ba6d-b39d021d83eb",
+    "analysis_run_id": "ca2bd7a4-88dc-4be5-883d-cd8f849aa5fa",
+    "analysis_status": "COMPLETED",
+    "canonical_api": "/api/controlled/results"
+  },
+  "execution_accounting": {
+    "planned_units": 480,
+    "planned_pass_slots": 960,
+    "valid_returned_passes": 933,
+    "provider_error_pass_slots": 25,
+    "invalid_response_pass_slots": 2,
+    "pending_units": 0,
+    "pass_outcomes": {
+      "ANSWER_A": 197,
+      "ANSWER_B": 318,
+      "TIE": 401,
+      "UNKNOWN": 17,
+      "API_ERROR": 25,
+      "INVALID_RESPONSE": 2
+    }
+  },
+  "analysis_summary": {
+    "bootstrap_iterations": 10000,
+    "analysis_seed": 20260818,
+    "stable_same_family_preference": {
+      "value": 0.5094339622641509,
+      "ci_low": 0.4276729559748428,
+      "ci_high": 0.5849056603773585,
+      "numerator": 81,
+      "denominator": 159
+    },
+    "valid_stable_decisive_coverage": 0.33125,
+    "order_sensitive_disagreement": 0.2318840579710145,
+    "tie_or_abstention_rate": 0.5416666666666666
+  },
+  "interpretation_limit": "Presentation position is counterbalanced. Source/content-quality confounding remains; this is not causal proof of self-bias."
+}

@@ -17,11 +17,11 @@ accounts for 480 / 480 units and 960 / 960 pass slots.
 | --- | --- |
 | RQ1 — Human Alignment | 58.44% agreement with human preference reference labels; Cohen's kappa 0.3121; N=770. |
 | RQ2 — Stochastic Consistency | 96.56% consistency; N=1,474 complete groups. No temperature comparison is estimable. |
-| RQ3 — Position Sensitivity / Bias | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Per-judge decisive flips: Claude 27.13%, GPT-4o-mini 19.01%, Llama 14.18%, DeepSeek 6.43%. |
+| RQ3 — Position Sensitivity | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Per-judge decisive flips: Claude 27.13%, GPT-4o-mini 19.01%, Llama 14.18%, DeepSeek 6.43%. |
 | RQ4 — Controlled Redundant-Length Effect | 0.44% redundant-variant win rate; N=685. This is a narrow redundant-text control, not a general claim about verbosity. |
 | RQ5 — Controlled Presentation-Format Effect | 1.11% format-variant win rate; N=719. This applies to the implemented controlled transformation only. |
 | RQ6 — Counterbalanced Matched Source-Family Preference | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). No clear uniform overall preference; results vary strongly by judge. |
-| RQ7 — BASELINE SINGLE-PASS vs DUAL_SWAP Mitigation | Agreement 60.65% → 68.78% (+8.13 pp); valid coverage 95.63% → 72.88% (-22.75 pp). DUAL_SWAP improved agreement among retained decisions while reducing valid coverage. |
+| RQ7 — Mitigation Trade-off | Agreement 60.65% → 68.78% (+8.13 pp); valid coverage 95.63% → 72.88% (-22.75 pp). DUAL_SWAP improved agreement among retained decisions while reducing valid coverage. |
 
 Human preferences are reference labels, not ground truth. The results do not
 claim a universally best judge, universal causal bias, or universal mitigation
@@ -110,8 +110,10 @@ runtime. License/attribution metadata requires external verification.
 
 - `evidence/final/phase11/` is immutable and includes the offline verifier,
   manifests, database snapshot, provenance, analysis tables, and checksums.
-- `exports/phase10/` contains final analysis exports; the frozen Phase 11 copy
-  is the release evidence.
+- `evidence/final/rq6_counterbalanced/` is a separate, post-Phase-11 RQ6
+  provenance addendum. It contains the deterministic selection manifest and
+  references to the executed manifest, run ledger, and canonical AnalysisRun;
+  it does not amend or reseal Phase 11.
 - The sidebar intentionally excludes the Live Sandbox. Backend live-provider
   endpoints remain disabled by default and require a separate operator token;
   they are not part of the controlled study.

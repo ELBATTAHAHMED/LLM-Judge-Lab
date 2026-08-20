@@ -19,11 +19,11 @@ and inspection rather than treating an LLM judgment as objective truth.
 | --- | --- |
 | RQ1 | Human Alignment |
 | RQ2 | Stochastic Consistency |
-| RQ3 | Position Sensitivity / Bias |
+| RQ3 | Position Sensitivity |
 | RQ4 | Controlled Redundant-Length Effect |
 | RQ5 | Controlled Presentation-Format Effect |
 | RQ6 | Counterbalanced Matched Source-Family Preference |
-| RQ7 | Baseline Single-Pass vs DUAL_SWAP Mitigation |
+| RQ7 | Mitigation Trade-off |
 
 ## 3. Final Dataset and Experimental Design
 
@@ -43,7 +43,9 @@ exclusions, variants, and final controlled inclusion are preserved in the Phase
 The frozen Phase 11 controlled execution comprises **13,400 units** and
 **16,600 pass slots**. The later, separate counterbalanced RQ6 lineage adds
 480 units and 960 pass slots; it is pinned independently and does not alter
-the frozen Phase 11 package.
+the frozen Phase 11 package. Its deterministic selection manifest and concise
+executed-lineage references are retained in
+`evidence/final/rq6_counterbalanced/`.
 Its four configured judges are `gpt-4o-mini`,
 `anthropic/claude-3-haiku`, `deepseek/deepseek-chat`, and
 `meta-llama/llama-3.3-70b-instruct`. Routing is recorded per controlled run;
@@ -154,6 +156,13 @@ records, traceability indexes, audited historical isolation, checksum inventory,
 and canonical database snapshot. Verify the package offline with
 `python evidence/final/phase11/VERIFY_PACKAGE.py`.
 
+The later RQ6 lineage is deliberately not inserted into the immutable Phase 11
+package. Its permanent addendum is
+[`evidence/final/rq6_counterbalanced/`](evidence/final/rq6_counterbalanced/):
+the deterministic AB/BA selection manifest is retained alongside a compact
+provenance record that identifies the Experiment, manifest hash, run ledger,
+and canonical completed AnalysisRun.
+
 ## 10. Important Historical Repairs
 
 The final evidence is accompanied by concise provenance for the repairs that
@@ -174,12 +183,13 @@ materially affected scientific validity:
 
 Final cleanup and release validation used no provider calls. The recorded
 provider-free backend safety, methodology, analysis, integration, recovery,
-and evidence tests passed; frontend tests and the production typecheck/build
-passed. The Phase 11 verifier passed and its root digest remained unchanged.
+health-sanitization, no-data contract, and evidence tests passed; frontend
+tests and the production typecheck/build passed. The Phase 11 verifier passed
+and its root digest remained unchanged.
 
 The final release workflow maintains a clean working tree before each release
-tag. The immutable package, its verifier, Phase 10 exports, and the canonical
-Phase 11 database snapshot are preserved.
+tag. The immutable package, its verifier, separate RQ6 addendum, and the
+canonical Phase 11 database snapshot are preserved.
 
 ## 12. Current Final Project Status
 
