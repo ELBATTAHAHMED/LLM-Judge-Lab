@@ -23,7 +23,7 @@ if __name__ == "__main__" and sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 # Ensure backend directory is in python module search path
-ROOT_DIR = Path(__file__).parent.resolve()
+ROOT_DIR = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT_DIR / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 

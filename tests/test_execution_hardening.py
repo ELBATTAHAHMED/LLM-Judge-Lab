@@ -19,9 +19,9 @@ from controlled_models import Experiment
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, build_messages, prompt_hash
 from controlled_providers import ProviderExecutionGate, adapter_for_judge
 from controlled_persistence import Outcome
-from phase4_metrics import RQ1Unit, analyze_rq1
+from controlled_analysis_metrics import RQ1Unit, analyze_rq1
 from mock_provider import DeterministicMockProvider, MockScenario
-from test_phase5_offline_integration import chain, request
+from test_offline_integration import chain, request
 
 
 @pytest.fixture()

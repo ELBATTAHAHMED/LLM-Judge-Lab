@@ -15,8 +15,8 @@ sys.path.insert(0, str(ROOT / "backend"))
 from controlled_analysis_adapter import rq6_from_run
 from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
 from mock_provider import DeterministicMockProvider, MockScenario
-from phase4_metrics import analyze_rq6
-from test_phase5_offline_integration import chain, request
+from controlled_analysis_metrics import analyze_rq6
+from test_offline_integration import chain, request
 
 
 def test_rq6_self_a_and_self_b_are_physical_slots_and_analyze(tmp_path):

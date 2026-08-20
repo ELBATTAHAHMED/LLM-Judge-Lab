@@ -13,10 +13,10 @@ from controlled_persistence import ControlledPersistence
 from controlled_models import Experiment, ExperimentalCondition, ExperimentManifest
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, prompt_hash
 from model_registry import MODEL_REGISTRY
-from phase3_planning import PairRecord, database_pairs, generate_units, manifest
-from phase3_protocols import PLANNED_BASE_UNIT_LIMIT, PROTOCOLS
-from phase3_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
-from phase4_metrics import ANALYSIS_VERSION
+from experiment_planning import PairRecord, database_pairs, generate_units, manifest
+from experiment_protocols import PLANNED_BASE_UNIT_LIMIT, PROTOCOLS
+from controlled_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
+from controlled_analysis_metrics import ANALYSIS_VERSION
 
 
 FREEZE_VERSION = "controlled-final-plan-v1"

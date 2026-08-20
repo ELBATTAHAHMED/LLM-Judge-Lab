@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from freeze_final_evidence import PACKAGE, make_report, make_sums, secret_scan  # noqa: E402

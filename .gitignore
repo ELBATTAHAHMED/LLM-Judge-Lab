@@ -59,3 +59,8 @@ Desktop.ini
 # 6. Generated Data Artifacts
 data/artifacts/
 
+# 7. Archived local binary and exploratory materials
+/archive/old_backups/
+/archive/development_history/data_artifacts/
+/archive/exploratory_outputs/
+

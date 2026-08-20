@@ -41,8 +41,8 @@ from pathlib import Path
 from typing import Optional
 
 # ── Path setup ────────────────────────────────────────────────────────────────
-BACKEND_DIR = Path(__file__).parent.resolve()
-ROOT_DIR = BACKEND_DIR.parent.resolve()
+ROOT_DIR = Path(__file__).resolve().parents[2]
+BACKEND_DIR = ROOT_DIR / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 
 from dotenv import load_dotenv

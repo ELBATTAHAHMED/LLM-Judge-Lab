@@ -22,7 +22,7 @@ from typing import Any, Iterable
 
 from sqlalchemy import text
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_models import (  # noqa: E402

@@ -8,7 +8,7 @@ from controlled_models import (
 from controlled_analysis_adapter import (
     rq1_from_run, rq2_from_run, rq3_from_run, rq4_from_run, rq5_from_run, rq6_from_run, rq7_observations
 )
-from phase4_metrics import (
+from controlled_analysis_metrics import (
     analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7,
     ANALYSIS_VERSION
 )

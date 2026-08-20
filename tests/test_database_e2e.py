@@ -22,8 +22,8 @@ from controlled_models import Experiment, ExperimentManifest
 from database import get_db
 from main import app
 from mock_provider import DeterministicMockProvider, MockScenario
-from phase4_metrics import analyze_rq1, analyze_rq6
-from test_phase5_offline_integration import chain, request
+from controlled_analysis_metrics import analyze_rq1, analyze_rq6
+from test_offline_integration import chain, request
 
 
 @pytest.mark.skipif(not os.getenv("PHASE85_POSTGRES_E2E_URL"), reason="explicit disposable PostgreSQL E2E URL not configured")

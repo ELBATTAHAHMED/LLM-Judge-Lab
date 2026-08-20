@@ -20,8 +20,8 @@ from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutio
 from main import app
 from database import get_db
 from mock_provider import DeterministicMockProvider, MockScenario
-from phase4_metrics import analyze_rq1
-from test_phase5_offline_integration import chain, request
+from controlled_analysis_metrics import analyze_rq1
+from test_offline_integration import chain, request
 
 
 def test_noncanonical_controlled_analysisrun_cannot_replace_final_evidence(tmp_path):

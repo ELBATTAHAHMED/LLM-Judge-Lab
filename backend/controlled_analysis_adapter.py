@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from controlled_models import ControlledRun, ExperimentalUnit, RunPass
-from phase4_metrics import RQ1Unit, RQ2Repetition, RQ3Pair, RQ6Unit, RQ7Observation, VariantPair
+from controlled_analysis_metrics import RQ1Unit, RQ2Repetition, RQ3Pair, RQ6Unit, RQ7Observation, VariantPair
 
 
 def pass_outcome(record: RunPass) -> str:

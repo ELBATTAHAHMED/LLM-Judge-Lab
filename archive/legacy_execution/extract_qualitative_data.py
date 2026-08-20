@@ -27,8 +27,8 @@ from sqlalchemy import create_engine, text
 
 
 # ── path setup ────────────────────────────────────────────────────────────────
-BACKEND_DIR = Path(__file__).parent.resolve()
-ROOT_DIR = BACKEND_DIR.parent.resolve()
+ROOT_DIR = Path(__file__).resolve().parents[2]
+BACKEND_DIR = ROOT_DIR / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 
 # Load environment variables

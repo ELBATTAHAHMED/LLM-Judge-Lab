@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 from controlled_models import ControlledRun, PassAttempt, RunPass
 from controlled_runner import ControlledRunner, ExecutionProfile
 from database import SessionLocal
-from phase3_planning import database_pairs
+from experiment_planning import database_pairs
 
 
 @pytest.mark.skipif(not os.getenv("PHASE85_FULL_POSTGRES_URL"), reason="explicit disposable PostgreSQL rehearsal URL not configured")

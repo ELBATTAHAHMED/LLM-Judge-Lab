@@ -540,7 +540,7 @@ def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = 
             cal_kappa = base_kappa
             cal_acc = base_acc
             mit_flip = 0.0
-            msg = f"Baseline benchmark evaluations loaded ({total_evals} trials). Run python backend/run_batch_calibration.py to accumulate batch calibrated records."
+            msg = f"Baseline benchmark evaluations loaded ({total_evals} trials). Legacy batch-calibration tooling is archived and is not part of the final controlled evidence workflow."
 
         # 3. Dynamic Length Bias Metrics (OLS Regression Slope Y ~ dW)
         clean_base = df_base[(df_base["human_choice"] != "Unknown") & (df_base["llm_choice"] != "Unknown")] if not df_base.empty else pd.DataFrame()

@@ -22,9 +22,9 @@ from controlled_persistence import ControlledPersistence  # noqa: E402
 from mock_provider import DeterministicMockProvider, MockScenario  # noqa: E402
 from model_registry import Provider  # noqa: E402
 from models import Answer, Prompt  # noqa: E402
-from phase3_planning import PairRecord, call_plan, generate_units, manifest  # noqa: E402
-from phase3_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant  # noqa: E402
-from phase4_metrics import RQ2Repetition, RQ6Unit, RQ7Pair, VariantPair, analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7  # noqa: E402
+from experiment_planning import PairRecord, call_plan, generate_units, manifest  # noqa: E402
+from controlled_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant  # noqa: E402
+from controlled_analysis_metrics import RQ2Repetition, RQ6Unit, RQ7Pair, VariantPair, analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7  # noqa: E402
 
 
 @pytest.fixture()
@@ -108,7 +108,7 @@ def test_variant_source_family_mitigation_and_not_estimable_contracts(isolated_e
     rq4 = analyze_rq4([VariantPair("CONTROLLED", "v", "RQ4", "g", "c", True, "VARIANT", "AB_BA"), VariantPair("CONTROLLED", "bad", "RQ4", "g", "c", False, "VARIANT", "AB_BA")], seed=1, iterations=50)
     rq5 = analyze_rq5([VariantPair("CONTROLLED", "f", "RQ5", "g", "c", True, "ORIGINAL", "AB_BA")], seed=1, iterations=50)
     assert rq4["variant_win_rate"].denominator == 1 and rq4["rejected_variant_count"].numerator == 1 and rq5["original_win_rate"].value == 1
-    from phase4_metrics import RQ6Unit
+    from controlled_analysis_metrics import RQ6Unit
     rq6 = analyze_rq6([RQ6Unit("CONTROLLED", "a", "RQ6", "g", "c", True, "SELF", "A"), RQ6Unit("CONTROLLED", "b", "RQ6", "g", "c", True, "OTHER", "B"), RQ6Unit("CONTROLLED", "m", "RQ6", "g", "c", False, None, None)], iterations=50)["self_family_preference"]
     assert rq6.value == .5 and rq6.denominator == 2
     outcomes = analyze_rq7([RQ7Pair("CONTROLLED", "p", "RQ7", "g", "BASELINE", "p", {"agreement": .8, "position": .6}, {"agreement": .6, "position": .2}), RQ7Pair("CONTROLLED", "q", "RQ7", "g", "BASELINE", "q", {"agreement": .8, "position": .6}, {"agreement": 1.0, "position": .2})])
@@ -130,7 +130,7 @@ def test_manifest_count_idempotency_resume_and_static_contracts(isolated_engine)
         state = resume_state([one, SimpleNamespace(idempotency_key="timeout", status="FAILED", error_code="TIMEOUT"), SimpleNamespace(idempotency_key="invalid", status="FAILED", error_code="INVALID_RESPONSE"), SimpleNamespace(idempotency_key="pending", status="PENDING", error_code=None)])
         assert state.completed == ("f" * 64,) and state.retryable == ("timeout",) and state.non_retryable == ("invalid",) and state.pending == ("pending",)
     source = (ROOT / "backend" / "main.py").read_text(encoding="utf-8")
-    assert "phase4_metrics" not in source  # later frontend synchronization remains explicit, not silently mixed.
+    assert "controlled_analysis_metrics" not in source  # later frontend synchronization remains explicit, not silently mixed.
 
 
 def test_variant_persistence_and_frozen_full_plan_call_arithmetic(isolated_engine):
@@ -146,5 +146,8 @@ def test_variant_persistence_and_frozen_full_plan_call_arithmetic(isolated_engin
         row = session.get(CounterfactualVariant, row_id)
         assert row and row.original_answer_id != row.variant_answer_id and row.original_checksum != row.variant_checksum and row.validation_status == "VALID"
     pairs = [PairRecord(i, i, i * 2, i * 2 + 1, "A", "B", ("gpt-4", "claude-v1", "llama-13b")[i % 3], ("claude-v1", "llama-13b", "gpt-4")[i % 3], "c", "ANSWER_A") for i in range(1, 601)]
-    plan = call_plan(pairs, limit=200, snapshot_id="frozen-16600")
-    assert sum(item["planned_calls"] for item in plan.values()) == 16_600
+    plan = call_plan(pairs, limit=200, snapshot_id="synthetic-plan")
+    # This synthetic fixture has three legacy source labels; its RQ6 eligibility
+    # yields 600 calls, so its deterministic plan is not the frozen execution's
+    # 16,600 persisted pass slots.
+    assert sum(item["planned_calls"] for item in plan.values()) == 12_600

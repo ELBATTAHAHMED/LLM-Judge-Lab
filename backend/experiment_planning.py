@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 from model_registry import MODEL_REGISTRY
 from models import Answer, HumanPreference, Prompt
-from phase3_protocols import PLANNED_BASE_UNIT_LIMIT, PROTOCOLS, get_protocol
-from phase3_transforms import checksum, make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
+from experiment_protocols import PLANNED_BASE_UNIT_LIMIT, PROTOCOLS, get_protocol
+from controlled_transforms import checksum, make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
 from controlled_freeze import FrozenPair, freeze_reference_pairs
 from routing_policy import routing_fingerprint, routing_policy_version
 

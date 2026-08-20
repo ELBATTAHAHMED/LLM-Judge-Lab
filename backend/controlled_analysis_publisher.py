@@ -9,8 +9,8 @@ from controlled_models import AnalysisRun, ControlledRun, Experiment, Experiment
 from controlled_persistence import to_json_safe
 from controlled_analysis_adapter import rq1_from_run, rq2_from_run, rq3_from_run, rq4_from_run, rq5_from_run, rq6_from_run, rq7_observations
 from evidence_contract import EvidenceClass
-from phase4_metrics import ANALYSIS_VERSION, MetricResult
-from phase4_metrics import analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7
+from controlled_analysis_metrics import ANALYSIS_VERSION, MetricResult
+from controlled_analysis_metrics import analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7
 
 
 def serialize_metrics(*, rq_code: str, metrics: Mapping[str, MetricResult], source_units: Iterable[ExperimentalUnit]) -> list[dict[str, object]]:
