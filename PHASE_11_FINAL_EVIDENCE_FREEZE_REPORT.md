@@ -114,7 +114,7 @@ failed: 0
 skipped: 4 (provider opt-in tests only)
 
 ## V Repository Freeze
-commit: phase11-final-evidence-frozen-v1 tag target
+commit: 347bce79b8da45b67a9838942619c4a015720121
 tag: phase11-final-evidence-frozen-v1
 working tree: clean at freeze
 package root hash: f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13
