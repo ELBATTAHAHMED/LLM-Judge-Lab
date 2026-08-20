@@ -10,7 +10,6 @@ import { DomainReliabilityChart } from '../components/DomainReliabilityChart';
 import { InterJudgeComparisonCard } from '../components/InterJudgeComparisonCard';
 import { DiagnosticScientificCallouts } from '../components/DiagnosticScientificCallouts';
 import { RefreshCw, Download } from 'lucide-react';
-import { EvidenceBadge } from '../components/EvidenceBadge';
 
 export const DiagnosticsPage: React.FC = () => {
   const { judgeModel } = useJudge();
@@ -90,7 +89,7 @@ export const DiagnosticsPage: React.FC = () => {
             Diagnostics
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Model-specific telemetry from retained database decisions. It is not final controlled RQ1–RQ7 evidence; each metric shows N/A when no eligible observations exist.
+            Model-specific telemetry from retained database decisions. Each metric shows N/A when no eligible observations exist.
           </p>
         </div>
 

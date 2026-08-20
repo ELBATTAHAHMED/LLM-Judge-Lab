@@ -4,7 +4,6 @@ import { useLeaderboard, useDatasetCount } from '../api/client';
 import { useJudge } from '../context/JudgeContext';
 import { CalibratedLeaderboardTable } from '../components/CalibratedLeaderboardTable';
 import { MethodologyCards } from '../components/MethodologyCards';
-import { EvidenceBadge } from '../components/EvidenceBadge';
 
 export const LeaderboardPage: React.FC = () => {
   const { judgeModel } = useJudge();
@@ -32,7 +31,7 @@ export const LeaderboardPage: React.FC = () => {
           Judge-relative Ranking
         </h1>
         <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
-          <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> comparisons. Rankings depend on the evaluation sample, judge, and available comparisons; they are not objective model quality.
+          Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> comparisons. Rankings depend on the evaluation sample, judge, and available comparisons.
         </p>
       </div>
 

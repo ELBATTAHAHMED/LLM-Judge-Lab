@@ -4,7 +4,6 @@ import { useJudge } from '../context/JudgeContext';
 import type { QualitativeBucket, QualitativeRecord } from '../api/types';
 import { TextHighlighter } from '../components/TextHighlighter';
 import { CaseCommentaryCard } from '../components/CaseCommentaryCard';
-import { EvidenceBadge } from '../components/EvidenceBadge';
 import { FormattedMatchup, SingleModelIcon } from '../components/ModelIcons';
 import { RefreshCw, Download, Copy, Check, MessageSquare, FileText } from 'lucide-react';
 
@@ -115,7 +114,7 @@ ${activeRecord.reasoning_text}
             Qualitative Explorer
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            <EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /> <span className="ml-2">Qualitative material, not final controlled RQ evidence.</span>
+            Qualitative comparison cases for the selected judge and bucket.
           </p>
         </div>
 
