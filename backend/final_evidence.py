@@ -1,4 +1,4 @@
-"""Immutable identifiers for the final controlled evidence release.
+"""Pinned identifiers for the final controlled evidence release.
 
 The application may contain legacy and later exploratory AnalysisRuns.  The
 final-results route must therefore select this release explicitly rather than
@@ -15,7 +15,7 @@ CANONICAL_FINAL_ANALYSIS_RUNS: dict[str, str] = {
     "RQ3": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
     "RQ4": "13510c83-354c-49b1-811f-5e96a6b985e7",
     "RQ5": "bbfbcf03-1791-4892-a39c-418831260f35",
-    "RQ6": "ca9a1668-58b9-4a9d-8b0d-991c2b7a38ec",
+    "RQ6": "ca2bd7a4-88dc-4be5-883d-cd8f849aa5fa",
     "RQ7": "d3773e0c-80dc-4235-aa46-ffd89af9face",
 }
 
@@ -25,8 +25,22 @@ CANONICAL_FINAL_MANIFESTS: dict[str, str] = {
     "RQ3": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
     "RQ4": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
     "RQ5": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
-    "RQ6": "5491bd7b-2f59-4922-a4c2-ecbe38c57e0a",
+    "RQ6": "6a8f5b74-3e26-4d28-ba6d-b39d021d83eb",
     "RQ7": "55e58905-2265-49b3-87b7-1d55daa073ea",
+}
+
+# Phase 11 is immutable historical provenance.  Its original RQ6 record
+# remains preserved here rather than being mistaken for the active repaired
+# counterbalanced result.
+HISTORICAL_PHASE11_RQ6 = {
+    "analysis_run_id": "ca9a1668-58b9-4a9d-8b0d-991c2b7a38ec",
+    "manifest_id": "5491bd7b-2f59-4922-a4c2-ecbe38c57e0a",
+    "status": "NOT_ESTIMABLE — UNBALANCED_PRESENTATION",
+}
+
+PHASE11_HISTORICAL_FINAL_MANIFESTS: dict[str, str] = {
+    **{rq: manifest_id for rq, manifest_id in CANONICAL_FINAL_MANIFESTS.items() if rq != "RQ6"},
+    "RQ6": HISTORICAL_PHASE11_RQ6["manifest_id"],
 }
 
 

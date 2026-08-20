@@ -385,7 +385,7 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         accounting=accounting,
         analysis_runs={rq: str(run.id) for rq, run in sorted(published_by_rq.items())},
         results=rows,
-        message="Authoritative Phase 11 controlled analysis selected by canonical AnalysisRun identity.",
+        message="Authoritative controlled analysis selected by pinned AnalysisRun identity; Phase 11 remains immutable historical provenance.",
     )
 
 

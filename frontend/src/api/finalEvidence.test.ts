@@ -17,10 +17,11 @@ describe('final controlled evidence presentation', () => {
     expect(rq1.denominator).toBe(770);
   });
 
-  it('renders RQ6 as NOT ESTIMABLE and explains the unbalanced presentation', () => {
-    const rq6 = metric({ rq: 'RQ6', metric: 'rq6_matched_self_family_preference', value: null, numerator: null, denominator: null, ci_low: null, ci_high: null, status: 'UNBALANCED_PRESENTATION' });
-    expect(formatMetricValue(rq6)).toBe('NOT ESTIMABLE');
-    expect(rqInterpretation('RQ6')).toMatch(/unbalanced/i);
+  it('renders the counterbalanced RQ6 estimate and its cautious interpretation', () => {
+    const rq6 = metric({ rq: 'RQ6', metric: 'rq6_counterbalanced_stable_same_family_preference', value: 0.5094339623, numerator: 81, denominator: 159, ci_low: 0.427672956, ci_high: 0.58490566 });
+    expect(formatMetricValue(rq6)).toBe('50.94%');
+    expect(formatMetricCi(rq6)).toBe('95% CI: 42.77–58.49%');
+    expect(rqInterpretation('RQ6')).toMatch(/counterbalanced/i);
   });
 
   it('shows the RQ7 coverage trade-off and RQ5 controlled-data isolation wording', () => {

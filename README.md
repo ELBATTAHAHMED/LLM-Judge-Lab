@@ -1,15 +1,17 @@
 # LLM-as-a-Judge Reliability Lab
 
 This repository contains the final controlled study and a reproducible dashboard
-for auditing pairwise LLM judgments. The authoritative scientific record is the
-Phase 10 analysis frozen in `evidence/final/phase11/`; historical leaderboard,
-diagnostic, and qualitative views are explicitly `LEGACY_EXPLORATORY`.
+for auditing pairwise LLM judgments. RQ1–RQ5 and RQ7 retain the Phase 10
+analysis frozen in `evidence/final/phase11/`; RQ6 is a separately executed,
+counterbalanced final lineage. Historical leaderboard, diagnostic, and
+qualitative views are explicitly `LEGACY_EXPLORATORY`.
 
 ## Final controlled evidence
 
-The completed execution accounts for **13,400 / 13,400 controlled units** and
-**16,600 / 16,600 pass slots**, with 0 pending units and 7 / 7 canonical
-`AnalysisRun` records completed.
+The frozen Phase 11 execution accounts for **13,400 / 13,400 controlled units**
+and **16,600 / 16,600 pass slots**, with 0 pending units and 7 / 7 original
+canonical `AnalysisRun` records completed. The separate final RQ6 lineage
+accounts for 480 / 480 units and 960 / 960 pass slots.
 
 | RQ | Final controlled result |
 | --- | --- |
@@ -18,12 +20,19 @@ The completed execution accounts for **13,400 / 13,400 controlled units** and
 | RQ3 — Position Sensitivity / Bias | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Per-judge decisive flips: Claude 27.13%, GPT-4o-mini 19.01%, Llama 14.18%, DeepSeek 6.43%. |
 | RQ4 — Controlled Redundant-Length Effect | 0.44% redundant-variant win rate; N=685. This is a narrow redundant-text control, not a general claim about verbosity. |
 | RQ5 — Controlled Presentation-Format Effect | 1.11% format-variant win rate; N=719. This applies to the implemented controlled transformation only. |
-| RQ6 — Matched Source-Family Preference | **NOT ESTIMABLE** — `UNBALANCED_PRESENTATION`. No numeric source-family effect is claimed. |
+| RQ6 — Counterbalanced Matched Source-Family Preference | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). No clear uniform overall preference; results vary strongly by judge. |
 | RQ7 — BASELINE SINGLE-PASS vs DUAL_SWAP Mitigation | Agreement 60.65% → 68.78% (+8.13 pp); valid coverage 95.63% → 72.88% (-22.75 pp). DUAL_SWAP improved agreement among retained decisions while reducing valid coverage. |
 
 Human preferences are reference labels, not ground truth. The results do not
 claim a universally best judge, universal causal bias, or universal mitigation
 improvement.
+
+The original frozen RQ6 design was not estimable due to unbalanced
+presentation. A separate counterbalanced RQ6 experiment was later executed and
+analyzed: presentation order is controlled, but source/content-quality
+confounding remains. Its 33.13% stable-decisive coverage limits conclusions to
+those retained units; it is a matched source-family preference association, not
+causal proof of self-bias.
 
 ## Reproducing the final dashboard
 

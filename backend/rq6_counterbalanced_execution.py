@@ -22,8 +22,8 @@ from sqlalchemy.orm import Session
 
 from controlled_analysis_metrics import MetricResult, bootstrap_ci
 from controlled_evaluation import EvaluationRequest
-from controlled_models import ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
-from controlled_persistence import ControlledPersistence
+from controlled_models import AnalysisRun, ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
+from controlled_persistence import ControlledPersistence, to_json_safe
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, prompt_hash
 from controlled_real_execution import BudgetLedger, ControlledRealRunner, ExecutionCaps, RealExecutionProfile
 from evidence_contract import EvidenceClass
@@ -509,3 +509,76 @@ def analysis_payload(session: Session, manifest: Mapping[str, Any]) -> dict[str,
     observations = reconcile_and_observations(session, manifest)
     metrics = analyze_counterbalanced_observations(observations)
     return {"design_identity": DESIGN_IDENTITY, "analysis_identity": ANALYSIS_IDENTITY, "manifest_sha256": EXPECTED_MANIFEST_SHA256, "provider_calls": 0, "scientific_interpretation": "Counterbalanced Matched Source-Family Preference Association. Presentation-position confounding is controlled; source/content-quality confounding remains.", "metrics": {key: value.serialize() for key, value in metrics.items()}}
+
+
+def _published_result_rows(metrics: Mapping[str, MetricResult], units: Sequence[ExperimentalUnit]) -> list[dict[str, Any]]:
+    source_unit_ids = sorted(str(unit.id) for unit in units)
+    rows: list[dict[str, Any]] = []
+    for key, metric in metrics.items():
+        value = metric.serialize()
+        judge = key.split(":", 2)[1] if key.startswith("judge:") else None
+        rows.append({
+            "rq": "RQ6", "judge": judge, "condition": CONDITION_CODE,
+            "metric": value["metric_name"], "value": value["value"],
+            "numerator": value["numerator"], "denominator": value["denominator"],
+            "eligible_n": value["eligible_n"], "analyzed_n": value["analyzed_n"],
+            "ties": value["tie_count"], "unknowns": value["unknown_count"],
+            "failures": value["failure_count"], "refusals": value["refusal_count"],
+            "excluded": value["excluded_count"], "ci_low": value["ci_low"],
+            "ci_high": value["ci_high"], "status": value["status"],
+            "analysis_version": ANALYSIS_IDENTITY,
+            "evidence_class": EvidenceClass.CONTROLLED.value,
+            "metric_key": key, "source_unit_ids": source_unit_ids,
+        })
+    return rows
+
+
+def publish_counterbalanced_analysis(session: Session, manifest: Mapping[str, Any]) -> AnalysisRun:
+    """Persist the new RQ6 analysis only after provider-free reconciliation."""
+    checks = preexecution_checks(session, manifest)
+    if not checks["ok"]:
+        raise ValueError("counterbalanced RQ6 reconciliation failed: " + ", ".join(checks["errors"]))
+    manifest_row = _manifest_row(session)
+    if manifest_row is None:
+        raise ValueError("counterbalanced RQ6 lineage is not materialized")
+    experiment = session.get(Experiment, manifest_row.experiment_id)
+    if experiment is None:
+        raise ValueError("counterbalanced RQ6 experiment is missing")
+    units = list(session.scalars(select(ExperimentalUnit).where(ExperimentalUnit.manifest_id == manifest_row.id)).all())
+    observations = reconcile_and_observations(session, manifest)
+    metrics = analyze_counterbalanced_observations(observations)
+    existing = list(session.scalars(select(AnalysisRun).where(
+        AnalysisRun.manifest_id == manifest_row.id,
+        AnalysisRun.rq_code == "RQ6",
+        AnalysisRun.analysis_version == ANALYSIS_IDENTITY,
+    )).all())
+    if len(existing) > 1:
+        raise ValueError("multiple counterbalanced RQ6 AnalysisRuns exist; refusing ambiguous promotion")
+    payload = {
+        "evidence_class": EvidenceClass.CONTROLLED.value,
+        "design_identity": DESIGN_IDENTITY,
+        "analysis_identity": ANALYSIS_IDENTITY,
+        "manifest_sha256": EXPECTED_MANIFEST_SHA256,
+        "dataset_version_id": str(experiment.dataset_version_id),
+        "experiment_id": str(experiment.id),
+        "manifest_id": str(manifest_row.id),
+        "rq_code": "RQ6",
+        "analysis_seed": SEED,
+        "bootstrap_iterations": ITERATIONS,
+        "scientific_interpretation": "Counterbalanced Matched Source-Family Preference Association. Presentation-position confounding is controlled; source/content-quality confounding remains. This is not causal proof of self-bias.",
+        "limitations": ["Conclusions apply to stable decisive units.", "Stable-decisive coverage is reported explicitly.", "Source/content-quality confounding remains."],
+        "results": _published_result_rows(metrics, units),
+    }
+    if existing:
+        current = existing[0]
+        if current.status != "COMPLETED" or (current.result_json or {}).get("manifest_sha256") != EXPECTED_MANIFEST_SHA256 or (current.result_json or {}).get("results") != payload["results"]:
+            raise ValueError("existing counterbalanced RQ6 AnalysisRun does not match the recomputed preregistered result")
+        experiment.status = "COMPLETED"
+        manifest_row.status = "FROZEN"
+        return current
+    row = AnalysisRun(experiment_id=experiment.id, manifest_id=manifest_row.id, rq_code="RQ6", analysis_version=ANALYSIS_IDENTITY, analysis_seed=SEED, status="COMPLETED", result_json=to_json_safe(payload))
+    session.add(row)
+    experiment.status = "COMPLETED"
+    manifest_row.status = "FROZEN"
+    session.flush()
+    return row

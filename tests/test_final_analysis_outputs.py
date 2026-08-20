@@ -12,6 +12,7 @@ from controlled_analysis_metrics import (
     analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7,
     ANALYSIS_VERSION
 )
+from final_evidence import PHASE11_HISTORICAL_FINAL_MANIFESTS
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXPORTS_DIR = ROOT_DIR / "exports" / "phase10"
@@ -20,7 +21,8 @@ EXPORTS_DIR = ROOT_DIR / "exports" / "phase10"
 def test_phase10_published_analysis_runs_all_completed():
     session = SessionLocal()
     try:
-        runs = session.query(AnalysisRun).order_by(AnalysisRun.rq_code).all()
+        manifests = list(session.query(ExperimentManifest).filter(ExperimentManifest.id.in_(PHASE11_HISTORICAL_FINAL_MANIFESTS.values())).all())
+        runs = session.query(AnalysisRun).filter(AnalysisRun.manifest_id.in_([manifest.id for manifest in manifests])).order_by(AnalysisRun.rq_code).all()
         assert len(runs) == 7
         for r in runs:
             assert r.status == "COMPLETED"
@@ -35,7 +37,7 @@ def test_phase10_published_analysis_runs_all_completed():
 def test_phase10_offline_recomputation_exact_match_rq1_to_rq7():
     session = SessionLocal()
     try:
-        manifests = session.query(ExperimentManifest).order_by(ExperimentManifest.rq_code).all()
+        manifests = session.query(ExperimentManifest).filter(ExperimentManifest.id.in_(PHASE11_HISTORICAL_FINAL_MANIFESTS.values())).order_by(ExperimentManifest.rq_code).all()
         all_units = session.query(ExperimentalUnit).all()
         all_controlled_runs = [
             r for r in session.query(ControlledRun).all()
@@ -97,7 +99,8 @@ def test_phase10_superseded_and_pilot_exclusion_in_analysis():
 
         assert len(pilot_runs) == 11
         assert len(superseded_runs) == 226
-        assert len(controlled_runs) == 13400
+        phase11_units = session.query(ExperimentalUnit.id).filter(ExperimentalUnit.manifest_id.in_(PHASE11_HISTORICAL_FINAL_MANIFESTS.values())).all()
+        assert len([run for run in controlled_runs if run.experimental_unit_id in {row.id for row in phase11_units}]) == 13400
 
         # Verify analysis source unit IDs include only CONTROLLED units
         for ar in session.query(AnalysisRun).all():

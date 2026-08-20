@@ -132,7 +132,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
           </span>
         </div>
         <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-0.5">
-          Final RQ6 is NOT ESTIMABLE (`UNBALANCED_PRESENTATION`).
+          This historical telemetry is separate from the counterbalanced final RQ6 result.
         </p>
       </div>
 

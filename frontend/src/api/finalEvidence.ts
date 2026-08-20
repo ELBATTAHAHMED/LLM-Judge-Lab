@@ -6,7 +6,7 @@ export const RQ_TITLES: Record<string, string> = {
   RQ3: 'Position Sensitivity / Bias',
   RQ4: 'Controlled Redundant-Length Effect',
   RQ5: 'Controlled Presentation-Format Effect',
-  RQ6: 'Matched Source-Family Preference',
+  RQ6: 'Counterbalanced Matched Source-Family Preference',
   RQ7: 'Baseline Single-Pass vs DUAL_SWAP Mitigation',
 };
 
@@ -32,6 +32,14 @@ const METRIC_LABELS: Record<string, string> = {
   rq5_original_win_rate: 'Original-format win rate',
   rq5_rejected_variant_count: 'Rejected variant count',
   rq6_matched_self_family_preference: 'Matched source-family preference',
+  rq6_counterbalanced_stable_same_family_preference: 'Stable same-family preference',
+  rq6_counterbalanced_stable_other_family_preference: 'Stable other-family preference',
+  rq6_counterbalanced_order_sensitive_disagreement: 'Order-sensitive disagreement',
+  rq6_counterbalanced_valid_stable_decisive_coverage: 'Stable-decisive coverage',
+  rq6_counterbalanced_tie_or_abstention_rate: 'Tie / abstention rate',
+  rq6_counterbalanced_human_reference_agreement: 'Human-reference agreement',
+  rq6_counterbalanced_human_reference_agreement_difference: 'Human-reference agreement difference',
+  rq6_counterbalanced_equal_weight_judge_macro_average: 'Equal-weight judge macro-average',
   rq7_baseline_tie_rate: 'Baseline tie rate',
   rq7_baseline_failure_rate: 'Baseline failure rate',
   rq7_baseline_coverage: 'Baseline coverage',
@@ -75,6 +83,6 @@ export const rqInterpretation = (rq: string): string | null => ({
   RQ2: 'No final temperature comparison is estimable under the frozen single-temperature protocol.',
   RQ4: 'This is a controlled redundant-length result and is not a broad verbosity-bias claim.',
   RQ5: 'Metrics exclude all 226 SUPERSEDED_CONTROLLED pre-fix runs.',
-  RQ6: 'NOT ESTIMABLE because presentation is unbalanced; no numeric effect is reported.',
+  RQ6: 'Presentation order is counterbalanced. Overall stable same-family preference is approximately balanced, with strong judge-level heterogeneity; source/content-quality confounding remains.',
   RQ7: 'DUAL_SWAP increased agreement with human preference reference labels but reduced valid coverage.',
 }[rq] ?? null);

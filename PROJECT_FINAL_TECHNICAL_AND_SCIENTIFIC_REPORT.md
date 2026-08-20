@@ -22,7 +22,7 @@ and inspection rather than treating an LLM judgment as objective truth.
 | RQ3 | Position Sensitivity / Bias |
 | RQ4 | Controlled Redundant-Length Effect |
 | RQ5 | Controlled Presentation-Format Effect |
-| RQ6 | Matched Source-Family Preference |
+| RQ6 | Counterbalanced Matched Source-Family Preference |
 | RQ7 | Baseline Single-Pass vs DUAL_SWAP Mitigation |
 
 ## 3. Final Dataset and Experimental Design
@@ -40,7 +40,10 @@ creates checksum-linked controlled RQ4/RQ5 variants. Dataset version metadata,
 exclusions, variants, and final controlled inclusion are preserved in the Phase
 11 package. License/attribution metadata requires external verification.
 
-The controlled execution comprises **13,400 units** and **16,600 pass slots**.
+The frozen Phase 11 controlled execution comprises **13,400 units** and
+**16,600 pass slots**. The later, separate counterbalanced RQ6 lineage adds
+480 units and 960 pass slots; it is pinned independently and does not alter
+the frozen Phase 11 package.
 Its four configured judges are `gpt-4o-mini`,
 `anthropic/claude-3-haiku`, `deepseek/deepseek-chat`, and
 `meta-llama/llama-3.3-70b-instruct`. Routing is recorded per controlled run;
@@ -54,7 +57,7 @@ kept for audit or historical interpretation but are not final RQ evidence.
 
 ## 4. Final Execution Accounting
 
-All controlled units are terminally accounted:
+All frozen Phase 11 controlled units are terminally accounted:
 
 | Unit outcome | Count |
 | --- | ---: |
@@ -84,7 +87,7 @@ zeros, or fabricated outcomes.
 | RQ3 | 16.70% paired decisive flip rate (95% CI 13.76–19.82%), N=545 decisive pairs; 24.87% all-paired disagreement, N=756 complete pairs. |
 | RQ4 | 0.44% controlled redundant-variant win rate (95% CI 0–1.02%), N=685 valid controlled pairs. |
 | RQ5 | 1.11% controlled format-variant win rate (95% CI 0.42–1.95%), N=719 valid controlled pairs. |
-| RQ6 | **NOT ESTIMABLE**: `UNBALANCED_PRESENTATION`. |
+| RQ6 | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). Claude 86.21%, GPT-4o-mini 75.76%, and Llama 9.38%; no clear uniform cross-judge preference. |
 | RQ7 | Baseline agreement 60.65%; DUAL_SWAP agreement 68.78%; delta +8.13 percentage points. Valid coverage changes from 95.63% to 72.88%, a -22.75 percentage-point trade-off. |
 
 The RQ7 result is a measured trade-off: higher agreement with the human
@@ -100,7 +103,12 @@ a claim that mitigation universally improves reliability.
   does not establish universal verbosity bias.
 - RQ5 is a controlled presentation-format manipulation with semantic
   equivalence checks. It does not establish universal format quality effects.
-- RQ6 is not estimable and therefore has no numeric source-family claim.
+- RQ6 was separately repaired after the frozen Phase 11 design: the original
+  RQ6 remains historical `NOT ESTIMABLE — UNBALANCED_PRESENTATION`, while the
+  counterbalanced lineage estimates a matched source-family preference
+  association. Its stable-decisive coverage is 33.13%; AB/BA controls
+  presentation position but not source/content-quality confounding, so it is
+  not causal proof of self-bias.
 - RQ7 does not eliminate bias; its coverage cost is part of the result.
 - Provider failures, invalid outcomes, exclusions, and incomplete pairings are
   retained in accounting and applied through each metric's stated denominator.
