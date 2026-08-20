@@ -294,9 +294,10 @@ export const LiveLabPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
-                Live Sandbox Operator Token
+            <details className="pb-3 border-b border-neutral-200 dark:border-neutral-800 group">
+              <summary className="cursor-pointer text-[11px] font-mono font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100">🔒 Live access configuration</summary>
+              <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mt-3 mb-1">
+                Operator token
               </label>
               <input
                 type="password"
@@ -307,7 +308,7 @@ export const LiveLabPage: React.FC = () => {
                 className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500"
               />
               <p className="mt-1 text-[10px] text-neutral-500">Held in memory only; never stored, committed, or logged.</p>
-            </div>
+            </details>
 
             {evalMode === 'ensemble' && (
               <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-2">

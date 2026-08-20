@@ -27,7 +27,7 @@ import {
 const JUDGE_OPTIONS = [
   {
     id: 'gpt-4o-mini',
-    name: 'GPT-4o-Mini',
+    name: 'GPT-4o-mini',
     provider: 'OpenAI',
     badge: 'Baseline',
     color: '#10a37f',
@@ -35,7 +35,7 @@ const JUDGE_OPTIONS = [
   },
   {
     id: 'deepseek/deepseek-chat',
-    name: 'DeepSeek V3',
+    name: 'DeepSeek Chat',
     provider: 'DeepSeek',
     badge: 'Reasoning',
     color: '#2563eb',
@@ -43,7 +43,7 @@ const JUDGE_OPTIONS = [
   },
   {
     id: 'meta-llama/llama-3.3-70b-instruct',
-    name: 'Llama 3.3 70B',
+    name: 'Llama 3.3 70B Instruct',
     provider: 'Meta AI',
     badge: '70B Instruct',
     color: '#0668E1',

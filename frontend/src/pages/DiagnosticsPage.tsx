@@ -90,7 +90,7 @@ export const DiagnosticsPage: React.FC = () => {
             Legacy / Exploratory Diagnostics
           </h1>
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
-            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Historical observational telemetry. It is not final controlled RQ1–RQ7 evidence.
+            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LEGACY_EXPLORATORY" /></span>Model-specific historical telemetry from retained database decisions. It is not final controlled RQ1–RQ7 evidence; each metric shows N/A when no eligible observations exist.
           </p>
         </div>
 
