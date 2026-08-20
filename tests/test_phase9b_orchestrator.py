@@ -26,6 +26,7 @@ def test_controlled_profile_matches_frozen_scientific_identity():
         "controlled-phase9b-reconciled-v1",
         "controlled-phase9b-rq5-reconciled-v1",
         "controlled-phase9b-rq5-reconciled-v2",
+        "controlled-phase9b-final-reconciled-v1",
     }
     assert profile.prompt_version == "controlled-judge-pairwise-v1"
     assert profile.routing_version == "controlled-routing-v1"
