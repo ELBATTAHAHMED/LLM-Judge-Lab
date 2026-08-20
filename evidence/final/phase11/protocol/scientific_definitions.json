@@ -1,0 +1,13 @@
+{
+  "research_questions": {
+    "RQ1": "Human Alignment",
+    "RQ2": "Stochastic Consistency",
+    "RQ3": "Position Sensitivity / Bias",
+    "RQ4": "Controlled Redundant-Length Effect",
+    "RQ5": "Controlled Presentation-Format Effect",
+    "RQ6": "Matched Source-Family Preference",
+    "RQ7": "BASELINE SINGLE-PASS vs DUAL_SWAP Mitigation"
+  },
+  "rq6_scope": "NOT ESTIMABLE where presentation is unbalanced",
+  "rq7_scope": "BASELINE SINGLE-PASS vs DUAL_SWAP; no bias-elimination claim"
+}

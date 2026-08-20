@@ -1,0 +1,62 @@
+[
+  {
+    "scope": "OVERALL",
+    "judge": "ALL_JUDGES",
+    "eligible_groups": 1712,
+    "analyzed_groups": 1474,
+    "excluded_groups": 238,
+    "consistency": 0.9656,
+    "ci_low": 0.9604,
+    "ci_high": 0.9707,
+    "temperature_comparison_estimable": false,
+    "notes": "Manifest uses single controlled baseline temperature configuration; no temperature contrast."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "gpt-4o-mini",
+    "eligible_groups": 405,
+    "analyzed_groups": 395,
+    "excluded_groups": 10,
+    "consistency": 0.9818,
+    "ci_low": 0.9742,
+    "ci_high": 0.9889,
+    "temperature_comparison_estimable": false,
+    "notes": "Single controlled baseline configuration."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "anthropic/claude-3-haiku",
+    "eligible_groups": 407,
+    "analyzed_groups": 384,
+    "excluded_groups": 23,
+    "consistency": 0.9398,
+    "ci_low": 0.9263,
+    "ci_high": 0.9526,
+    "temperature_comparison_estimable": false,
+    "notes": "Single controlled baseline configuration."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "deepseek/deepseek-chat",
+    "eligible_groups": 493,
+    "analyzed_groups": 307,
+    "excluded_groups": 186,
+    "consistency": 0.9581,
+    "ci_low": 0.9453,
+    "ci_high": 0.97,
+    "temperature_comparison_estimable": false,
+    "notes": "Single controlled baseline configuration."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "meta-llama/llama-3.3-70b-instruct",
+    "eligible_groups": 407,
+    "analyzed_groups": 388,
+    "excluded_groups": 19,
+    "consistency": 0.9804,
+    "ci_low": 0.9722,
+    "ci_high": 0.9876,
+    "temperature_comparison_estimable": false,
+    "notes": "Single controlled baseline configuration."
+  }
+]

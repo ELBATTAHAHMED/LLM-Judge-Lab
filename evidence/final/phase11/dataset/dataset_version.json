@@ -1,0 +1,13 @@
+{
+  "checksum_algorithm": "SHA-256",
+  "created_at": "2026-08-18T20:32:01.171510+01:00",
+  "id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+  "import_status": "SUCCEEDED",
+  "imported_annotation_count": 1615,
+  "imported_answer_count": 2139,
+  "imported_prompt_count": 107,
+  "notes": "PLANNED ONLY; canonicalization=unordered-pair-consensus-v1; prompt_hash=e1d041bd6a1ec4f27efe6a3377d98ec0321af02b59ee9abedf64bf349ac9b299",
+  "source_checksum": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+  "source_name": "judgelab-canonical-human-reference",
+  "version": "controlled-final-plan-v1"
+}

@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-08-20T15:41:32.868764+00:00",
+  "database_snapshot": {
+    "bytes": 25729866,
+    "path": "backups/judgelab-phase11-final-evidence-20260820.dump",
+    "pg_dump_exit": 0,
+    "pg_restore_validation": "PASS",
+    "sha256": "931819ea2a90b0f87216dc11cb825c0dde8dee478f0e3cbe1b6d51503a27a7f8"
+  },
+  "hash_scope_exclusions": [
+    "EVIDENCE_MANIFEST.json",
+    "PACKAGE_METADATA.json",
+    "SHA256SUMS.txt"
+  ],
+  "package_root_digest": "f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13",
+  "package_version": "phase11-final-evidence-v1"
+}

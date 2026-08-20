@@ -1,0 +1,9 @@
+{
+  "branch": "main",
+  "current_commit": "d2199cc3c419a4cbcaf098532c31c34d8d2c80ee",
+  "phase10_source_commit": "d2199cc",
+  "phase10_source_tag": "phase10-offline-analysis-validated-v1",
+  "tags_at_head": [
+    "phase10-offline-analysis-validated-v1"
+  ]
+}

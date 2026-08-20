@@ -1,0 +1,6 @@
+scope,judge,eligible_units,analyzed_units,format_variant_win_rate,variant_ci_low,variant_ci_high,original_win_rate,original_ci_low,original_ci_high,rejected_variant_count
+OVERALL,ALL_JUDGES,800,719,0.0111,0.0042,0.0195,0.0028,,0.007,81
+PER_JUDGE,gpt-4o-mini,200,199,,,,,,,1
+PER_JUDGE,anthropic/claude-3-haiku,200,176,0.0455,0.017,0.0795,0.0057,,0.017,24
+PER_JUDGE,deepseek/deepseek-chat,200,160,,,,0.0063,,0.0187,40
+PER_JUDGE,meta-llama/llama-3.3-70b-instruct,200,184,,,,,,,16

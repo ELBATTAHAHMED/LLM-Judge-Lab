@@ -1,0 +1,98 @@
+[
+  {
+    "rq": "RQ1",
+    "planned_units": 800,
+    "succeeded_units": 782,
+    "partial_units": 0,
+    "failed_units": 18,
+    "planned_passes": 800,
+    "valid_passes": 782,
+    "failed_pass_slots": 18,
+    "unit_failure_rate": 0.0225,
+    "primary_failure_cause": "Rate limit / upstream transient"
+  },
+  {
+    "rq": "RQ2",
+    "planned_units": 8000,
+    "succeeded_units": 7862,
+    "partial_units": 0,
+    "failed_units": 138,
+    "planned_passes": 8000,
+    "valid_passes": 7862,
+    "failed_pass_slots": 138,
+    "unit_failure_rate": 0.0173,
+    "primary_failure_cause": "Rate limit / upstream transient"
+  },
+  {
+    "rq": "RQ3",
+    "planned_units": 800,
+    "succeeded_units": 573,
+    "partial_units": 204,
+    "failed_units": 23,
+    "planned_passes": 1600,
+    "valid_passes": 1554,
+    "failed_pass_slots": 46,
+    "unit_failure_rate": 0.0288,
+    "primary_failure_cause": "Dual-pass retry exhaustion"
+  },
+  {
+    "rq": "RQ4",
+    "planned_units": 800,
+    "succeeded_units": 699,
+    "partial_units": 64,
+    "failed_units": 37,
+    "planned_passes": 1600,
+    "valid_passes": 1526,
+    "failed_pass_slots": 74,
+    "unit_failure_rate": 0.0462,
+    "primary_failure_cause": "Dual-pass retry exhaustion"
+  },
+  {
+    "rq": "RQ5",
+    "planned_units": 800,
+    "succeeded_units": 724,
+    "partial_units": 56,
+    "failed_units": 20,
+    "planned_passes": 1600,
+    "valid_passes": 1560,
+    "failed_pass_slots": 40,
+    "unit_failure_rate": 0.025,
+    "primary_failure_cause": "Dual-pass retry exhaustion"
+  },
+  {
+    "rq": "RQ6",
+    "planned_units": 600,
+    "succeeded_units": 596,
+    "partial_units": 0,
+    "failed_units": 4,
+    "planned_passes": 600,
+    "valid_passes": 596,
+    "failed_pass_slots": 4,
+    "unit_failure_rate": 0.0067,
+    "primary_failure_cause": "Rate limit / upstream transient"
+  },
+  {
+    "rq": "RQ7",
+    "planned_units": 1600,
+    "succeeded_units": 1366,
+    "partial_units": 199,
+    "failed_units": 35,
+    "planned_passes": 2400,
+    "valid_passes": 2348,
+    "failed_pass_slots": 52,
+    "unit_failure_rate": 0.0219,
+    "primary_failure_cause": "Baseline & Dual-pass retry exhaustion"
+  },
+  {
+    "rq": "TOTAL",
+    "planned_units": 13400,
+    "succeeded_units": 12602,
+    "partial_units": 523,
+    "failed_units": 275,
+    "planned_passes": 16600,
+    "valid_passes": 16228,
+    "failed_pass_slots": 372,
+    "unit_failure_rate": 0.0205,
+    "primary_failure_cause": "Controlled Retry-v2 Policy Exhaustion"
+  }
+]

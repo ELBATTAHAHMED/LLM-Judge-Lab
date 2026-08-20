@@ -1,0 +1,6 @@
+scope,judge,eligible_units,analyzed_units,status,self_family_preference,ci_low,ci_high,notes
+OVERALL,ALL_JUDGES,600,0,UNBALANCED_PRESENTATION,,,,Self-family slots are not balanced.
+PER_JUDGE,gpt-4o-mini,200,0,UNBALANCED_PRESENTATION,,,,Self-family slots are not balanced.
+PER_JUDGE,anthropic/claude-3-haiku,200,0,UNBALANCED_PRESENTATION,,,,Self-family slots are not balanced.
+PER_JUDGE,deepseek/deepseek-chat,0,0,NO_DATA,,,,Balanced matched self-family preference; not an A-slot comparator.
+PER_JUDGE,meta-llama/llama-3.3-70b-instruct,200,130,ESTIMABLE,0.4692,0.3846,0.5538,Balanced matched self-family preference; not an A-slot comparator.

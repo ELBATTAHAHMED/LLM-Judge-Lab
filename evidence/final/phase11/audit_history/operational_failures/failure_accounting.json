@@ -1,0 +1,12 @@
+{
+  "attempt_failure_categories": {
+    "CONNECTION": 5,
+    "INVALID_RESPONSE": 42,
+    "NETWORK_CONNECTION": 56,
+    "PROVENANCE_MISMATCH": 4,
+    "RATE_LIMIT": 890,
+    "TIMEOUT": 1
+  },
+  "failed_pass_slots": 372,
+  "terminal_failed_units": 275
+}

@@ -1,0 +1,10 @@
+{
+  "routes": {
+    "anthropic/claude-3-haiku": "amazon-bedrock",
+    "deepseek/deepseek-chat": "streamlake",
+    "gpt-4o-mini": "OpenAI direct",
+    "meta-llama/llama-3.3-70b-instruct": "deepinfra/turbo"
+  },
+  "sha256": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+  "version": "controlled-routing-v1"
+}

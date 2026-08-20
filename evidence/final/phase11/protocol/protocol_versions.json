@@ -1,0 +1,10 @@
+{
+  "analysis_version": "phase4-analysis-v1",
+  "bootstrap": {
+    "confidence": 0.95,
+    "method": "percentile bootstrap on unit-level paired observations",
+    "resamples": 10000,
+    "seed": 20260818
+  },
+  "protocol": "phase3-controlled-v1"
+}

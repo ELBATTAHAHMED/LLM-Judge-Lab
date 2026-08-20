@@ -1,0 +1,1247 @@
+{
+  "metrics": [
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 770,
+      "ci_high": 0.6194805194805195,
+      "ci_low": 0.5506493506493506,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.5844155844155844,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 770,
+      "ci_high": 0.36524151605862004,
+      "ci_low": 0.2579340902797008,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.31207772628287445,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "cohens_kappa",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 188,
+      "ci_high": 0.5053191489361702,
+      "ci_low": 0.3670212765957447,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 200,
+      "estimate": 0.43617021276595747,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "judge:anthropic/claude-3-haiku:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 187,
+      "ci_high": 0.7486631016042781,
+      "ci_low": 0.6203208556149733,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 200,
+      "estimate": 0.6844919786096256,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "judge:deepseek/deepseek-chat:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 199,
+      "ci_high": 0.6231155778894473,
+      "ci_low": 0.48743718592964824,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 200,
+      "estimate": 0.5527638190954773,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "judge:gpt-4o-mini:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 196,
+      "ci_high": 0.7295918367346939,
+      "ci_low": 0.5969387755102041,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 200,
+      "estimate": 0.6632653061224489,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "judge:meta-llama/llama-3.3-70b-instruct:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 97,
+      "ci_high": 0.6494845360824743,
+      "ci_low": 0.44329896907216493,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 99,
+      "estimate": 0.5463917525773195,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:coding:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 96,
+      "ci_high": 0.78125,
+      "ci_low": 0.59375,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 101,
+      "estimate": 0.6875,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:extraction:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 92,
+      "ci_high": 0.7717391304347826,
+      "ci_low": 0.5760869565217391,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 96,
+      "estimate": 0.6739130434782609,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:humanities:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 75,
+      "ci_high": 0.68,
+      "ci_low": 0.4533333333333333,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 79,
+      "estimate": 0.5733333333333334,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:math:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 103,
+      "ci_high": 0.5631067961165048,
+      "ci_low": 0.36893203883495146,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 104,
+      "estimate": 0.46601941747572817,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:reasoning:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 92,
+      "ci_high": 0.7282608695652174,
+      "ci_low": 0.532608695652174,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 99,
+      "estimate": 0.6304347826086957,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:roleplay:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 123,
+      "ci_high": 0.6910569105691057,
+      "ci_low": 0.5121951219512195,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 129,
+      "estimate": 0.6016260162601627,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:stem:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "63cd1939-05f4-42cf-a933-4094ac652eea",
+      "analyzed_n": 92,
+      "ci_high": 0.6086956521739131,
+      "ci_low": 0.40217391304347827,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 93,
+      "estimate": 0.5,
+      "experiment_id": "4d65d88e-3e9f-4e0c-9460-b2a10f57c3ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+      "metric_key": "category:writing:exact_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq1_human_alignment.json"
+      ],
+      "rq_code": "RQ1",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "25949bbe-b962-4808-9830-f106bb3d1d42",
+      "analyzed_n": 1474,
+      "ci_high": 0.9707146087743103,
+      "ci_low": 0.9604477611940299,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 1712,
+      "estimate": 0.9655585707824513,
+      "experiment_id": "3f6294f6-cf5e-4c27-8c21-f162b93c594d",
+      "human_readable_metric_name": null,
+      "manifest_id": "0581763f-1fff-4092-a2f2-c60170eb8dbf",
+      "metric_key": "consistency",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq2_consistency.json"
+      ],
+      "rq_code": "RQ2",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "0581763f-1fff-4092-a2f2-c60170eb8dbf",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
+      "analyzed_n": 545,
+      "ci_high": 0.1981651376146789,
+      "ci_low": 0.13761467889908258,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.1669724770642202,
+      "experiment_id": "3b8ef1ab-f149-4458-9580-02c41fdea781",
+      "human_readable_metric_name": null,
+      "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+      "metric_key": "paired_decisive_flip_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq3_position_sensitivity.json"
+      ],
+      "rq_code": "RQ3",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
+      "analyzed_n": 756,
+      "ci_high": 0.2804232804232804,
+      "ci_low": 0.21825396825396826,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.24867724867724866,
+      "experiment_id": "3b8ef1ab-f149-4458-9580-02c41fdea781",
+      "human_readable_metric_name": null,
+      "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+      "metric_key": "all_paired_disagreement_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq3_position_sensitivity.json"
+      ],
+      "rq_code": "RQ3",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
+      "analyzed_n": 545,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.11926605504587157,
+      "experiment_id": "3b8ef1ab-f149-4458-9580-02c41fdea781",
+      "human_readable_metric_name": null,
+      "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+      "metric_key": "slot_win_imbalance",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq3_position_sensitivity.json"
+      ],
+      "rq_code": "RQ3",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "4a5a5c97-6b63-4d33-9129-3d7048e96a87",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.0,
+      "experiment_id": "3b8ef1ab-f149-4458-9580-02c41fdea781",
+      "human_readable_metric_name": null,
+      "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+      "metric_key": "incomplete_pairs",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq3_position_sensitivity.json"
+      ],
+      "rq_code": "RQ3",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "816ba9b6-1dd4-40ac-abed-15e3e4dd896a",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "13510c83-354c-49b1-811f-5e96a6b985e7",
+      "analyzed_n": 685,
+      "ci_high": 0.010218978102189781,
+      "ci_low": 0.0,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.004379562043795621,
+      "experiment_id": "d02a90f5-8096-48aa-9297-ee51e93a10ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+      "metric_key": "variant_win_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq4_redundant_length.json"
+      ],
+      "rq_code": "RQ4",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "13510c83-354c-49b1-811f-5e96a6b985e7",
+      "analyzed_n": 685,
+      "ci_high": 0.010218978102189781,
+      "ci_low": 0.0,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.004379562043795621,
+      "experiment_id": "d02a90f5-8096-48aa-9297-ee51e93a10ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+      "metric_key": "original_win_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq4_redundant_length.json"
+      ],
+      "rq_code": "RQ4",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "13510c83-354c-49b1-811f-5e96a6b985e7",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 115.0,
+      "experiment_id": "d02a90f5-8096-48aa-9297-ee51e93a10ca",
+      "human_readable_metric_name": null,
+      "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+      "metric_key": "rejected_variant_count",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq4_redundant_length.json"
+      ],
+      "rq_code": "RQ4",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "f63360e4-04c8-4815-86b5-eefeed78cb5b",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "bbfbcf03-1791-4892-a39c-418831260f35",
+      "analyzed_n": 719,
+      "ci_high": 0.019471488178025034,
+      "ci_low": 0.004172461752433936,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.011126564673157162,
+      "experiment_id": "f7ebd809-6ad4-4ba0-8f19-2f24200ddeed",
+      "human_readable_metric_name": null,
+      "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+      "metric_key": "variant_win_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq5_format_effect.json"
+      ],
+      "rq_code": "RQ5",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "bbfbcf03-1791-4892-a39c-418831260f35",
+      "analyzed_n": 719,
+      "ci_high": 0.006954102920723227,
+      "ci_low": 0.0,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.0027816411682892906,
+      "experiment_id": "f7ebd809-6ad4-4ba0-8f19-2f24200ddeed",
+      "human_readable_metric_name": null,
+      "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+      "metric_key": "original_win_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq5_format_effect.json"
+      ],
+      "rq_code": "RQ5",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "bbfbcf03-1791-4892-a39c-418831260f35",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 81.0,
+      "experiment_id": "f7ebd809-6ad4-4ba0-8f19-2f24200ddeed",
+      "human_readable_metric_name": null,
+      "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+      "metric_key": "rejected_variant_count",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq5_format_effect.json"
+      ],
+      "rq_code": "RQ5",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "494cf45e-f974-4f92-bc8f-f490d82d0f91",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "ca9a1668-58b9-4a9d-8b0d-991c2b7a38ec",
+      "analyzed_n": 0,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 600,
+      "estimate": null,
+      "experiment_id": "a3484b84-870d-4f01-85ad-df7d160c7efd",
+      "human_readable_metric_name": null,
+      "manifest_id": "5491bd7b-2f59-4922-a4c2-ecbe38c57e0a",
+      "metric_key": "self_family_preference",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq6_source_family.json"
+      ],
+      "rq_code": "RQ6",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "5491bd7b-2f59-4922-a4c2-ecbe38c57e0a",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 765,
+      "ci_high": 0.6405228758169934,
+      "ci_low": 0.5712418300653594,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 765,
+      "estimate": 0.6065359477124183,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 765,
+      "ci_high": 0.40080709700488676,
+      "ci_low": 0.2918420519515598,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 765,
+      "estimate": 0.3469197323750719,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_cohens_kappa",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 765,
+      "ci_high": 0.24705882352941178,
+      "ci_low": 0.18823529411764706,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.21830065359477124,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_tie_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.05875,
+      "ci_low": 0.03,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.04375,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_failure_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.97,
+      "ci_low": 0.94125,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.95625,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_coverage",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.7775,
+      "ci_low": 0.7175,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.7475,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "baseline_decisive_coverage",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": 0.7238421955403087,
+      "ci_low": 0.6483704974271012,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 583,
+      "estimate": 0.6878216123499142,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_agreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": 0.5129642972755657,
+      "ci_low": 0.38577647125332126,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 583,
+      "estimate": 0.45193464909788694,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_cohens_kappa",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": 0.2538593481989708,
+      "ci_low": 0.18696397941680962,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.2195540308747856,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_tie_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.3025,
+      "ci_low": 0.24125,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.27125,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_failure_rate",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.75875,
+      "ci_low": 0.6975,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.72875,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_coverage",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": 0.6025,
+      "ci_low": 0.535,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.56875,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_decisive_coverage",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 761,
+      "ci_high": 0.26412614980289095,
+      "ci_low": 0.20367936925098554,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.23390275952693823,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_dual_pass_disagreement",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 761,
+      "ci_high": 0.7963206307490145,
+      "ci_low": 0.735873850197109,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.7660972404730617,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "dual_swap_dual_pass_stability",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.08128566463749598,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "agreement_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.10501491672281504,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "cohens_kappa_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 583,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.001253377280014345,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "tie_rate_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": 0.22749999999999998,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "failure_rate_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": -0.22750000000000004,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "coverage_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    },
+    {
+      "analysis_code_commit": "d2199cc",
+      "analysis_run_id": "d3773e0c-80dc-4235-aa46-ffd89af9face",
+      "analyzed_n": 800,
+      "ci_high": null,
+      "ci_low": null,
+      "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+      "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+      "eligible_n": 800,
+      "estimate": -0.17875000000000008,
+      "experiment_id": "eccc037f-d331-47d7-a186-983ae58f3369",
+      "human_readable_metric_name": null,
+      "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+      "metric_key": "decisive_coverage_delta",
+      "phase10_artifacts": [
+        "analysis/phase10_metrics_summary.json",
+        "analysis/tables/table_rq7_mitigation.json"
+      ],
+      "rq_code": "RQ7",
+      "source_evidence_query": {
+        "evidence_class": "CONTROLLED",
+        "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+        "pass_index": "evidence/passes/controlled_passes.json",
+        "run_index": "evidence/runs/controlled_runs.json",
+        "unit_index": "evidence/units/controlled_units.json"
+      }
+    }
+  ],
+  "package_version": "phase11-final-evidence-v1"
+}

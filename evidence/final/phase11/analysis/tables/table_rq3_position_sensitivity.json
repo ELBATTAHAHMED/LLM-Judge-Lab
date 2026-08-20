@@ -1,0 +1,72 @@
+[
+  {
+    "scope": "OVERALL",
+    "judge": "ALL_JUDGES",
+    "eligible_pairs": 800,
+    "decisive_pairs_analyzed": 545,
+    "decisive_flip_rate": 0.167,
+    "flip_ci_low": 0.1376,
+    "flip_ci_high": 0.1982,
+    "all_paired_disagreement_rate": 0.2487,
+    "all_disagreement_ci_low": 0.2183,
+    "all_disagreement_ci_high": 0.2804,
+    "slot_win_imbalance": 0.1193,
+    "incomplete_pairs": 0
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "gpt-4o-mini",
+    "eligible_pairs": 200,
+    "decisive_pairs_analyzed": 116,
+    "decisive_flip_rate": 0.0517,
+    "flip_ci_low": 0.0172,
+    "flip_ci_high": 0.0948,
+    "all_paired_disagreement_rate": 0.23,
+    "all_disagreement_ci_low": 0.175,
+    "all_disagreement_ci_high": 0.29,
+    "slot_win_imbalance": 0.0345,
+    "incomplete_pairs": 0
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "anthropic/claude-3-haiku",
+    "eligible_pairs": 200,
+    "decisive_pairs_analyzed": 111,
+    "decisive_flip_rate": 0.5225,
+    "flip_ci_low": 0.4324,
+    "flip_ci_high": 0.6216,
+    "all_paired_disagreement_rate": 0.5137,
+    "all_disagreement_ci_low": 0.4372,
+    "all_disagreement_ci_high": 0.5847,
+    "slot_win_imbalance": 0.5045,
+    "incomplete_pairs": 0
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "deepseek/deepseek-chat",
+    "eligible_pairs": 200,
+    "decisive_pairs_analyzed": 164,
+    "decisive_flip_rate": 0.0915,
+    "flip_ci_low": 0.0488,
+    "flip_ci_high": 0.1402,
+    "all_paired_disagreement_rate": 0.1229,
+    "all_disagreement_ci_low": 0.0782,
+    "all_disagreement_ci_high": 0.1732,
+    "slot_win_imbalance": 0.0305,
+    "incomplete_pairs": 0
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "meta-llama/llama-3.3-70b-instruct",
+    "eligible_pairs": 200,
+    "decisive_pairs_analyzed": 154,
+    "decisive_flip_rate": 0.0779,
+    "flip_ci_low": 0.039,
+    "flip_ci_high": 0.1234,
+    "all_paired_disagreement_rate": 0.134,
+    "all_disagreement_ci_low": 0.0876,
+    "all_disagreement_ci_high": 0.1856,
+    "slot_win_imbalance": 0.0649,
+    "incomplete_pairs": 0
+  }
+]

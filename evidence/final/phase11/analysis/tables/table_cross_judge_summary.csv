@@ -1,0 +1,5 @@
+judge,rq1_human_agreement,rq1_cohens_kappa,rq2_consistency,rq3_decisive_flip_rate,rq3_slot_imbalance,rq4_redundant_length_variant_win,rq5_format_variant_win,rq6_source_family_preference,rq7_mitigation_agreement_delta,rq7_mitigation_coverage_delta
+gpt-4o-mini,0.5528,0.303,0.9818,0.0517,0.0345,,,NOT_ESTIMABLE (Unbalanced Slots),0.0572,-0.195
+anthropic/claude-3-haiku,0.4362,0.1503,0.9398,0.5225,0.5045,0.0191,0.0455,NOT_ESTIMABLE (Unbalanced Slots),0.1538,-0.43
+deepseek/deepseek-chat,0.6845,0.4017,0.9581,0.0915,0.0305,,,NOT_ESTIMABLE (Unbalanced Slots),0.0285,-0.12
+meta-llama/llama-3.3-70b-instruct,0.6633,0.42,0.9804,0.0779,0.0649,,,0.4692,0.0569,-0.165

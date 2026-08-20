@@ -1,0 +1,12 @@
+{
+  "canonical_human_reference_policy": "unordered-pair-consensus-v1",
+  "dataset_sha256": "b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510",
+  "dataset_source": "judgelab-canonical-human-reference",
+  "dataset_version_id": "2f8c7bba-08b1-4d8b-8b0e-b564e8a61886",
+  "dataset_version_name": "controlled-final-plan-v1",
+  "entity_counts": {
+    "answers": 2139,
+    "human_preferences": 1615,
+    "prompts": 107
+  }
+}

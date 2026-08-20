@@ -1,0 +1,601 @@
+[
+  {
+    "actual_usd": "0.00018405",
+    "attempt_id": "6aa1479507b4539962f4a313d39589b5996093f1b0fb8b0f1d2a95019803f371",
+    "attempt_index": 0,
+    "attempt_row_id": "823ab8e3-f53e-4ae0-b000-bc5cb697ae0e",
+    "completed_at": "2026-08-19T04:26:23.265020",
+    "details": {
+      "cost_source": "LOCAL_COMPUTED",
+      "estimated_input_tokens": 695,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00031425",
+      "locally_computed_usd": "0.00018405",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00031425",
+    "failure_category": null,
+    "input_tokens": 655,
+    "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+    "output_tokens": 143,
+    "pass_number": 1,
+    "provider_response_id": "chatcmpl-EEREReBmQETOebGS9XlbrxPF9ek0L",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "gpt-4o-mini-2024-07-18",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENAI",
+      "response_id": "chatcmpl-EEREReBmQETOebGS9XlbrxPF9ek0L",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ7",
+    "run_id": "20f19838-8e1b-464c-9e6e-5738393fefc0",
+    "started_at": "2026-08-19T04:26:20.475722",
+    "state": "SUCCEEDED",
+    "unit_id": "33053a8e-8eb1-4e5c-a71f-6b4e28cea584"
+  },
+  {
+    "actual_usd": "0.00016605",
+    "attempt_id": "6efe3348043a32132b0da3d1ee1aad50890c387ac3284b40307fbb7378c2715a",
+    "attempt_index": 0,
+    "attempt_row_id": "dc23085e-f602-4125-87ec-870101ce5fec",
+    "completed_at": "2026-08-19T04:26:25.153009",
+    "details": {
+      "cost_source": "LOCAL_COMPUTED",
+      "estimated_input_tokens": 695,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00031425",
+      "locally_computed_usd": "0.00016605",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00031425",
+    "failure_category": null,
+    "input_tokens": 655,
+    "manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+    "output_tokens": 113,
+    "pass_number": 2,
+    "provider_response_id": "chatcmpl-EEREUyTkECL93V8R8hH1r4jhCLfnW",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "gpt-4o-mini-2024-07-18",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENAI",
+      "response_id": "chatcmpl-EEREUyTkECL93V8R8hH1r4jhCLfnW",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ7",
+    "run_id": "20f19838-8e1b-464c-9e6e-5738393fefc0",
+    "started_at": "2026-08-19T04:26:20.475722",
+    "state": "SUCCEEDED",
+    "unit_id": "33053a8e-8eb1-4e5c-a71f-6b4e28cea584"
+  },
+  {
+    "actual_usd": "0.00014985",
+    "attempt_id": "09e6e777349503b094fec77204cf39b0ab32d4f7a363c12ee7653d01ce2e1355",
+    "attempt_index": 0,
+    "attempt_row_id": "ec848335-efd6-47a5-bba1-49bb728a0d69",
+    "completed_at": "2026-08-19T03:19:17.212258",
+    "details": {
+      "cost_source": "LOCAL_COMPUTED",
+      "estimated_input_tokens": 762,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00032430",
+      "locally_computed_usd": "0.00014985",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00032430",
+    "failure_category": null,
+    "input_tokens": 599,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 100,
+    "pass_number": 1,
+    "provider_response_id": "chatcmpl-EEQBWYR5Iob2LaVba4CNq8F2T00iG",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "gpt-4o-mini-2024-07-18",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENAI",
+      "response_id": "chatcmpl-EEQBWYR5Iob2LaVba4CNq8F2T00iG",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ1",
+    "run_id": "2ec17abd-192f-4c96-a3c2-c8a1e0c85874",
+    "started_at": "2026-08-19T03:19:13.769533",
+    "state": "SUCCEEDED",
+    "unit_id": "09e8827f-0bcb-49c2-811b-e5f45f404023"
+  },
+  {
+    "actual_usd": "0.00005444",
+    "attempt_id": "c4f9ed493ed7b6c20cf34ae50ccea38b8cb5bc0adb678f42387b2678b1678368",
+    "attempt_index": 0,
+    "attempt_row_id": "39fcde73-4fd4-4035-a02b-eeeb495f66a9",
+    "completed_at": "2026-08-19T04:26:05.651835",
+    "details": {
+      "cost_delta_usd": "0E-8",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 269,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00013890",
+      "locally_computed_usd": "0.00005444",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.00005444",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00013890",
+    "failure_category": null,
+    "input_tokens": 250,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 92,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787109952-IObDTZghNRvm6RsHvcwY",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": "deepinfra/turbo",
+      "effective_model": "meta-llama/llama-3.3-70b-instruct",
+      "fallback_observed": false,
+      "observed_endpoint_slug": null,
+      "observed_provider_family": "deepinfra",
+      "observed_upstream_provider": "deepinfra/turbo",
+      "provider": "OPENROUTER",
+      "raw_observed_upstream_provider": "DeepInfra",
+      "response_id": "gen-1787109952-IObDTZghNRvm6RsHvcwY",
+      "route_verification_basis": "REQUEST_ENFORCED_EXACT_ENDPOINT_RESPONSE_CONFIRMED_FAMILY",
+      "router_metadata": {
+        "openrouter_metadata": {
+          "attempt": 1,
+          "endpoints": {
+            "available": [
+              {
+                "model": "meta-llama/llama-3.3-70b-instruct",
+                "provider": "DeepInfra",
+                "selected": true
+              }
+            ],
+            "total": 13
+          },
+          "is_byok": false,
+          "region": "MRS",
+          "requested": "meta-llama/llama-3.3-70b-instruct",
+          "strategy": "direct",
+          "summary": "available=1, selected=DeepInfra"
+        }
+      },
+      "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+      "routing_policy_version": "controlled-routing-v1"
+    },
+    "rq_code": "RQ1",
+    "run_id": "4fe2628b-5301-4257-a245-fa5a39bb8a42",
+    "started_at": "2026-08-19T04:25:53.693623",
+    "state": "SUCCEEDED",
+    "unit_id": "0d253170-4571-4f30-835b-5c95f880d322"
+  },
+  {
+    "actual_usd": "0.00034581",
+    "attempt_id": "aa92eec57a617f769599270b184f1e272560e3d75884795fadf2306ace179513",
+    "attempt_index": 0,
+    "attempt_row_id": "1612d85e-d95d-47c6-8f55-ad47b35431c3",
+    "completed_at": "2026-08-19T04:25:33.860775",
+    "details": {
+      "cost_delta_usd": "0.0000768462",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 719,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.0004239788",
+      "locally_computed_usd": "0.0002689617",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.0003458079",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00042398",
+    "failure_category": null,
+    "input_tokens": 732,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 153,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787109926-VPCUdSHTqDW0zuF5AgOc",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": "streamlake",
+      "effective_model": "deepseek/deepseek-chat",
+      "fallback_observed": false,
+      "observed_endpoint_slug": null,
+      "observed_provider_family": "streamlake",
+      "observed_upstream_provider": "streamlake",
+      "provider": "OPENROUTER",
+      "raw_observed_upstream_provider": "StreamLake",
+      "response_id": "gen-1787109926-VPCUdSHTqDW0zuF5AgOc",
+      "route_verification_basis": "RESPONSE_CONFIRMED_EXACT_PROVIDER",
+      "router_metadata": {
+        "openrouter_metadata": {
+          "attempt": 1,
+          "endpoints": {
+            "available": [
+              {
+                "model": "deepseek/deepseek-chat-v3",
+                "provider": "StreamLake",
+                "selected": true
+              }
+            ],
+            "total": 3
+          },
+          "is_byok": false,
+          "region": "MRS",
+          "requested": "deepseek/deepseek-chat",
+          "strategy": "direct",
+          "summary": "available=1, selected=StreamLake"
+        }
+      },
+      "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+      "routing_policy_version": "controlled-routing-v1"
+    },
+    "rq_code": "RQ1",
+    "run_id": "50ebbefe-74a8-422f-9a78-b3b841978c6b",
+    "started_at": "2026-08-19T04:25:28.053462",
+    "state": "SUCCEEDED",
+    "unit_id": "c628b9a7-14a9-4365-9cb1-a29a9d33b13b"
+  },
+  {
+    "actual_usd": "0.00048675",
+    "attempt_id": "31f83b59ba993175fc7b051b10c40c5a7409676cc72170f14efa567c3d9f5dd4",
+    "attempt_index": 0,
+    "attempt_row_id": "1d0574b0-418c-4f20-9590-c3f9e03b3f50",
+    "completed_at": "2026-08-19T04:25:18.056326",
+    "details": {
+      "cost_delta_usd": "0E-8",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 1400,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00078750",
+      "locally_computed_usd": "0.00048675",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.00048675",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00078750",
+    "failure_category": null,
+    "input_tokens": 1232,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 143,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787109914-BCz6Epi9P9mSZ2Hb7Lny",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": "amazon-bedrock",
+      "effective_model": "anthropic/claude-3-haiku",
+      "fallback_observed": false,
+      "observed_endpoint_slug": null,
+      "observed_provider_family": "amazon-bedrock",
+      "observed_upstream_provider": "amazon-bedrock",
+      "provider": "OPENROUTER",
+      "raw_observed_upstream_provider": "Amazon Bedrock",
+      "response_id": "gen-1787109914-BCz6Epi9P9mSZ2Hb7Lny",
+      "route_verification_basis": "RESPONSE_CONFIRMED_EXACT_PROVIDER",
+      "router_metadata": {
+        "openrouter_metadata": {
+          "attempt": 1,
+          "endpoints": {
+            "available": [
+              {
+                "model": "anthropic/claude-3-haiku",
+                "provider": "Amazon Bedrock",
+                "selected": true
+              }
+            ],
+            "total": 1
+          },
+          "is_byok": false,
+          "region": "MRS",
+          "requested": "anthropic/claude-3-haiku",
+          "strategy": "direct",
+          "summary": "available=1, selected=Amazon Bedrock"
+        }
+      },
+      "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+      "routing_policy_version": "controlled-routing-v1"
+    },
+    "rq_code": "RQ1",
+    "run_id": "51e4b565-a293-43d8-8fc8-dc23ce233a50",
+    "started_at": "2026-08-19T04:25:14.805965",
+    "state": "SUCCEEDED",
+    "unit_id": "dacf9f3f-846e-42a4-ac60-08f1949e982c"
+  },
+  {
+    "actual_usd": "0.00016185",
+    "attempt_id": "72c24435f0f0f4f230b402b525f2103855d9f34aeb1b892d00d1900b93737bf5",
+    "attempt_index": 0,
+    "attempt_row_id": "86ac64e7-6d30-484c-b001-2e349b82c45f",
+    "completed_at": "2026-08-18T23:55:41.904646",
+    "details": {
+      "estimated_input_tokens": 762,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00032430",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00032430",
+    "failure_category": null,
+    "input_tokens": 599,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 120,
+    "pass_number": 1,
+    "provider_response_id": "chatcmpl-EEN0V3HPKZdc9vsQCNiHaCd3LEoeN",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "gpt-4o-mini-2024-07-18",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENAI",
+      "response_id": "chatcmpl-EEN0V3HPKZdc9vsQCNiHaCd3LEoeN",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ1",
+    "run_id": "7c67db26-a9e9-40b8-8fb8-5942fb5a46d8",
+    "started_at": "2026-08-18T23:55:37.969937",
+    "state": "SUCCEEDED",
+    "unit_id": "09e8827f-0bcb-49c2-811b-e5f45f404023"
+  },
+  {
+    "actual_usd": "0.00051800",
+    "attempt_id": "7cef8b6f52e1736ae310ce436bf069b69e66ac315af9103fee547a4ec1e35316",
+    "attempt_index": 0,
+    "attempt_row_id": "fdbebdfe-2a23-407e-8f65-e74369c7a07a",
+    "completed_at": "2026-08-19T03:19:29.710480",
+    "details": {
+      "cost_delta_usd": "0E-8",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 1400,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00078750",
+      "locally_computed_usd": "0.00051800",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.000518",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00078750",
+    "failure_category": null,
+    "input_tokens": 1232,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 168,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787105965-svzCzxZAkoKYfQlGHqrV",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": "amazon-bedrock",
+      "effective_model": "anthropic/claude-3-haiku",
+      "fallback_observed": false,
+      "observed_endpoint_slug": "amazon-bedrock",
+      "observed_provider_family": "amazon-bedrock",
+      "observed_upstream_provider": "amazon-bedrock",
+      "provider": "OPENROUTER",
+      "raw_observed_upstream_provider": "Amazon Bedrock",
+      "response_id": "gen-1787105965-svzCzxZAkoKYfQlGHqrV",
+      "router_metadata": {
+        "openrouter_metadata": {
+          "attempt": 1,
+          "endpoints": {
+            "available": [
+              {
+                "model": "anthropic/claude-3-haiku",
+                "provider": "Amazon Bedrock",
+                "selected": true
+              }
+            ],
+            "total": 1
+          },
+          "is_byok": false,
+          "region": "MRS",
+          "requested": "anthropic/claude-3-haiku",
+          "strategy": "direct",
+          "summary": "available=1, selected=Amazon Bedrock"
+        },
+        "provider_string": "Amazon Bedrock"
+      },
+      "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+      "routing_policy_version": "controlled-routing-v1"
+    },
+    "rq_code": "RQ1",
+    "run_id": "b50de572-a635-45c9-a45d-60c56c179fcd",
+    "started_at": "2026-08-19T03:19:26.714285",
+    "state": "SUCCEEDED",
+    "unit_id": "dacf9f3f-846e-42a4-ac60-08f1949e982c"
+  },
+  {
+    "actual_usd": "0.00016725",
+    "attempt_id": "ac8968440e637024fae790732aa98ef5226f583a37ac5063b852bcef3d5a650b",
+    "attempt_index": 0,
+    "attempt_row_id": "72a6e1ef-dcfc-4f54-a04f-0c8e8a33f4b9",
+    "completed_at": "2026-08-19T04:25:03.331037",
+    "details": {
+      "cost_source": "LOCAL_COMPUTED",
+      "estimated_input_tokens": 762,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00032430",
+      "locally_computed_usd": "0.00016725",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00032430",
+    "failure_category": null,
+    "input_tokens": 599,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 129,
+    "pass_number": 1,
+    "provider_response_id": "chatcmpl-EERDA1ydmuSTe5QEwX9LDGHquJKsm",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "gpt-4o-mini-2024-07-18",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENAI",
+      "response_id": "chatcmpl-EERDA1ydmuSTe5QEwX9LDGHquJKsm",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ1",
+    "run_id": "bbada4b6-eb5b-48ec-b855-019b6a495951",
+    "started_at": "2026-08-19T04:24:59.732577",
+    "state": "SUCCEEDED",
+    "unit_id": "09e8827f-0bcb-49c2-811b-e5f45f404023"
+  },
+  {
+    "actual_usd": "0.00034375",
+    "attempt_id": "e15998f3f37821b95b4357652957e86f334dd68737971c4b129d54fd8f72d564",
+    "attempt_index": 0,
+    "attempt_row_id": "10172a55-bed7-40fa-a277-0be542defd3f",
+    "completed_at": "2026-08-19T03:24:46.285845",
+    "details": {
+      "cost_delta_usd": "0.0000763890",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 719,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.0004239788",
+      "locally_computed_usd": "0.0002673615",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.0003437505",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00042398",
+    "failure_category": null,
+    "input_tokens": 732,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 151,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787106278-k1XQK5hGoAdjEoLTMwyg",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": "streamlake",
+      "effective_model": "deepseek/deepseek-chat",
+      "fallback_observed": false,
+      "observed_endpoint_slug": "streamlake",
+      "observed_provider_family": "streamlake",
+      "observed_upstream_provider": "streamlake",
+      "provider": "OPENROUTER",
+      "raw_observed_upstream_provider": "StreamLake",
+      "response_id": "gen-1787106278-k1XQK5hGoAdjEoLTMwyg",
+      "router_metadata": {
+        "openrouter_metadata": {
+          "attempt": 1,
+          "endpoints": {
+            "available": [
+              {
+                "model": "deepseek/deepseek-chat-v3",
+                "provider": "StreamLake",
+                "selected": true
+              }
+            ],
+            "total": 3
+          },
+          "is_byok": false,
+          "region": "MRS",
+          "requested": "deepseek/deepseek-chat",
+          "strategy": "direct",
+          "summary": "available=1, selected=StreamLake"
+        },
+        "provider_string": "StreamLake"
+      },
+      "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+      "routing_policy_version": "controlled-routing-v1"
+    },
+    "rq_code": "RQ1",
+    "run_id": "d3c3ad72-c9b4-44cb-b0d0-88ffc7493a44",
+    "started_at": "2026-08-19T03:24:39.586058",
+    "state": "SUCCEEDED",
+    "unit_id": "c628b9a7-14a9-4365-9cb1-a29a9d33b13b"
+  },
+  {
+    "actual_usd": "0.00005444",
+    "attempt_id": "ca73d3013ff31b0ae13e8a46b9250b8df906cecb7c763b175a91c4be9b591cf0",
+    "attempt_index": 0,
+    "attempt_row_id": "37175e6d-3b21-4870-9fec-628f8dbf0cc2",
+    "completed_at": "2026-08-19T03:25:53.751141",
+    "details": {
+      "cost_delta_usd": "0E-8",
+      "cost_source": "PROVIDER_REPORTED",
+      "estimated_input_tokens": 269,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00013890",
+      "locally_computed_usd": "0.00005444",
+      "planned_backoff_seconds": null,
+      "provider_reported_usd": "0.00005444",
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00013890",
+    "failure_category": "PROVENANCE_MISMATCH",
+    "input_tokens": 250,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": 92,
+    "pass_number": 1,
+    "provider_response_id": "gen-1787106347-pi5XDqvMyou4G4iSaZJX",
+    "retry_decision": "FINAL",
+    "route_provenance": {
+      "configured_upstream_provider": null,
+      "effective_model": "meta-llama/llama-3.3-70b-instruct",
+      "fallback_observed": false,
+      "observed_upstream_provider": null,
+      "provider": "OPENROUTER",
+      "response_id": "gen-1787106347-pi5XDqvMyou4G4iSaZJX",
+      "routing_fingerprint": null,
+      "routing_policy_version": null
+    },
+    "rq_code": "RQ1",
+    "run_id": "deb077d6-a120-44cf-8d33-de9426a98cd3",
+    "started_at": "2026-08-19T03:25:48.789789",
+    "state": "FAILED_FINAL",
+    "unit_id": "0d253170-4571-4f30-835b-5c95f880d322"
+  },
+  {
+    "actual_usd": null,
+    "attempt_id": "0681e2d8f162916b839931befa1f08d46796301acf7aeb935512c7fb3c5cb929",
+    "attempt_index": 0,
+    "attempt_row_id": "f72b6cff-ca7a-4fa9-9f17-2c2f4897e692",
+    "completed_at": "2026-08-18T23:57:21.828285",
+    "details": {
+      "estimated_input_tokens": 1400,
+      "estimated_output_tokens": 350,
+      "estimated_usd": "0.00078750",
+      "planned_backoff_seconds": null,
+      "repetition_index": 0,
+      "retry_count": 0
+    },
+    "estimated_usd": "0.00078750",
+    "failure_category": "PROVIDER_ERROR",
+    "input_tokens": null,
+    "manifest_id": "550e0ec5-e531-45fa-a1ea-422cc9710001",
+    "output_tokens": null,
+    "pass_number": 1,
+    "provider_response_id": null,
+    "retry_decision": "FINAL",
+    "route_provenance": null,
+    "rq_code": "RQ1",
+    "run_id": "f938edfa-0dc1-472e-ac78-0816fa5828f0",
+    "started_at": "2026-08-18T23:57:18.846052",
+    "state": "FAILED_FINAL",
+    "unit_id": "dacf9f3f-846e-42a4-ac60-08f1949e982c"
+  }
+]

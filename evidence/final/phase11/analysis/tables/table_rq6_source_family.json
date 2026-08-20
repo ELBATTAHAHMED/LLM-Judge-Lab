@@ -1,0 +1,57 @@
+[
+  {
+    "scope": "OVERALL",
+    "judge": "ALL_JUDGES",
+    "eligible_units": 600,
+    "analyzed_units": 0,
+    "status": "UNBALANCED_PRESENTATION",
+    "self_family_preference": null,
+    "ci_low": null,
+    "ci_high": null,
+    "notes": "Self-family slots are not balanced."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "gpt-4o-mini",
+    "eligible_units": 200,
+    "analyzed_units": 0,
+    "status": "UNBALANCED_PRESENTATION",
+    "self_family_preference": null,
+    "ci_low": null,
+    "ci_high": null,
+    "notes": "Self-family slots are not balanced."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "anthropic/claude-3-haiku",
+    "eligible_units": 200,
+    "analyzed_units": 0,
+    "status": "UNBALANCED_PRESENTATION",
+    "self_family_preference": null,
+    "ci_low": null,
+    "ci_high": null,
+    "notes": "Self-family slots are not balanced."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "deepseek/deepseek-chat",
+    "eligible_units": 0,
+    "analyzed_units": 0,
+    "status": "NO_DATA",
+    "self_family_preference": null,
+    "ci_low": null,
+    "ci_high": null,
+    "notes": "Balanced matched self-family preference; not an A-slot comparator."
+  },
+  {
+    "scope": "PER_JUDGE",
+    "judge": "meta-llama/llama-3.3-70b-instruct",
+    "eligible_units": 200,
+    "analyzed_units": 130,
+    "status": "ESTIMABLE",
+    "self_family_preference": 0.4692,
+    "ci_low": 0.3846,
+    "ci_high": 0.5538,
+    "notes": "Balanced matched self-family preference; not an A-slot comparator."
+  }
+]
