@@ -134,7 +134,8 @@ class RealExecutionProfile:
         if manifest is None or str(manifest.id) not in self.manifest_ids or manifest.manifest_sha256 not in self.manifest_hashes:
             raise PermissionError("unit is outside the frozen execution profile")
         material = manifest.manifest_json or {}
-        if material.get("prompt_hash") != self.prompt_sha256 or material.get("routing_policy_version") != self.routing_version or material.get("routing_fingerprint") != self.routing_fingerprint:
+        manifest_prompt_hash = material.get("prompt_hash", material.get("prompt_template_sha256"))
+        if manifest_prompt_hash != self.prompt_sha256 or material.get("routing_policy_version") != self.routing_version or material.get("routing_fingerprint") != self.routing_fingerprint:
             raise PermissionError("manifest prompt/routing identity does not match the real execution profile")
         experiment = session.get(Experiment, unit.experiment_id)
         if experiment is None or str(experiment.dataset_version_id) != self.dataset_version_id:
@@ -186,9 +187,11 @@ class BudgetLedger:
 
 class ControlledRealRunner:
     """The sole authorized final/pilot execution entry point."""
-    def __init__(self, *, profile: RealExecutionProfile, transport: Transport | None = None) -> None:
+    def __init__(self, *, profile: RealExecutionProfile, transport: Transport | None = None, ledger: BudgetLedger | None = None) -> None:
         profile.assert_authorized()
-        self.profile, self.transport, self.ledger = profile, transport or environment_http_transport, BudgetLedger(profile)
+        if ledger is not None and ledger.profile != profile:
+            raise ValueError("execution ledger must belong to the supplied profile")
+        self.profile, self.transport, self.ledger = profile, transport or environment_http_transport, ledger or BudgetLedger(profile)
 
     def execute(self, *, session: Session, unit: ExperimentalUnit, request: EvaluationRequest, idempotency_key: str, dual_pass: bool) -> Any:
         self.profile.verify_manifest(session, unit)
