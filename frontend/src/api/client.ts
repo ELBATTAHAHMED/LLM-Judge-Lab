@@ -46,22 +46,9 @@ export const apiClient = axios.create({
 /**
  * Fetch unified leaderboard data (Bradley-Terry + Residual Neutralized scores)
  */
-export async function getLeaderboard(judgeModel?: string, forceRecalculate = false): Promise<LeaderboardItem[]> {
+export async function getLeaderboard(judgeModel?: string): Promise<LeaderboardItem[]> {
   const response = await apiClient.get<LeaderboardItem[]>('/api/leaderboard', {
-    params: {
-      ...(judgeModel ? { judge_model: judgeModel } : {}),
-      ...(forceRecalculate ? { force_recalculate: true } : {}),
-    },
-  });
-  return response.data;
-}
-
-/**
- * Trigger on-demand recalculation of Bradley-Terry MLE and OLS Length Neutralization
- */
-export async function calculateLeaderboard(judgeModel: string): Promise<LeaderboardItem[]> {
-  const response = await apiClient.post<LeaderboardItem[]>('/api/leaderboard/calculate', {
-    judge_model: judgeModel,
+    params: judgeModel ? { judge_model: judgeModel } : undefined,
   });
   return response.data;
 }
@@ -208,13 +195,11 @@ export function useLeaderboard(judgeModel?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetch = useCallback(async (forceRecalculate = false) => {
+  const fetch = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = forceRecalculate
-        ? await calculateLeaderboard(judgeModel || 'gpt-4o-mini')
-        : await getLeaderboard(judgeModel);
+      const result = await getLeaderboard(judgeModel);
       setData(result);
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -227,10 +212,10 @@ export function useLeaderboard(judgeModel?: string) {
   }, [judgeModel]);
 
   useEffect(() => {
-    fetch(false);
+    fetch();
   }, [fetch]);
 
-  return { data, loading, error, refetch: () => fetch(false), recalculate: () => fetch(true) };
+  return { data, loading, error, refetch: fetch };
 }
 
 export function useBiasStats(judgeModel?: string) {

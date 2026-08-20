@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { LeaderboardItem } from '../api/types';
-import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Download, Award, Activity, Minus, RotateCcw } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, Download, Award, Activity, Minus } from 'lucide-react';
 import { ModelIcon, formatModelName } from './ModelIcons';
 
 interface Props {
@@ -8,7 +8,6 @@ interface Props {
   loading: boolean;
   error: string | null;
   onRefresh?: () => void;
-  onRecalculate?: () => void;
 }
 
 type ViewMode = 'calibrated' | 'raw';
@@ -21,7 +20,6 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
   loading,
   error,
   onRefresh,
-  onRecalculate,
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('calibrated');
   const [sortColumn, setSortColumn] = useState<SortColumn>('bt_score');
@@ -197,7 +195,7 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Action Controls: Export CSV, Recalculate, & Refresh */}
+        {/* Action Controls: Export CSV & Refresh */}
         <div className="flex items-center space-x-2 self-start lg:self-auto font-mono">
           <button
             onClick={handleExportCSV}
@@ -207,18 +205,6 @@ export const CalibratedLeaderboardTable: React.FC<Props> = ({
             <Download className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
             <span>Export CSV</span>
           </button>
-
-          {onRecalculate && (
-            <button
-              onClick={onRecalculate}
-              disabled={loading}
-              className="flex items-center space-x-1.5 px-2.5 py-1 rounded border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-xs disabled:opacity-40"
-              title="Run dynamic Bradley-Terry MLE & Length Neutralization calculations on database"
-            >
-              <RotateCcw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              <span>Recalculate MLE</span>
-            </button>
-          )}
 
           {onRefresh && (
             <button

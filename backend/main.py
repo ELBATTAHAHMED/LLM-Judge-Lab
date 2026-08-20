@@ -18,7 +18,6 @@ import asyncio
 import hmac
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 import numpy as np
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -37,6 +36,7 @@ from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E4
 import models  # noqa: E402
 from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
 from evidence_contract import EvidenceClass  # noqa: E402
+from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, canonical_final_analysis_runs  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
@@ -57,13 +57,15 @@ BUCKET_FILES: dict[str, str] = {
 async def lifespan(app: FastAPI):
     """Lifecycle manager for the FastAPI application.
 
-    Performs startup tasks such as creating database tables if DB is reachable and resyncing sequences.
+    Normal final startup is read-only.  Explicit local maintenance remains
+    available behind an opt-in environment flag.
     """
-    try:
-        Base.metadata.create_all(bind=engine)
-        resync_postgres_sequences(engine)
-    except Exception as e:
-        print(f"Warning: Database initialization skipped on startup ({e})")
+    if os.getenv("JUDGELAB_RUN_MAINTENANCE_ON_STARTUP", "false").lower() == "true":
+        try:
+            Base.metadata.create_all(bind=engine)
+            resync_postgres_sequences(engine)
+        except Exception as e:
+            print(f"Warning: explicit startup maintenance skipped ({e})")
     yield
 
 
@@ -325,15 +327,12 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         valid_returned_passes=valid_returned_passes,
         failed_pass_slots=planned_pass_slots - valid_returned_passes,
     )
-    # The evidence class is provenance of the analysis payload/run records, not
-    # a mutable experiment-planning label.  This permits a PLANNED experiment
-    # to publish only after genuine CONTROLLED evidence exists.
-    published_by_rq: dict[str, AnalysisRun] = {}
-    for row in db.query(AnalysisRun).filter(AnalysisRun.status == "COMPLETED").order_by(AnalysisRun.created_at.desc()):
-        if (row.result_json or {}).get("evidence_class") == EvidenceClass.CONTROLLED.value:
-            published_by_rq.setdefault(row.rq_code, row)
-    if not published_by_rq:
-        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Controlled runs exist, but no authoritative completed analysis has been published.")
+    canonical_rows = db.query(AnalysisRun).filter(
+        AnalysisRun.id.in_([uuid.UUID(run_id) for run_id in CANONICAL_FINAL_ANALYSIS_RUNS.values()])
+    ).all()
+    published_by_rq, canonical_error = canonical_final_analysis_runs(canonical_rows)
+    if published_by_rq is None:
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message=canonical_error or "Canonical final controlled analysis is unavailable.")
     rows: list[dict[str, Any]] = []
     for rq in sorted(published_by_rq):
         payload = published_by_rq[rq].result_json or {}
@@ -363,7 +362,7 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         accounting=accounting,
         analysis_runs={rq: str(run.id) for rq, run in sorted(published_by_rq.items())},
         results=rows,
-        message="Authoritative controlled analysis published from persisted CONTROLLED evidence.",
+        message="Authoritative Phase 11 controlled analysis selected by canonical AnalysisRun identity.",
     )
 
 
@@ -710,21 +709,16 @@ def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
 
 
 @app.get("/api/leaderboard", response_model=list[LeaderboardItem])
-def get_leaderboard(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini", force_recalculate: bool = False) -> list[dict]:
+def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     """
-    Merge Bradley-Terry scores and Length-Neutralized scores into a unified leaderboard.
-    If CSV files do not exist or force_recalculate is True, dynamically computes scores on-the-fly.
+    Read the stored legacy Bradley-Terry and neutralized leaderboard artifacts.
+    This public endpoint never recomputes or writes artifacts.
     """
     judge_model = normalize_model_id(judge_model)
     sanitized = judge_model.replace("/", "_")
     csv_dir = ROOT_DIR / "data" / "artifacts" / "csv"
     bt_csv_path          = csv_dir / f"bradley_terry_scores_{sanitized}.csv"
     neutralized_csv_path = csv_dir / f"neutralized_scores_{sanitized}.csv"
-
-    if force_recalculate or not bt_csv_path.exists() or not neutralized_csv_path.exists():
-        dynamic_data = compute_and_save_leaderboard(db.get_bind(), judge_model)
-        if dynamic_data:
-            return dynamic_data
 
     if not bt_csv_path.exists() or not neutralized_csv_path.exists():
         return []
@@ -756,8 +750,10 @@ def get_leaderboard(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mi
 @app.post("/api/leaderboard/calculate", response_model=list[LeaderboardItem])
 def trigger_leaderboard_calculation(req: CalculateLeaderboardRequest, db: Session = Depends(get_db)) -> list[dict]:
     """
-    Trigger on-demand dynamic calculation of Bradley-Terry MLE parameters and Residual Length Neutralization.
+    Explicit development-only recalculation of legacy CSV artifacts.
     """
+    if os.getenv("JUDGELAB_ENABLE_LEGACY_LEADERBOARD_RECALCULATION", "false").lower() != "true":
+        raise HTTPException(status_code=403, detail="Legacy leaderboard recalculation is disabled in the final application.")
     req.judge_model = normalize_model_id(req.judge_model)
     return compute_and_save_leaderboard(db.get_bind(), req.judge_model)
 

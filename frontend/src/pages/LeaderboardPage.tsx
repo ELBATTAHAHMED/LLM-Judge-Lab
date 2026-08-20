@@ -1,17 +1,15 @@
 import React from 'react';
 import { Database } from 'lucide-react';
-import { useLeaderboard, useDatasetCount, useControlledResults } from '../api/client';
+import { useLeaderboard, useDatasetCount } from '../api/client';
 import { useJudge } from '../context/JudgeContext';
 import { CalibratedLeaderboardTable } from '../components/CalibratedLeaderboardTable';
 import { MethodologyCards } from '../components/MethodologyCards';
 import { EvidenceBadge } from '../components/EvidenceBadge';
-import { ControlledEvidencePanel } from '../components/ControlledEvidencePanel';
 
 export const LeaderboardPage: React.FC = () => {
   const { judgeModel } = useJudge();
-  const { data, loading, error, refetch, recalculate } = useLeaderboard(judgeModel);
+  const { data, loading, error, refetch } = useLeaderboard(judgeModel);
   const { count, loading: countLoading } = useDatasetCount();
-  const controlled = useControlledResults();
 
   const formattedCount = count !== null && count !== undefined ? count.toLocaleString() : '0';
   const pairwiseCountStr = countLoading
@@ -36,15 +34,12 @@ export const LeaderboardPage: React.FC = () => {
         </p>
       </div>
 
-      <ControlledEvidencePanel {...controlled} />
-
       {/* Core Leaderboard Table */}
       <CalibratedLeaderboardTable
         data={data}
         loading={loading}
         error={error}
         onRefresh={refetch}
-        onRecalculate={recalculate}
       />
 
       {/* Methodology Section */}
