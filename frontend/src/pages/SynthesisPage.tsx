@@ -1,12 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useControlledResults } from '../api/client';
-import { formatMetricValue } from '../api/finalEvidence';
+import { formatMetricCi, formatMetricValue } from '../api/finalEvidence';
 import type { ControlledMetricResult } from '../api/types';
 import { EvidenceBadge } from '../components/EvidenceBadge';
 
 const SummaryMetric: React.FC<{ label: string; metric: ControlledMetricResult | undefined; detail: string }> = ({ label, metric, detail }) => (
-  <article className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+  <article className="flex h-full flex-col rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
     <p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">{label}</p>
     <p className="mt-1 text-xl font-mono font-semibold tracking-tight text-neutral-900 dark:text-white">{metric ? formatMetricValue(metric) : 'Unavailable'}</p>
     <p className="mt-1 text-[11px] leading-snug text-neutral-500">{metric ? detail : 'Final controlled metric not available.'}</p>
@@ -14,7 +14,18 @@ const SummaryMetric: React.FC<{ label: string; metric: ControlledMetricResult | 
 );
 
 const Finding: React.FC<{ rq: string; children: React.ReactNode }> = ({ rq, children }) => (
-  <li className="flex gap-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400"><span className="shrink-0 font-mono text-[10px] font-semibold text-neutral-900 dark:text-neutral-200">{rq}</span><span>{children}</span></li>
+  <li className="flex gap-3 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400"><span className="shrink-0 font-mono text-[10px] font-semibold text-neutral-900 dark:text-neutral-200">{rq}</span><span>{children}</span></li>
+);
+
+const Rq7Tradeoff: React.FC<{ agreement: ControlledMetricResult | undefined; coverage: ControlledMetricResult | undefined }> = ({ agreement, coverage }) => (
+  <article className="flex h-full flex-col rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+    <p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">RQ7 · Mitigation</p>
+    <div className="mt-2 grid grid-cols-2 gap-3">
+      <div><p className="text-[10px] text-neutral-500">Agreement</p><p className="mt-0.5 font-mono text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">{agreement ? formatMetricValue(agreement) : 'Unavailable'}</p></div>
+      <div><p className="text-[10px] text-neutral-500">Coverage</p><p className="mt-0.5 font-mono text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">{coverage ? formatMetricValue(coverage) : 'Unavailable'}</p></div>
+    </div>
+    <p className="mt-1 text-[11px] leading-snug text-neutral-500">Higher agreement among retained decisions, lower valid coverage.</p>
+  </article>
 );
 
 export const SynthesisPage: React.FC = () => {
@@ -32,13 +43,14 @@ export const SynthesisPage: React.FC = () => {
   const rq7Coverage = metric('RQ7', 'coverage_delta');
 
   return <div className="mx-auto max-w-[1400px] space-y-5 py-2 font-sans">
-    <header className="flex flex-col gap-3 border-b border-neutral-200 pb-4 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between"><div><h1 className="text-2xl font-serif tracking-tight text-neutral-900 dark:text-white">Final Scientific Synthesis</h1><p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">Concise executive interpretation of the final controlled RQ1–RQ7 evidence.</p></div><Link to="/controlled-results" className="inline-flex w-fit items-center gap-2 rounded border border-neutral-200 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"><EvidenceBadge evidenceClass="CONTROLLED" /><span>Final Evidence: Frozen</span></Link></header>
+    <header className="border-b border-neutral-200 pb-4 dark:border-neutral-800"><h1 className="text-2xl font-serif tracking-tight text-neutral-900 dark:text-white">Final Scientific Synthesis</h1><p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">Executive summary of the final controlled RQ1–RQ7 evidence.</p></header>
     {loading && <div className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Loading final controlled synthesis…</div>}
     {error && <div className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Final controlled synthesis unavailable. No alternate values are substituted: {error}</div>}
     {!loading && !error && !ready && <div className="rounded-lg border border-neutral-200 p-4 text-xs text-neutral-500 dark:border-neutral-800">Final controlled synthesis is not available: {data?.message ?? 'No controlled response.'}</div>}
     {ready && <>
-      <section aria-label="Headline findings" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><SummaryMetric label="RQ1 · Human Alignment" metric={rq1} detail="Agreement with human preference reference labels" /><SummaryMetric label="RQ2 · Consistency" metric={rq2} detail="Within-unit repeated-evaluation consistency" /><SummaryMetric label="RQ3 · Position Sensitivity" metric={rq3} detail="Paired decisive flip rate under answer-order swap" /><SummaryMetric label="RQ6 · Same-Family Preference" metric={rq6} detail="Stable same-family preference after counterbalancing presentation order" /><SummaryMetric label="RQ6 · Coverage" metric={rq6Coverage} detail="Stable-decisive coverage; conclusions apply only to these units." /><SummaryMetric label="RQ7 · Mitigation Trade-off" metric={rq7Agreement} detail={`Coverage change: ${rq7Coverage ? formatMetricValue(rq7Coverage) : 'unavailable'}`} /><SummaryMetric label="RQ7 · Coverage Trade-off" metric={rq7Coverage} detail="Coverage" /></section>
-      <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]"><h2 className="text-sm font-semibold text-neutral-900 dark:text-white">Research Findings</h2><ul className="mt-3 space-y-2.5"><Finding rq="RQ1">{rq1 ? `${formatMetricValue(rq1)} agreement with human preference reference labels; this is not an accuracy claim.` : 'No final metric available.'}</Finding><Finding rq="RQ2">{rq2 ? `${formatMetricValue(rq2)} consistency across the frozen repeated-evaluation protocol.` : 'No final metric available.'}</Finding><Finding rq="RQ3">{rq3 ? `${formatMetricValue(rq3)} paired decisive flips under controlled answer-order swaps.` : 'No final metric available.'}</Finding><Finding rq="RQ4–RQ5">{rq4 && rq5 ? `Controlled redundant-length variant win: ${formatMetricValue(rq4)}; controlled presentation-format variant win: ${formatMetricValue(rq5)}.` : 'Controlled variant metrics are unavailable.'}</Finding><Finding rq="RQ6">{rq6 ? `RQ6 became estimable after counterbalancing presentation order. Overall same-family preference was approximately balanced (${formatMetricValue(rq6)}), but behavior varied strongly by judge.` : 'Counterbalanced RQ6 metric unavailable.'}</Finding><Finding rq="RQ7">DUAL_SWAP increased agreement with human preference reference labels while reducing valid coverage.</Finding></ul></section>
+      <section aria-label="Headline findings" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><SummaryMetric label="RQ1 · Human Alignment" metric={rq1} detail="Agreement with human preference reference labels" /><SummaryMetric label="RQ2 · Consistency" metric={rq2} detail="Within-unit repeated-evaluation consistency" /><SummaryMetric label="RQ3 · Position Sensitivity" metric={rq3} detail="Paired decisive flip rate under answer-order swap" /><SummaryMetric label="RQ6 · Source-Family Preference" metric={rq6} detail={rq6 ? `Stable same-family preference · ${formatMetricCi(rq6)} · N = ${rq6.denominator ?? 'unavailable'} stable decisive` : 'Stable same-family preference'} /><Rq7Tradeoff agreement={rq7Agreement} coverage={rq7Coverage} /></section>
+      <section aria-labelledby="key-findings-title"><h2 id="key-findings-title" className="text-sm font-semibold text-neutral-900 dark:text-white">Key Findings</h2><ul className="mt-2 divide-y divide-neutral-200 border-y border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800"><Finding rq="RQ1">{rq1 ? `Agreement with human preference reference labels was ${formatMetricValue(rq1)}.` : 'No final metric available.'}</Finding><Finding rq="RQ2">{rq2 ? `Repeated judgments were highly consistent at ${formatMetricValue(rq2)}.` : 'No final metric available.'}</Finding><Finding rq="RQ3">{rq3 ? `${formatMetricValue(rq3)} decisive flips occurred under answer-order swaps.` : 'No final metric available.'}</Finding><Finding rq="RQ4">{rq4 ? `Redundant-length variant win rate was ${formatMetricValue(rq4)}.` : 'Final metric unavailable.'}</Finding><Finding rq="RQ5">{rq5 ? `Presentation-format variant win rate was ${formatMetricValue(rq5)}.` : 'Final metric unavailable.'}</Finding><Finding rq="RQ6">{rq6 ? `Overall same-family preference was approximately balanced at ${formatMetricValue(rq6)}. No clear uniform overall same-family preference; strong judge-level heterogeneity. Coverage ${rq6Coverage ? formatMetricValue(rq6Coverage) : 'unavailable'}.` : 'Counterbalanced RQ6 metric unavailable.'}</Finding><Finding rq="RQ7">{rq7Agreement && rq7Coverage ? `DUAL_SWAP improved agreement by ${formatMetricValue(rq7Agreement)} while reducing coverage by ${formatMetricValue(rq7Coverage)}.` : 'Final mitigation metrics unavailable.'}</Finding></ul></section>
+      <Link to="/controlled-results" className="inline-flex w-fit items-center gap-2 rounded border border-neutral-200 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"><EvidenceBadge evidenceClass="CONTROLLED" /><span>View full controlled evidence</span></Link>
     </>}
   </div>;
 };
