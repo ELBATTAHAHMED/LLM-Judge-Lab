@@ -95,11 +95,12 @@ export async function getControlledResults(): Promise<ControlledResultsResponse>
 }
 
 export function useControlledResults() {
-  const [data, setData] = useState<ControlledResultsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ControlledResultsResponse | null>(() => controlledResultsCache);
+  const [loading, setLoading] = useState(() => controlledResultsCache === null);
   const [error, setError] = useState<string | null>(null);
   const fetch = useCallback(async () => {
-    setLoading(true); setError(null);
+    if (!controlledResultsCache) setLoading(true);
+    setError(null);
     try { setData(await getControlledResults()); }
     catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to fetch controlled evidence status'); }
     finally { setLoading(false); }

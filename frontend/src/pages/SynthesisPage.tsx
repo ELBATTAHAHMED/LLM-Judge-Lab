@@ -12,14 +12,14 @@ const SummaryStat: React.FC<{ label: string; children: React.ReactNode }> = ({ l
 );
 
 const FindingRow: React.FC<{ rq: string; title: string; value: string; children: React.ReactNode }> = ({ rq, title, value, children }) => (
-  <div className="py-3">
-    <div className="flex items-baseline justify-between gap-4"><div className="min-w-0"><p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500">{rq}</p><h3 className="mt-0.5 text-xs font-semibold text-neutral-900 dark:text-white">{title}</h3></div><p className="shrink-0 font-mono text-sm font-semibold tracking-tight text-neutral-900 dark:text-white">{value}</p></div>
+  <div className="min-h-[76px] py-3">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4"><div className="min-w-0"><p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500">{rq}</p><h3 className="mt-0.5 text-xs font-semibold text-neutral-900 dark:text-white">{title}</h3></div><p className="max-w-[10rem] text-right font-mono text-sm font-semibold tracking-tight text-neutral-900 dark:text-white">{value}</p></div>
     <p className="mt-1 text-[11px] leading-snug text-neutral-500">{children}</p>
   </div>
 );
 
 const Rq7Finding: React.FC<{ agreement: ControlledMetricResult | undefined; coverage: ControlledMetricResult | undefined }> = ({ agreement, coverage }) => (
-  <div className="py-3">
+  <div className="min-h-[98px] py-3">
     <div><p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500">RQ7</p><h3 className="mt-0.5 text-xs font-semibold text-neutral-900 dark:text-white">DUAL_SWAP Mitigation</h3></div>
     <div className="mt-2 grid grid-cols-2 gap-4"><div><p className="text-[10px] text-neutral-500">Agreement</p><p className="mt-0.5 font-mono text-sm font-semibold text-neutral-900 dark:text-white">{agreement ? formatMetricValue(agreement) : 'Unavailable'}</p></div><div><p className="text-[10px] text-neutral-500">Coverage</p><p className="mt-0.5 font-mono text-sm font-semibold text-neutral-900 dark:text-white">{coverage ? formatMetricValue(coverage) : 'Unavailable'}</p></div></div>
     <p className="mt-2 text-[11px] leading-snug text-neutral-500">Higher agreement among retained decisions, lower valid coverage.</p>

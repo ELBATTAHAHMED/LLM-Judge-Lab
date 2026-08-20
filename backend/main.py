@@ -344,7 +344,8 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     # outcomes directly, as required by its counterbalanced analysis contract.
     counterbalanced_rq6_manifest_id = uuid.UUID(CANONICAL_FINAL_MANIFESTS["RQ6"])
     counterbalanced_runs = [run for run in controlled_runs if units[run.experimental_unit_id].manifest_id == counterbalanced_rq6_manifest_id]
-    historical_runs = [run for run in controlled_runs if run.id not in {counterbalanced.id for counterbalanced in counterbalanced_runs}]
+    counterbalanced_run_ids = {run.id for run in counterbalanced_runs}
+    historical_runs = [run for run in controlled_runs if run.id not in counterbalanced_run_ids]
     historical_valid_runs = [*[
         run for run in historical_runs if run.status == "SUCCEEDED"
     ], *[
@@ -352,7 +353,6 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     ]]
     planned_pass_slots = sum(planned_slots(run) for run in controlled_runs)
     historical_valid_run_ids = {run.id for run in historical_valid_runs}
-    counterbalanced_run_ids = {run.id for run in counterbalanced_runs}
     valid_returned_passes = (
         sum(planned_slots(run) for run in historical_valid_runs)
         + sum(pass_.outcome in valid_outcomes for pass_ in controlled_passes if pass_.run_id in counterbalanced_run_ids)
