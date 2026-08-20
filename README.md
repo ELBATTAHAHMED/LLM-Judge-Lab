@@ -157,9 +157,6 @@ LLM-Judge-Lab/
 ├── tests/                          # Automated PyTest Test Suite
 │   ├── test_pipeline.py            # End-to-End Backend Test Cases (11/11 Passing)
 │   └── test_api_connections.py     # Live API Connectivity Diagnostic Script
-├── thesis_docs/                    # Master's Thesis Documentation & Artifacts
-│   ├── thesis_chapter_5_exhibits.md# Chapter 5 Empirical Thesis Exhibits & Findings
-│   └── thesis_defense_presentation_slides.md # Thesis Defense Presentation Outline
 ├── qualitative_data/               # Stratified Qualitative Case Buckets & Results
 ├── requirements.txt                # Python Dependencies
 └── README.md                       # Master Thesis Project Documentation
