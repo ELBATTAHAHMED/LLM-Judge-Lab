@@ -1,0 +1,156 @@
+;
+; Archive created at 2026-08-21 00:01:10
+;     dbname: judgelab
+;     TOC Entries: 145
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 17.7
+;     Dumped by pg_dump version: 17.7
+;
+;
+; Selected TOC Entries:
+;
+229; 1259 20392 TABLE public alembic_version postgres
+234; 1259 28428 TABLE public analysis_runs postgres
+220; 1259 16398 TABLE public answers postgres
+219; 1259 16397 SEQUENCE public answers_id_seq postgres
+5154; 0 0 SEQUENCE OWNED BY public answers_id_seq postgres
+233; 1259 28407 TABLE public counterfactual_variants postgres
+225; 1259 20242 TABLE public dataset_versions postgres
+231; 1259 28346 TABLE public experiment_manifests postgres
+230; 1259 28330 TABLE public experimental_conditions postgres
+232; 1259 28364 TABLE public experimental_units postgres
+226; 1259 20259 TABLE public experiments postgres
+222; 1259 16412 TABLE public human_preferences postgres
+221; 1259 16411 SEQUENCE public human_preferences_id_seq postgres
+5155; 0 0 SEQUENCE OWNED BY public human_preferences_id_seq postgres
+224; 1259 16439 TABLE public judge_decisions postgres
+223; 1259 16438 SEQUENCE public judge_decisions_id_seq postgres
+5156; 0 0 SEQUENCE OWNED BY public judge_decisions_id_seq postgres
+235; 1259 29325 TABLE public pass_attempts postgres
+228; 1259 20353 TABLE public passes postgres
+218; 1259 16389 TABLE public prompts postgres
+217; 1259 16388 SEQUENCE public prompts_id_seq postgres
+5157; 0 0 SEQUENCE OWNED BY public prompts_id_seq postgres
+227; 1259 20283 TABLE public runs postgres
+4803; 2604 16401 DEFAULT public answers id postgres
+4806; 2604 16415 DEFAULT public human_preferences id postgres
+4808; 2604 16442 DEFAULT public judge_decisions id postgres
+4801; 2604 16392 DEFAULT public prompts id postgres
+5141; 0 20392 TABLE DATA public alembic_version postgres
+5146; 0 28428 TABLE DATA public analysis_runs postgres
+5132; 0 16398 TABLE DATA public answers postgres
+5145; 0 28407 TABLE DATA public counterfactual_variants postgres
+5137; 0 20242 TABLE DATA public dataset_versions postgres
+5143; 0 28346 TABLE DATA public experiment_manifests postgres
+5142; 0 28330 TABLE DATA public experimental_conditions postgres
+5144; 0 28364 TABLE DATA public experimental_units postgres
+5138; 0 20259 TABLE DATA public experiments postgres
+5134; 0 16412 TABLE DATA public human_preferences postgres
+5136; 0 16439 TABLE DATA public judge_decisions postgres
+5147; 0 29325 TABLE DATA public pass_attempts postgres
+5140; 0 20353 TABLE DATA public passes postgres
+5130; 0 16389 TABLE DATA public prompts postgres
+5139; 0 20283 TABLE DATA public runs postgres
+5158; 0 0 SEQUENCE SET public answers_id_seq postgres
+5159; 0 0 SEQUENCE SET public human_preferences_id_seq postgres
+5160; 0 0 SEQUENCE SET public judge_decisions_id_seq postgres
+5161; 0 0 SEQUENCE SET public prompts_id_seq postgres
+4909; 2606 20396 CONSTRAINT public alembic_version alembic_version_pkc postgres
+4934; 2606 28435 CONSTRAINT public analysis_runs analysis_runs_pkey postgres
+4868; 2606 16405 CONSTRAINT public answers answers_pkey postgres
+4929; 2606 28414 CONSTRAINT public counterfactual_variants counterfactual_variants_pkey postgres
+4876; 2606 20254 CONSTRAINT public dataset_versions dataset_versions_pkey postgres
+4916; 2606 28355 CONSTRAINT public experiment_manifests experiment_manifests_pkey postgres
+4911; 2606 28337 CONSTRAINT public experimental_conditions experimental_conditions_pkey postgres
+4921; 2606 28371 CONSTRAINT public experimental_units experimental_units_pkey postgres
+4882; 2606 20273 CONSTRAINT public experiments experiments_pkey postgres
+4871; 2606 16417 CONSTRAINT public human_preferences human_preferences_pkey postgres
+4874; 2606 16446 CONSTRAINT public judge_decisions judge_decisions_pkey postgres
+4938; 2606 29338 CONSTRAINT public pass_attempts pass_attempts_attempt_id_key postgres
+4940; 2606 29334 CONSTRAINT public pass_attempts pass_attempts_pkey postgres
+4905; 2606 20367 CONSTRAINT public passes passes_pkey postgres
+4866; 2606 16396 CONSTRAINT public prompts prompts_pkey postgres
+4897; 2606 20307 CONSTRAINT public runs runs_idempotency_key_key postgres
+4899; 2606 20309 CONSTRAINT public runs runs_legacy_decision_id_key postgres
+4901; 2606 20305 CONSTRAINT public runs runs_pkey postgres
+4880; 2606 20256 CONSTRAINT public dataset_versions uq_dataset_source_version_checksum postgres
+4942; 2606 29336 CONSTRAINT public pass_attempts uq_pass_attempt_identity postgres
+4907; 2606 20369 CONSTRAINT public passes uq_pass_run_number postgres
+4914; 2606 28339 CONSTRAINT public experimental_conditions uq_phase4_condition_experiment_code postgres
+4919; 2606 28357 CONSTRAINT public experiment_manifests uq_phase4_manifest_experiment_sha postgres
+4927; 2606 28373 CONSTRAINT public experimental_units uq_phase4_unit_fingerprint postgres
+4932; 2606 28416 CONSTRAINT public counterfactual_variants uq_phase4_variant_identity postgres
+4869; 1259 20423 INDEX public ix_answers_source_record_id postgres
+4877; 1259 20257 INDEX public ix_dataset_versions_import_status postgres
+4878; 1259 20258 INDEX public ix_dataset_versions_source_name postgres
+4883; 1259 20281 INDEX public ix_experiments_created_at postgres
+4884; 1259 20282 INDEX public ix_experiments_dataset_version_id postgres
+4885; 1259 20280 INDEX public ix_experiments_research_question postgres
+4886; 1259 20279 INDEX public ix_experiments_status postgres
+4872; 1259 20424 INDEX public ix_human_preferences_source_record_id postgres
+4936; 1259 29344 INDEX public ix_pass_attempts_run_pass postgres
+4902; 1259 20390 INDEX public ix_passes_raw_verdict postgres
+4903; 1259 20391 INDEX public ix_passes_run_id postgres
+4935; 1259 28446 INDEX public ix_phase4_analysis_manifest postgres
+4912; 1259 28345 INDEX public ix_phase4_conditions_experiment postgres
+4917; 1259 28363 INDEX public ix_phase4_manifests_rq postgres
+4922; 1259 28404 INDEX public ix_phase4_units_manifest postgres
+4923; 1259 28405 INDEX public ix_phase4_units_pairing postgres
+4924; 1259 28406 INDEX public ix_phase4_units_prompt postgres
+4930; 1259 28427 INDEX public ix_phase4_variants_original postgres
+4864; 1259 20422 INDEX public ix_prompts_source_record_id postgres
+4887; 1259 20349 INDEX public ix_runs_created_at postgres
+4888; 1259 20348 INDEX public ix_runs_experiment_id postgres
+4889; 1259 28453 INDEX public ix_runs_experimental_unit_id postgres
+4890; 1259 20351 INDEX public ix_runs_original_answer_a_id postgres
+4891; 1259 20346 INDEX public ix_runs_original_answer_b_id postgres
+4892; 1259 20350 INDEX public ix_runs_parent_run_id postgres
+4893; 1259 20345 INDEX public ix_runs_prompt_id postgres
+4894; 1259 20347 INDEX public ix_runs_requested_model postgres
+4895; 1259 20352 INDEX public ix_runs_status postgres
+4925; 1259 29277 INDEX public ix_units_counterfactual_variant_id postgres
+4981; 2606 28436 FK CONSTRAINT public analysis_runs analysis_runs_experiment_id_fkey postgres
+4982; 2606 28441 FK CONSTRAINT public analysis_runs analysis_runs_manifest_id_fkey postgres
+4944; 2606 20406 FK CONSTRAINT public answers answers_dataset_version_id_fkey postgres
+4945; 2606 16406 FK CONSTRAINT public answers answers_prompt_id_fkey postgres
+4978; 2606 28417 FK CONSTRAINT public counterfactual_variants counterfactual_variants_original_answer_id_fkey postgres
+4979; 2606 28422 FK CONSTRAINT public counterfactual_variants counterfactual_variants_variant_answer_id_fkey postgres
+4970; 2606 28358 FK CONSTRAINT public experiment_manifests experiment_manifests_experiment_id_fkey postgres
+4969; 2606 28340 FK CONSTRAINT public experimental_conditions experimental_conditions_experiment_id_fkey postgres
+4971; 2606 28394 FK CONSTRAINT public experimental_units experimental_units_answer_a_id_fkey postgres
+4972; 2606 28399 FK CONSTRAINT public experimental_units experimental_units_answer_b_id_fkey postgres
+4973; 2606 28384 FK CONSTRAINT public experimental_units experimental_units_condition_id_fkey postgres
+4974; 2606 28374 FK CONSTRAINT public experimental_units experimental_units_experiment_id_fkey postgres
+4975; 2606 28379 FK CONSTRAINT public experimental_units experimental_units_manifest_id_fkey postgres
+4976; 2606 28389 FK CONSTRAINT public experimental_units experimental_units_prompt_id_fkey postgres
+4956; 2606 20274 FK CONSTRAINT public experiments experiments_dataset_version_id_fkey postgres
+4957; 2606 28448 FK CONSTRAINT public runs fk_runs_experimental_unit postgres
+4977; 2606 29272 FK CONSTRAINT public experimental_units fk_units_counterfactual_variant postgres
+4980; 2606 29267 FK CONSTRAINT public counterfactual_variants fk_variants_experiment postgres
+4946; 2606 16423 FK CONSTRAINT public human_preferences human_preferences_answer_a_id_fkey postgres
+4947; 2606 16428 FK CONSTRAINT public human_preferences human_preferences_answer_b_id_fkey postgres
+4948; 2606 20416 FK CONSTRAINT public human_preferences human_preferences_dataset_version_id_fkey postgres
+4949; 2606 16418 FK CONSTRAINT public human_preferences human_preferences_prompt_id_fkey postgres
+4950; 2606 16433 FK CONSTRAINT public human_preferences human_preferences_winner_id_fkey postgres
+4951; 2606 16452 FK CONSTRAINT public judge_decisions judge_decisions_answer_a_id_fkey postgres
+4952; 2606 16457 FK CONSTRAINT public judge_decisions judge_decisions_answer_b_id_fkey postgres
+4953; 2606 16462 FK CONSTRAINT public judge_decisions judge_decisions_position_a_id_fkey postgres
+4954; 2606 16447 FK CONSTRAINT public judge_decisions judge_decisions_prompt_id_fkey postgres
+4955; 2606 16467 FK CONSTRAINT public judge_decisions judge_decisions_winner_id_fkey postgres
+4983; 2606 29339 FK CONSTRAINT public pass_attempts pass_attempts_run_id_fkey postgres
+4965; 2606 20375 FK CONSTRAINT public passes passes_presented_answer_a_id_fkey postgres
+4966; 2606 20380 FK CONSTRAINT public passes passes_presented_answer_b_id_fkey postgres
+4967; 2606 20370 FK CONSTRAINT public passes passes_run_id_fkey postgres
+4968; 2606 20385 FK CONSTRAINT public passes passes_winner_answer_id_fkey postgres
+4943; 2606 20398 FK CONSTRAINT public prompts prompts_dataset_version_id_fkey postgres
+4958; 2606 20310 FK CONSTRAINT public runs runs_experiment_id_fkey postgres
+4959; 2606 20330 FK CONSTRAINT public runs runs_final_winner_answer_id_fkey postgres
+4960; 2606 20340 FK CONSTRAINT public runs runs_legacy_decision_id_fkey postgres
+4961; 2606 20320 FK CONSTRAINT public runs runs_original_answer_a_id_fkey postgres
+4962; 2606 20325 FK CONSTRAINT public runs runs_original_answer_b_id_fkey postgres
+4963; 2606 20335 FK CONSTRAINT public runs runs_parent_run_id_fkey postgres
+4964; 2606 20315 FK CONSTRAINT public runs runs_prompt_id_fkey postgres

@@ -155,18 +155,56 @@ class RQ2Repetition(ControlledEvidence):
     expected_repetitions: int = 5
 
 
-def analyze_rq2(units: Iterable[RQ2Repetition], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]:
-    rows = require_controlled(units); groups = defaultdict(list)
-    for row in rows: groups[row.group_key].append(row)
-    group_values: list[float] = []; labels = [r.verdict for r in rows]; excluded = 0
-    for group in groups.values():
+def _rq2_group_metric(groups: Sequence[list[RQ2Repetition]], *, strict: bool, seed: int, iterations: int, judge: str | None = None) -> MetricResult:
+    labels = [row.verdict for group in groups for row in group]
+    values: list[float] = []
+    for group in groups:
         identity = {(r.answer_a_id, r.answer_b_id, r.judge_name, r.provider, r.requested_model, r.effective_model, r.configured_upstream_provider, r.observed_upstream_provider, r.routing_policy_version, r.routing_fingerprint, r.condition, r.temperature, r.prompt_template_version, r.top_p, r.seed_policy) for r in group}
-        repetitions = {r.repetition_index for r in group}; valid = [r.verdict for r in group if r.verdict in VALID]
-        if len(identity) != 1 or len(repetitions) != len(group) or len(group) != group[0].expected_repetitions or not valid: excluded += 1; continue
-        group_values.append(max(Counter(valid).values()) / len(valid))
-    if not group_values: return {"consistency": _not_estimable("rq2_within_unit_consistency", eligible_n=len(groups), status="INSUFFICIENT_ELIGIBLE_UNITS", notes="No complete repeated groups with valid outcomes.", labels=labels)}
-    value = mean(group_values); low, high = bootstrap_ci(group_values, lambda xs: mean(xs), seed=seed, iterations=iterations)
-    return {"consistency": MetricResult("rq2_within_unit_consistency", value, None, len(group_values), len(groups), len(group_values), excluded_count=excluded, ci_low=low, ci_high=high, notes="Mean modal-verdict proportion over complete exact configuration groups; bootstrap resamples groups.", analysis_seed=seed, bootstrap_iterations=iterations, **_counts(labels))}
+        repetitions = {r.repetition_index for r in group}
+        valid = [r.verdict for r in group if r.verdict in VALID]
+        complete = len(identity) == 1 and len(repetitions) == len(group) and len(group) == group[0].expected_repetitions
+        if not complete or not valid or (strict and len(valid) != group[0].expected_repetitions):
+            continue
+        values.append(max(Counter(valid).values()) / len(valid))
+    name = "rq2_strict_complete_repetition_consistency" if strict else "rq2_conditional_returned_judgment_consistency"
+    notes = (
+        "Primary estimand: mean modal-verdict proportion over exact groups whose every planned repetition returned a valid scientific verdict."
+        if strict else
+        "Secondary sensitivity estimand: mean modal-verdict proportion among valid returned judgments in exact planned repetition groups."
+    )
+    if not values:
+        return _not_estimable(name, eligible_n=len(groups), status="INSUFFICIENT_ELIGIBLE_UNITS", notes=notes, labels=labels)
+    low, high = bootstrap_ci(values, lambda sample: mean(sample), seed=seed, iterations=iterations)
+    return MetricResult(name, mean(values), None, len(values), len(groups), len(values), excluded_count=len(groups) - len(values), ci_low=low, ci_high=high, notes=notes, judge=judge, analysis_seed=seed, bootstrap_iterations=iterations, **_counts(labels))
+
+
+def analyze_rq2(units: Iterable[RQ2Repetition], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS, primary_estimand: Literal["strict", "conditional"] = "strict", include_sensitivity: bool = True, include_by_judge: bool = True) -> dict[str, MetricResult]:
+    """Report strict complete-repetition consistency plus the conditional sensitivity estimand.
+
+    ``conditional`` exists solely for immutable historical recomputation.  New
+    release analyses use the strict all-five-valid estimand as their primary.
+    """
+    if primary_estimand not in {"strict", "conditional"}:
+        raise ValueError("primary_estimand must be 'strict' or 'conditional'")
+    rows = require_controlled(units); grouped = defaultdict(list)
+    for row in rows: grouped[row.group_key].append(row)
+    groups = list(grouped.values())
+    strict_metric = _rq2_group_metric(groups, strict=True, seed=seed, iterations=iterations)
+    conditional_metric = _rq2_group_metric(groups, strict=False, seed=seed, iterations=iterations)
+    result = {"consistency": strict_metric if primary_estimand == "strict" else conditional_metric}
+    if include_sensitivity:
+        result["strict_complete_repetition_consistency"] = strict_metric
+        result["conditional_returned_judgment_consistency"] = conditional_metric
+    if include_by_judge:
+        for judge in sorted({row.judge_name for row in rows}):
+            judge_groups = [group for group in groups if group[0].judge_name == judge]
+            judge_strict = _rq2_group_metric(judge_groups, strict=True, seed=seed, iterations=iterations, judge=judge)
+            judge_conditional = _rq2_group_metric(judge_groups, strict=False, seed=seed, iterations=iterations, judge=judge)
+            result[f"judge:{judge}:consistency"] = judge_strict if primary_estimand == "strict" else judge_conditional
+            if include_sensitivity:
+                result[f"judge:{judge}:strict_complete_repetition_consistency"] = judge_strict
+                result[f"judge:{judge}:conditional_returned_judgment_consistency"] = judge_conditional
+    return result
 
 
 @dataclass(frozen=True)
@@ -177,14 +215,20 @@ class RQ3Pair(ControlledEvidence):
     slot_wins_b: int = 0
 
 
-def analyze_rq3(units: Iterable[RQ3Pair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]:
+def analyze_rq3(units: Iterable[RQ3Pair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS, include_by_judge: bool = False) -> dict[str, MetricResult]:
     rows = require_controlled(units); complete = [u for u in rows if u.pass_ab is not None and u.pass_ba is not None]; decisive = [u for u in complete if u.pass_ab in {"ANSWER_A", "ANSWER_B"} and u.pass_ba in {"ANSWER_A", "ANSWER_B"}]
     labels = [x for u in rows for x in (u.pass_ab, u.pass_ba)]
     flip = _rate("rq3_paired_decisive_flip_rate", decisive, lambda u: u.pass_ab != u.pass_ba, eligible_n=len(rows), labels=labels, seed=seed, iterations=iterations, notes="Denominator: complete pairs with two decisive mapped-original outcomes.")
     broad = [u for u in complete if u.pass_ab in VALID and u.pass_ba in VALID]
     disagreement = _rate("rq3_all_paired_disagreement_rate", broad, lambda u: u.pass_ab != u.pass_ba, eligible_n=len(rows), labels=labels, seed=seed, iterations=iterations, notes="Broader valid-label disagreement; distinct from decisive flip rate.")
     slot_a, slot_b = sum(u.slot_wins_a for u in decisive), sum(u.slot_wins_b for u in decisive); slot = _not_estimable("rq3_slot_win_imbalance", eligible_n=len(rows), status="NO_DECISIVE_SLOT_OUTCOMES", notes="No decisive presented-slot outcomes.", labels=labels) if not slot_a + slot_b else MetricResult("rq3_slot_win_imbalance", abs(slot_a-slot_b)/(slot_a+slot_b), abs(slot_a-slot_b), slot_a+slot_b, len(rows), len(decisive), notes="Absolute presented-slot win difference / decisive presented-slot outcomes; not a flip rate.", **_counts(labels))
-    return {"paired_decisive_flip_rate": flip, "all_paired_disagreement_rate": disagreement, "slot_win_imbalance": slot, "incomplete_pairs": MetricResult("rq3_incomplete_pair_count", float(len(rows)-len(complete)), len(rows)-len(complete), len(rows), len(rows), len(rows), notes="Pairs missing either presentation pass.", **_counts(labels))}
+    result = {"paired_decisive_flip_rate": flip, "all_paired_disagreement_rate": disagreement, "slot_win_imbalance": slot, "incomplete_pairs": MetricResult("rq3_incomplete_pair_count", float(len(rows)-len(complete)), len(rows)-len(complete), len(rows), len(rows), len(rows), notes="Pairs missing either presentation pass.", **_counts(labels))}
+    if include_by_judge:
+        for judge in sorted({row.judge_name for row in rows}):
+            judge_metrics = analyze_rq3([row for row in rows if row.judge_name == judge], seed=seed, iterations=iterations)
+            for key, metric in judge_metrics.items():
+                result[f"judge:{judge}:{key}"] = MetricResult(**{**metric.serialize(), "judge": judge})
+    return result
 
 
 @dataclass(frozen=True)
@@ -192,17 +236,28 @@ class VariantPair(ControlledEvidence):
     variant_valid: bool
     variant_outcome: Literal["VARIANT", "ORIGINAL", "TIE"] | None
     order: str
+    transform_valid: bool = True
+    exclusion_reason: str | None = None
 
 
-def _analyze_variant(rq: str, units: Iterable[VariantPair], *, seed: int, iterations: int) -> dict[str, MetricResult]:
+def _analyze_variant(rq: str, units: Iterable[VariantPair], *, seed: int, iterations: int, include_exclusion_breakdown: bool = False) -> dict[str, MetricResult]:
     rows = require_controlled(units); valid = [u for u in rows if u.variant_valid and u.variant_outcome in {"VARIANT", "ORIGINAL", "TIE"}]; labels = [u.variant_outcome for u in rows]
     name = f"{rq.lower()}_controlled_variant_win_rate"
     result = _rate(name, valid, lambda u: u.variant_outcome == "VARIANT", eligible_n=len(rows), labels=labels, seed=seed, iterations=iterations, notes="Validated controlled variant wins / valid controlled variant pairs.")
-    return {"variant_win_rate": result, "original_win_rate": _rate(f"{rq.lower()}_original_win_rate", valid, lambda u: u.variant_outcome == "ORIGINAL", eligible_n=len(rows), labels=labels, seed=seed, iterations=iterations, notes="Reported separately from variant wins."), "rejected_variant_count": MetricResult(f"{rq.lower()}_rejected_variant_count", float(sum(not u.variant_valid for u in rows)), sum(not u.variant_valid for u in rows), len(rows), len(rows), len(rows), notes="Deterministically invalid variants are excluded.")}
+    output = {"variant_win_rate": result, "original_win_rate": _rate(f"{rq.lower()}_original_win_rate", valid, lambda u: u.variant_outcome == "ORIGINAL", eligible_n=len(rows), labels=labels, seed=seed, iterations=iterations, notes="Reported separately from variant wins."), "excluded_pair_count": MetricResult(f"{rq.lower()}_excluded_pair_count", float(sum(not u.variant_valid for u in rows)), sum(not u.variant_valid for u in rows), len(rows), len(rows), len(rows), notes="Total non-analyzed paired units; see explicit exclusion categories.")}
+    if include_exclusion_breakdown:
+        for reason in ("deterministic_transform_rejection", "presentation_order_disagreement", "operational_failure", "invalid_or_incomplete_pair"):
+            count = sum(unit.exclusion_reason == reason for unit in rows)
+            output[f"{reason}_count"] = MetricResult(f"{rq.lower()}_{reason}_count", float(count), count, len(rows), len(rows), len(rows), notes="Explicit paired-unit exclusion category.")
+        stable_decisive = sum(unit.variant_valid and unit.variant_outcome in {"VARIANT", "ORIGINAL"} for unit in rows)
+        stable_tie = sum(unit.variant_valid and unit.variant_outcome == "TIE" for unit in rows)
+        output["stable_decisive_pair_count"] = MetricResult(f"{rq.lower()}_stable_decisive_pair_count", float(stable_decisive), stable_decisive, len(rows), len(rows), len(rows), notes="Valid stable decisive paired units.")
+        output["stable_tie_pair_count"] = MetricResult(f"{rq.lower()}_stable_tie_pair_count", float(stable_tie), stable_tie, len(rows), len(rows), len(rows), notes="Valid stable tie paired units.")
+    return output
 
 
-def analyze_rq4(units: Iterable[VariantPair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]: return _analyze_variant("RQ4", units, seed=seed, iterations=iterations)
-def analyze_rq5(units: Iterable[VariantPair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]: return _analyze_variant("RQ5", units, seed=seed, iterations=iterations)
+def analyze_rq4(units: Iterable[VariantPair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS, include_exclusion_breakdown: bool = False) -> dict[str, MetricResult]: return _analyze_variant("RQ4", units, seed=seed, iterations=iterations, include_exclusion_breakdown=include_exclusion_breakdown)
+def analyze_rq5(units: Iterable[VariantPair], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS, include_exclusion_breakdown: bool = False) -> dict[str, MetricResult]: return _analyze_variant("RQ5", units, seed=seed, iterations=iterations, include_exclusion_breakdown=include_exclusion_breakdown)
 
 
 @dataclass(frozen=True)
@@ -282,6 +337,63 @@ def _rq7_observation_analysis(rows: Sequence[RQ7Observation], *, seed: int, iter
             result[f"{name}_delta"] = _not_estimable(f"rq7_{name}_delta", eligible_n=len(rows), status="NOT_ESTIMABLE", notes="Mitigation-baseline requires finite values under both matched strategies.")
         else:
             result[f"{name}_delta"] = MetricResult(f"rq7_{name}_delta", right.value - left.value, None, min(left.analyzed_n, right.analyzed_n), len(rows), min(left.analyzed_n, right.analyzed_n), notes="delta = DUAL_SWAP - BASELINE; sign is preserved and only comparable metrics are reported.", comparison="dual_swap-baseline")
+    return result
+
+
+def analyze_rq7_matched(units: Iterable[RQ7Observation], *, seed: int = 20260818, iterations: int = BOOTSTRAP_ITERATIONS) -> dict[str, MetricResult]:
+    """Matched RQ7 release analysis.
+
+    Strategy-specific operating points retain all eligible units for coverage.
+    Agreement comparisons are restricted to the same units with a valid human
+    label, valid baseline outcome, and stable valid DUAL_SWAP outcome.  This is
+    an explicit matched retained-decision comparison, not a causal claim.
+    """
+    rows = require_controlled(units)
+    if not all(isinstance(row, RQ7Observation) for row in rows):
+        raise ValueError("Matched RQ7 analysis requires raw RQ7 observations")
+    observations: list[RQ7Observation] = rows  # type: ignore[assignment]
+    dual_labels: list[str | None] = []
+    for row in observations:
+        if row.dual_ab_label == row.dual_ba_label and row.dual_ab_label in VALID:
+            dual_labels.append(row.dual_ab_label)
+        elif row.dual_ab_label is None or row.dual_ba_label is None:
+            dual_labels.append(None)
+        elif row.dual_ab_label in FAILURES or row.dual_ba_label in FAILURES:
+            dual_labels.append("API_ERROR")
+        else:
+            dual_labels.append("MISSING_PASS")
+    baseline_labels = [row.baseline_label for row in observations]
+    result: dict[str, MetricResult] = {}
+    # Descriptive operating points remain useful, but they do not share an
+    # effective returned-decision population and are never used as a delta.
+    descriptive = _rq7_strategy(observations, baseline_labels, prefix="baseline_operating_point", dual=False, seed=seed, iterations=iterations)
+    descriptive.update(_rq7_strategy(observations, dual_labels, prefix="dual_swap_operating_point", dual=True, seed=seed, iterations=iterations))
+    result.update(descriptive)
+    result["baseline_coverage"] = result.pop("baseline_operating_point_coverage")
+    result["dual_swap_coverage"] = result.pop("dual_swap_operating_point_coverage")
+    # Retain a concise, stable public key while preserving the explicit
+    # operating-point namespace for the non-comparable descriptive metrics.
+    result["dual_swap_dual_pass_stability"] = result["dual_swap_operating_point_dual_pass_stability"]
+    baseline_coverage, dual_coverage = result["baseline_coverage"], result["dual_swap_coverage"]
+    result["coverage_delta"] = MetricResult("rq7_coverage_delta", (dual_coverage.value - baseline_coverage.value) if baseline_coverage.value is not None and dual_coverage.value is not None else None, None, len(observations), len(observations), len(observations), notes="Descriptive coverage delta = DUAL_SWAP - BASELINE over the same planned matched units.", comparison="dual_swap-baseline", analysis_seed=seed, bootstrap_iterations=iterations, **_counts([*baseline_labels, *dual_labels]))
+    matched = [(row, dual) for row, dual in zip(observations, dual_labels) if row.human_label in VALID and row.baseline_label in VALID and dual in VALID]
+    labels = [label for row, dual in matched for label in (row.baseline_label, dual)]
+    baseline = _rate("rq7_matched_retained_baseline_agreement", matched, lambda pair: pair[0].baseline_label == pair[0].human_label, eligible_n=len(observations), labels=labels, seed=seed, iterations=iterations, notes="Agreement on the exact matched retained-decision subset; not an all-unit operating point.")
+    dual = _rate("rq7_matched_retained_dual_swap_agreement", matched, lambda pair: pair[1] == pair[0].human_label, eligible_n=len(observations), labels=labels, seed=seed, iterations=iterations, notes="Agreement on the exact matched retained-decision subset; not an all-unit operating point.")
+    result["baseline_agreement"] = baseline
+    result["dual_swap_agreement"] = dual
+    deltas = [int(dual_label == row.human_label) - int(row.baseline_label == row.human_label) for row, dual_label in matched]
+    if deltas:
+        low, high = bootstrap_ci(deltas, lambda sample: mean(sample), seed=seed, iterations=iterations)
+        result["agreement_delta"] = MetricResult("rq7_matched_retained_agreement_delta", mean(deltas), sum(deltas), len(deltas), len(observations), len(deltas), ci_low=low, ci_high=high, notes="Paired matched retained-decision agreement difference (DUAL_SWAP - BASELINE). It conditions on both strategies returning valid decisions and is not a causal treatment-effect claim.", comparison="dual_swap-baseline", analysis_seed=seed, bootstrap_iterations=iterations, **_counts(labels))
+    else:
+        result["agreement_delta"] = _not_estimable("rq7_matched_retained_agreement_delta", eligible_n=len(observations), status="NO_COMMON_VALID_UNITS", notes="No units have valid human, baseline, and stable DUAL_SWAP outcomes.", labels=labels)
+    discordant = {
+        "baseline_only_correct": sum(row.baseline_label == row.human_label and dual_label != row.human_label for row, dual_label in matched),
+        "dual_swap_only_correct": sum(row.baseline_label != row.human_label and dual_label == row.human_label for row, dual_label in matched),
+    }
+    for key, value in discordant.items():
+        result[f"{key}_count"] = MetricResult(f"rq7_{key}_count", float(value), value, len(matched), len(observations), len(matched), notes="Discordant matched retained-decision count.", **_counts(labels))
     return result
 
 

@@ -49,20 +49,27 @@ def _variant_from_run(run: ControlledRun, unit: ExperimentalUnit, *, rq_code: st
     _verify(run, unit)
     records = sorted(run.passes, key=lambda p: p.pass_number)
     outcomes: list[str | None] = []
-    valid = bool(unit.counterfactual_variant_id)
+    transform_valid = bool(unit.counterfactual_variant_id)
+    exclusion_reason: str | None = None
     for record in records:
         value = pass_outcome(record)
         slots = (record.presentation_provenance_json or {}).get("variant_slot")
-        if not valid or slots not in {"A", "B"}:
-            valid = False; continue
+        if not transform_valid or slots not in {"A", "B"}:
+            transform_valid = False; exclusion_reason = "deterministic_transform_rejection"; continue
         if value == "TIE": outcomes.append("TIE")
         elif value == "ANSWER_A": outcomes.append("VARIANT" if slots == "A" else "ORIGINAL")
         elif value == "ANSWER_B": outcomes.append("VARIANT" if slots == "B" else "ORIGINAL")
-        else: outcomes.append(None)
+        else:
+            outcomes.append(None)
+            exclusion_reason = "invalid_or_incomplete_pair" if value == "INVALID_RESPONSE" else "operational_failure"
+    if len(records) != 2:
+        exclusion_reason = "invalid_or_incomplete_pair"
     # A paired control is eligible only if both mapped presentations agree or
     # are both tie; disagreement remains an explicit execution exclusion.
-    mapped = outcomes[0] if outcomes and all(value == outcomes[0] for value in outcomes) else None
-    return VariantPair("CONTROLLED", str(unit.id), rq_code, run.judge_name, unit.condition_code, valid and mapped is not None, mapped, unit.presentation_order)
+    mapped = outcomes[0] if len(outcomes) == 2 and all(value == outcomes[0] for value in outcomes) else None
+    if transform_valid and exclusion_reason is None and mapped is None:
+        exclusion_reason = "presentation_order_disagreement"
+    return VariantPair("CONTROLLED", str(unit.id), rq_code, run.judge_name, unit.condition_code, transform_valid and exclusion_reason is None and mapped is not None, mapped, unit.presentation_order, transform_valid, exclusion_reason)
 
 
 def rq4_from_run(run: ControlledRun, unit: ExperimentalUnit) -> VariantPair:

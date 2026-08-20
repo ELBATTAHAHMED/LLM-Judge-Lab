@@ -107,7 +107,7 @@ def test_variant_source_family_mitigation_and_not_estimable_contracts(isolated_e
     assert validate_format_variant(1, original, formatted).valid and not validate_format_variant(1, original, formatted + "\n- New fact.").valid
     rq4 = analyze_rq4([VariantPair("CONTROLLED", "v", "RQ4", "g", "c", True, "VARIANT", "AB_BA"), VariantPair("CONTROLLED", "bad", "RQ4", "g", "c", False, "VARIANT", "AB_BA")], seed=1, iterations=50)
     rq5 = analyze_rq5([VariantPair("CONTROLLED", "f", "RQ5", "g", "c", True, "ORIGINAL", "AB_BA")], seed=1, iterations=50)
-    assert rq4["variant_win_rate"].denominator == 1 and rq4["rejected_variant_count"].numerator == 1 and rq5["original_win_rate"].value == 1
+    assert rq4["variant_win_rate"].denominator == 1 and rq4["excluded_pair_count"].numerator == 1 and rq5["original_win_rate"].value == 1
     from controlled_analysis_metrics import RQ6Unit
     rq6 = analyze_rq6([RQ6Unit("CONTROLLED", "a", "RQ6", "g", "c", True, "SELF", "A"), RQ6Unit("CONTROLLED", "b", "RQ6", "g", "c", True, "OTHER", "B"), RQ6Unit("CONTROLLED", "m", "RQ6", "g", "c", False, None, None)], iterations=50)["self_family_preference"]
     assert rq6.value == .5 and rq6.denominator == 2

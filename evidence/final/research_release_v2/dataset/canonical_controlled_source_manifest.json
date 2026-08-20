@@ -1,0 +1,120 @@
+{
+  "license_attribution_status": "UNVERIFIED_IN_LOCAL_SOURCE_METADATA",
+  "prompt_ids": [
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    130,
+    131,
+    132,
+    133,
+    134,
+    135,
+    136,
+    137,
+    138,
+    139,
+    140,
+    141,
+    142,
+    143,
+    144,
+    145,
+    146,
+    147,
+    148,
+    149,
+    150,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    157,
+    158,
+    159,
+    160
+  ],
+  "raw_files": [
+    {
+      "path": "data/question.jsonl",
+      "sha256": "119565adbab82227089cefdb44c8d7e2cf04dc0a0ec233634c82e7d4e2a944f7"
+    },
+    {
+      "path": "data/human_judgment.jsonl",
+      "sha256": "48f627d9a5ebb529869d5d12953e4b309dd81f9bfab034a92a0ed902d84fa5a4"
+    },
+    {
+      "path": "data/alpaca-13b.jsonl",
+      "sha256": "80f4a8bf4665839d33fa0ea7f4b58824abf88d5a0edc9e7cc68a362fca88ef98"
+    },
+    {
+      "path": "data/claude-v1.jsonl",
+      "sha256": "884c109de34721859bf7ffa0f7e525dfbc9fb0d99c1ee7c5488bfb2eb8f8c62c"
+    },
+    {
+      "path": "data/gpt-3.5-turbo.jsonl",
+      "sha256": "c3c097c21f91e4b44a554d82e5d47516daf7e8240e13b2eca79d211afc1fdfd6"
+    },
+    {
+      "path": "data/gpt-4.jsonl",
+      "sha256": "f65cdce00aa8567e9add118cabd34c2866291ed8f5c1d568f8da9a81d231d3e7"
+    },
+    {
+      "path": "data/llama-13b.jsonl",
+      "sha256": "b96b9f1e0a7e4e669fecfecda1c33908fdc4c095e38346e84352ea254c0b2cbc"
+    },
+    {
+      "path": "data/vicuna-13b.jsonl",
+      "sha256": "1edaf1a2eb43a8b03154789b309b717b0ef537a21a0901a72527cc2149407e31"
+    }
+  ],
+  "scope": "Canonical raw source files used by the final controlled prompt subset; this does not claim the legacy whole-database DatasetVersion counts are the final experimental sample."
+}

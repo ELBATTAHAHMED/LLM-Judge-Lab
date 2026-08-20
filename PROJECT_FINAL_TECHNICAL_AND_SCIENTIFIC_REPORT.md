@@ -30,15 +30,19 @@ and inspection rather than treating an LLM judgment as objective truth.
 The final DatasetVersion is `2f8c7bba-08b1-4d8b-8b0e-b564e8a61886`
 (`controlled-final-plan-v1`), with dataset SHA-256
 `b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510`.
-Its source name is `judgelab-canonical-human-reference`; the frozen identity
-records 107 prompts, 2,139 answers, and 1,615 canonical unordered human
-reference pairs under `unordered-pair-consensus-v1`. Checked-in source material
+Its source name is `judgelab-canonical-human-reference`; its legacy
+whole-database import metadata records 107 prompts, 2,139 answers, and 1,615
+human-reference pairs under `unordered-pair-consensus-v1`. These counts do not
+describe the final controlled source subset: all canonical controlled units use
+the 80 raw prompts with IDs 81–160. Checked-in source material
 consists of `data/question.jsonl`, `data/human_judgment.jsonl`, and the model
 answer JSONL files. The recorded lineage normalizes those judgments into the
 canonical unordered reference pairs, applies the frozen import filters, then
 creates checksum-linked controlled RQ4/RQ5 variants. Dataset version metadata,
 exclusions, variants, and final controlled inclusion are preserved in the Phase
-11 package. License/attribution metadata requires external verification.
+11 package. The additive release records the reconciliation and raw-file hashes
+in `evidence/final/research_release_v2/dataset/`. License/attribution metadata
+requires external verification.
 
 The frozen Phase 11 controlled execution comprises **13,400 units** and
 **16,600 pass slots**. The later, separate counterbalanced RQ6 lineage adds
@@ -85,16 +89,17 @@ zeros, or fabricated outcomes.
 | RQ | Authoritative final result |
 | --- | --- |
 | RQ1 | 58.44% agreement with human preference reference labels (95% CI 55.06–61.95%), Cohen's kappa 0.3121, N=770. |
-| RQ2 | 96.56% consistency (95% CI 96.04–97.07%), N=1,474 complete groups. No final temperature comparison is estimable. |
+| RQ2 | Primary strict complete-repetition consistency: 96.74% (95% CI 96.22–97.23%), N=1,428 all-valid groups. Conditional returned-judgment sensitivity: 96.56%, N=1,474. No final temperature comparison is estimable. |
 | RQ3 | 16.70% paired decisive flip rate (95% CI 13.76–19.82%), N=545 decisive pairs; 24.87% all-paired disagreement, N=756 complete pairs. |
 | RQ4 | 0.44% controlled redundant-variant win rate (95% CI 0–1.02%), N=685 valid controlled pairs. |
 | RQ5 | 1.11% controlled format-variant win rate (95% CI 0.42–1.95%), N=719 valid controlled pairs. |
 | RQ6 | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). Claude 86.21%, GPT-4o-mini 75.76%, and Llama 9.38%; no clear uniform cross-judge preference. |
-| RQ7 | Baseline agreement 60.65%; DUAL_SWAP agreement 68.78%; delta +8.13 percentage points. Valid coverage changes from 95.63% to 72.88%, a -22.75 percentage-point trade-off. |
+| RQ7 | Matched retained-decision agreement: baseline 67.66%; DUAL_SWAP 68.37%; difference +0.70 pp (95% CI 0.00–1.58; N=569). Descriptive valid coverage changes from 95.63% to 72.88%, a -22.75 pp trade-off. |
 
-The RQ7 result is a measured trade-off: higher agreement with the human
-preference reference labels was accompanied by lower valid coverage. It is not
-a claim that mitigation universally improves reliability.
+The RQ7 matched retained-decision difference conditions on both strategies
+returning valid decisions. Coverage is reported over all planned units. It is
+not a causal treatment-effect claim or a claim that mitigation universally
+improves reliability.
 
 ## 6. Scientific Interpretation and Limitations
 
@@ -111,7 +116,8 @@ a claim that mitigation universally improves reliability.
   association. Its stable-decisive coverage is 33.13%; AB/BA controls
   presentation position but not source/content-quality confounding, so it is
   not causal proof of self-bias.
-- RQ7 does not eliminate bias; its coverage cost is part of the result.
+- RQ7 does not eliminate bias; its coverage cost is part of the result and the
+  matched retained-decision difference is non-causal.
 - Provider failures, invalid outcomes, exclusions, and incomplete pairings are
   retained in accounting and applied through each metric's stated denominator.
 
@@ -130,8 +136,9 @@ checksums, and a standard-library verifier.
 
 ## 8. Final Frontend State
 
-- `/controlled-results` presents the complete frozen RQ1–RQ7 evidence.
-- `/synthesis` provides a concise executive synthesis of controlled findings.
+- `/` opens `/synthesis`, the concise executive synthesis of controlled findings.
+- `/controlled-results` is the primary navigation tab and presents the complete
+  current controlled RQ1–RQ7 evidence.
 - Leaderboard content is historical/exploratory, not final controlled evidence.
 - Diagnostics are legacy/exploratory telemetry.
 - Qualitative Explorer supports historical qualitative interpretation.
@@ -162,6 +169,13 @@ package. Its permanent addendum is
 the deterministic AB/BA selection manifest is retained alongside a compact
 provenance record that identifies the Experiment, manifest hash, run ledger,
 and canonical completed AnalysisRun.
+
+The additive current release is
+[`evidence/final/research_release_v2/`](evidence/final/research_release_v2/).
+It pins the corrected RQ2/RQ3/RQ4/RQ5/RQ7 analyses, the counterbalanced RQ6
+analysis, a physical PostgreSQL custom-format snapshot, `pg_restore --list`, a
+disposable-database restore/read test, checksums, and an offline verifier. It
+does not modify or reseal Phase 11.
 
 ## 10. Important Historical Repairs
 

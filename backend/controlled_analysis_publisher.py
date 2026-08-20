@@ -10,7 +10,7 @@ from controlled_persistence import to_json_safe
 from controlled_analysis_adapter import rq1_from_run, rq2_from_run, rq3_from_run, rq4_from_run, rq5_from_run, rq6_from_run, rq7_observations
 from evidence_contract import EvidenceClass
 from controlled_analysis_metrics import ANALYSIS_VERSION, MetricResult
-from controlled_analysis_metrics import analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7
+from controlled_analysis_metrics import analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7, analyze_rq7_matched
 
 
 def serialize_metrics(*, rq_code: str, metrics: Mapping[str, MetricResult], source_units: Iterable[ExperimentalUnit]) -> list[dict[str, object]]:
@@ -53,7 +53,7 @@ def publish_analysis_run(*, session: Session, experiment: Experiment, manifest: 
     return row
 
 
-def publish_manifest_analysis(*, session: Session, experiment: Experiment, manifest: ExperimentManifest, analysis_seed: int = 20260818, iterations: int = 10_000) -> AnalysisRun:
+def publish_manifest_analysis(*, session: Session, experiment: Experiment, manifest: ExperimentManifest, analysis_seed: int = 20260818, iterations: int = 10_000, current_release: bool = False) -> AnalysisRun:
     """One non-ad-hoc persisted CONTROLLED evidence → AnalysisRun path for RQ1--7."""
     units = list(session.query(ExperimentalUnit).filter(ExperimentalUnit.manifest_id == manifest.id).all())
     runs = [run for run in session.query(ControlledRun).filter(ControlledRun.experimental_unit_id.in_([unit.id for unit in units])).all()
@@ -62,11 +62,11 @@ def publish_manifest_analysis(*, session: Session, experiment: Experiment, manif
     pairs = [(by_unit[unit.id], unit) for unit in units if unit.id in by_unit]
     rq = manifest.rq_code
     if rq == "RQ1": metrics = analyze_rq1([rq1_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations)
-    elif rq == "RQ2": metrics = analyze_rq2([rq2_from_run(run, unit, seed_policy="provider-recorded") for run, unit in pairs], seed=analysis_seed, iterations=iterations)
-    elif rq == "RQ3": metrics = analyze_rq3([rq3_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations)
-    elif rq == "RQ4": metrics = analyze_rq4([rq4_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations)
-    elif rq == "RQ5": metrics = analyze_rq5([rq5_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations)
+    elif rq == "RQ2": metrics = analyze_rq2([rq2_from_run(run, unit, seed_policy="provider-recorded") for run, unit in pairs], seed=analysis_seed, iterations=iterations, primary_estimand="strict" if current_release else "conditional", include_sensitivity=current_release, include_by_judge=current_release)
+    elif rq == "RQ3": metrics = analyze_rq3([rq3_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations, include_by_judge=current_release)
+    elif rq == "RQ4": metrics = analyze_rq4([rq4_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations, include_exclusion_breakdown=current_release)
+    elif rq == "RQ5": metrics = analyze_rq5([rq5_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations, include_exclusion_breakdown=current_release)
     elif rq == "RQ6": metrics = analyze_rq6([rq6_from_run(run, unit) for run, unit in pairs], seed=analysis_seed, iterations=iterations)
-    elif rq == "RQ7": metrics = analyze_rq7(rq7_observations(pairs), seed=analysis_seed, iterations=iterations)
+    elif rq == "RQ7": metrics = (analyze_rq7_matched if current_release else analyze_rq7)(rq7_observations(pairs), seed=analysis_seed, iterations=iterations)
     else: raise ValueError(f"unsupported controlled research question {rq}")
     return publish_analysis_run(session=session, experiment=experiment, manifest=manifest, rq_code=rq, metrics=metrics, source_units=units, analysis_seed=analysis_seed)

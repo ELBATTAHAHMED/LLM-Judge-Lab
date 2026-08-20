@@ -9,8 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_analysis_metrics import (  # noqa: E402
-    ANALYSIS_VERSION, ControlledEvidence, RQ1Unit, RQ2Repetition, RQ3Pair, RQ6Unit, RQ7Pair, VariantPair,
-    analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7,
+    ANALYSIS_VERSION, ControlledEvidence, RQ1Unit, RQ2Repetition, RQ3Pair, RQ6Unit, RQ7Observation, RQ7Pair, VariantPair,
+    analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7, analyze_rq7_matched,
 )
 
 
@@ -42,6 +42,15 @@ def test_rq2_rejects_mixed_route_identity_as_one_exact_configuration():
     assert result.status == "INSUFFICIENT_ELIGIBLE_UNITS"
 
 
+def test_rq2_strict_primary_excludes_groups_with_nonvalid_repetitions_but_keeps_conditional_sensitivity():
+    rows = [RQ2Repetition(**evidence("RQ2", f"a{i}"), group_key="all-valid", answer_a_id=1, answer_b_id=2, temperature=0, repetition_index=i, retry_count=0, verdict="ANSWER_A") for i in range(5)]
+    rows += [RQ2Repetition(**evidence("RQ2", f"b{i}"), group_key="one-failure", answer_a_id=3, answer_b_id=4, temperature=0, repetition_index=i, retry_count=0, verdict="ANSWER_A" if i < 4 else "API_ERROR") for i in range(5)]
+    result = analyze_rq2(rows, iterations=50)
+    assert result["consistency"].denominator == 1
+    assert result["strict_complete_repetition_consistency"].denominator == 1
+    assert result["conditional_returned_judgment_consistency"].denominator == 2
+
+
 def test_rq3_paired_flip_tie_incomplete_and_slot_imbalance_are_separate():
     rows = [RQ3Pair(**evidence("RQ3", "stable"), pass_ab="ANSWER_A", pass_ba="ANSWER_A", slot_wins_a=1), RQ3Pair(**evidence("RQ3", "flip"), pass_ab="ANSWER_A", pass_ba="ANSWER_B", slot_wins_a=2), RQ3Pair(**evidence("RQ3", "tie"), pass_ab="TIE", pass_ba="ANSWER_A"), RQ3Pair(**evidence("RQ3", "missing"), pass_ab="ANSWER_A", pass_ba=None)]
     result = analyze_rq3(rows, seed=8, iterations=100)
@@ -55,7 +64,7 @@ def test_rq4_rq5_controlled_variants_keep_denominators_and_reject_invalid(analyz
     rows = [VariantPair(**evidence(rq, "variant"), variant_valid=True, variant_outcome="VARIANT", order="AB_BA"), VariantPair(**evidence(rq, "original"), variant_valid=True, variant_outcome="ORIGINAL", order="AB_BA"), VariantPair(**evidence(rq, "tie"), variant_valid=True, variant_outcome="TIE", order="AB_BA"), VariantPair(**evidence(rq, "bad"), variant_valid=False, variant_outcome="VARIANT", order="AB_BA")]
     result = analyzer(rows, seed=1, iterations=100)
     assert result["variant_win_rate"].value == 1 / 3 and result["variant_win_rate"].denominator == 3
-    assert result["rejected_variant_count"].numerator == 1
+    assert result["excluded_pair_count"].numerator == 1
 
 
 def test_rq6_balanced_self_family_metric_rejects_missing_and_unbalanced_slots():
@@ -71,6 +80,19 @@ def test_rq7_preserves_positive_negative_equal_no_data_baseline_zero_and_tradeof
     result = analyze_rq7(rows)
     assert result["agreement"].value == 0.0 and result["position"].value == -.3 and result["zero"].value == .1
     assert analyze_rq7([])["delta"].status == "NOT_ESTIMABLE"
+
+
+def test_rq7_matched_comparison_uses_only_common_valid_returned_decisions():
+    rows = [
+        RQ7Observation(**evidence("RQ7", "one"), base_pair_key="one", human_label="ANSWER_A", baseline_label="ANSWER_A", dual_ab_label="ANSWER_A", dual_ba_label="ANSWER_A"),
+        RQ7Observation(**evidence("RQ7", "two"), base_pair_key="two", human_label="ANSWER_A", baseline_label="ANSWER_B", dual_ab_label="ANSWER_A", dual_ba_label="ANSWER_A"),
+        RQ7Observation(**evidence("RQ7", "excluded"), base_pair_key="excluded", human_label="ANSWER_A", baseline_label="ANSWER_A", dual_ab_label="ANSWER_A", dual_ba_label="ANSWER_B"),
+    ]
+    result = analyze_rq7_matched(rows, iterations=50)
+    assert result["baseline_agreement"].denominator == 2
+    assert result["dual_swap_agreement"].denominator == 2
+    assert result["agreement_delta"].value == 0.5
+    assert result["baseline_coverage"].denominator == 3 and result["dual_swap_coverage"].denominator == 3
 
 
 def test_controlled_only_version_and_zero_denominator_safety():

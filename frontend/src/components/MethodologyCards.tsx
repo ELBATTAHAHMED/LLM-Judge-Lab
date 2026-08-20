@@ -20,7 +20,7 @@ export const MethodologyCards: React.FC = () => {
         </div>
 
         <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-          Raw win rates suffer from schedule-dependency bias (a model matched against stronger opponents is penalized). The Bradley-Terry model estimates intrinsic quality parameters (&theta;) simultaneously across all 1,530 pairwise decisions via Maximum Likelihood Estimation (log-likelihood: -751.59).
+          This exploratory ranking model adjusts for uneven comparison schedules. It is not a substitute for the final controlled RQ1–RQ7 evidence.
         </p>
       </div>
 

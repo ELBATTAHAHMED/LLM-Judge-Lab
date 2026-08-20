@@ -12,7 +12,7 @@ from controlled_analysis_metrics import (
     analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7,
     ANALYSIS_VERSION
 )
-from final_evidence import PHASE11_HISTORICAL_FINAL_MANIFESTS
+from final_evidence import PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS, PHASE11_HISTORICAL_FINAL_MANIFESTS
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXPORTS_DIR = ROOT_DIR / "exports" / "phase10"
@@ -22,7 +22,7 @@ def test_phase10_published_analysis_runs_all_completed():
     session = SessionLocal()
     try:
         manifests = list(session.query(ExperimentManifest).filter(ExperimentManifest.id.in_(PHASE11_HISTORICAL_FINAL_MANIFESTS.values())).all())
-        runs = session.query(AnalysisRun).filter(AnalysisRun.manifest_id.in_([manifest.id for manifest in manifests])).order_by(AnalysisRun.rq_code).all()
+        runs = session.query(AnalysisRun).filter(AnalysisRun.id.in_(PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS.values())).order_by(AnalysisRun.rq_code).all()
         assert len(runs) == 7
         for r in runs:
             assert r.status == "COMPLETED"
@@ -57,7 +57,7 @@ def test_phase10_offline_recomputation_exact_match_rq1_to_rq7():
             if rq == "RQ1":
                 recomputed = analyze_rq1([rq1_from_run(r, u) for r, u in pairs], seed=seed, iterations=iterations)
             elif rq == "RQ2":
-                recomputed = analyze_rq2([rq2_from_run(r, u, seed_policy="provider-recorded") for r, u in pairs], seed=seed, iterations=iterations)
+                recomputed = analyze_rq2([rq2_from_run(r, u, seed_policy="provider-recorded") for r, u in pairs], seed=seed, iterations=iterations, primary_estimand="conditional", include_sensitivity=False, include_by_judge=False)
             elif rq == "RQ3":
                 recomputed = analyze_rq3([rq3_from_run(r, u) for r, u in pairs], seed=seed, iterations=iterations)
             elif rq == "RQ4":
@@ -69,13 +69,17 @@ def test_phase10_offline_recomputation_exact_match_rq1_to_rq7():
             elif rq == "RQ7":
                 recomputed = analyze_rq7(rq7_observations(pairs), seed=seed, iterations=iterations)
 
-            ar = session.query(AnalysisRun).filter(AnalysisRun.manifest_id == m.id).first()
+            ar = session.get(AnalysisRun, PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS[rq])
             assert ar is not None
             pub_results = {r["metric_key"]: r for r in ar.result_json["results"]}
 
             for k, metric in recomputed.items():
-                assert k in pub_results
-                pub_row = pub_results[k]
+                # Phase 11 named this aggregate ``rejected_variant_count``.
+                # The active release exposes the same total as the clearer
+                # ``excluded_pair_count`` plus an explicit breakdown.
+                historical_key = "rejected_variant_count" if rq in {"RQ4", "RQ5"} and k == "excluded_pair_count" else k
+                assert historical_key in pub_results
+                pub_row = pub_results[historical_key]
                 if metric.value is not None:
                     assert abs(metric.value - pub_row["value"]) < 1e-9
                 else:
