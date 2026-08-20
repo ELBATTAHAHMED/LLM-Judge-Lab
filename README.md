@@ -6,7 +6,7 @@
 [![React](https://img.shields.io/badge/React-19.0-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.0+-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 **Author:** Ahmed El Battah  
 **Degree:** Master Intelligent Processing Systems (IPS - Projet de Fin d'Études / Master's Thesis)  
@@ -261,7 +261,7 @@ pytest tests/test_pipeline.py -v
 
 ## 📄 License & Citation
 
-This project is released under the [MIT License](LICENSE).
+This project is released under the MIT License.
 
 ```bibtex
 @mastersthesis{elbattah2026llmjudge,
