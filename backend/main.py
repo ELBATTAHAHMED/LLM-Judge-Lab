@@ -1078,9 +1078,12 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
             chi2_fmt = None
             p_val_fmt = None
 
+        # Zero eligible mixed-format comparisons is an absence of data, not a
+        # measured 0-count result. Preserve numeric zeros only when eligible
+        # comparisons actually exist.
         format_bias = {
-            "markdown_chosen": markdown_chosen,
-            "plain_text_chosen": plain_text_chosen,
+            "markdown_chosen": markdown_chosen if total_fmt_obs > 0 else None,
+            "plain_text_chosen": plain_text_chosen if total_fmt_obs > 0 else None,
             "p_value": round(p_val_fmt, 6) if p_val_fmt is not None else None,
             "p_value_adjusted": round(float(_adjust_pvalues_bh([p_val_fmt])[0]), 6) if p_val_fmt is not None else None,
             "chi2_stat": round(chi2_fmt, 3) if chi2_fmt is not None else None,

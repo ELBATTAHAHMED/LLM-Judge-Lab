@@ -195,10 +195,8 @@ export interface MacroBenchmarkResponse {
 }
 
 /**
- * Future controlled-result API contract.  Values are deliberately nullable:
- * `NOT_ESTIMABLE` and absent controlled evidence must never be rendered as 0.
- * The existing dashboard remains on legacy exploratory endpoints until the
- * later frontend-synchronization phase explicitly connects this contract.
+ * Current authoritative controlled-results API contract. Values are deliberately
+ * nullable: `NOT_ESTIMABLE` and absent controlled evidence must never render as 0.
  */
 export type ControlledEvidenceClass = 'CONTROLLED' | 'DRY_RUN_MOCK';
 export type ControlledMetricStatus = 'ESTIMABLE' | 'NOT_ESTIMABLE' | 'NO_DATA';

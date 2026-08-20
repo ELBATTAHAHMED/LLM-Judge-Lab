@@ -59,7 +59,7 @@ export const DiagnosticsPage: React.FC = () => {
       ['Self Preference', 'Self Win Rate', selfPrefData?.self_win_rate != null ? `${(selfPrefData.self_win_rate * 100).toFixed(1)}%` : 'N/A', 'Same family win rate'],
       ['Self Preference', 'Baseline Win Rate', selfPrefData?.baseline_win_rate != null ? `${(selfPrefData.baseline_win_rate * 100).toFixed(1)}%` : 'N/A', 'Other family win rate'],
       ['Self Preference', 'Self Preference Ratio', selfPrefData?.self_preference_ratio != null ? selfPrefData.self_preference_ratio.toFixed(3) : 'N/A', 'Ratio over baseline'],
-      ['Self Preference', 'Detected', `${selfPrefData?.self_preference_detected ?? false}`, 'Statistical significance flag'],
+      ['Self Preference', 'Detected', selfPrefData?.status === 'AVAILABLE' ? `${selfPrefData.self_preference_detected}` : 'N/A', 'Statistical significance flag'],
     ];
 
     if (biasData?.domain_kappa) {

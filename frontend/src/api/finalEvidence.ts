@@ -3,11 +3,11 @@ import type { ControlledMetricResult } from './types';
 export const RQ_TITLES: Record<string, string> = {
   RQ1: 'Human Alignment',
   RQ2: 'Stochastic Consistency',
-  RQ3: 'Position Sensitivity / Bias',
+  RQ3: 'Position Sensitivity',
   RQ4: 'Controlled Redundant-Length Effect',
   RQ5: 'Controlled Presentation-Format Effect',
   RQ6: 'Counterbalanced Matched Source-Family Preference',
-  RQ7: 'Baseline Single-Pass vs DUAL_SWAP Mitigation',
+  RQ7: 'Mitigation Trade-off',
 };
 
 const JUDGE_LABELS: Record<string, string> = {
