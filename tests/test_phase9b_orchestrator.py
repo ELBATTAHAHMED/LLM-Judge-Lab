@@ -161,6 +161,117 @@ def test_mock_resume_dispatches_only_226_rq5_units_and_second_run_zero(tmp_path)
             assert len(req.answer_a) > 0
             assert len(req.answer_b) > 0
             assert req.presentation_provenance == {"variant_slot": "B"}
+
+        # Simulate execution inside savepoint
+        savepoint = session.begin_nested()
+        try:
+            repo = ControlledPersistence(session)
+            dispatched_units = 0
+            dispatched_passes = 0
+            for u in pending_units:
+                req, is_dual = materialize_evaluation_request(session, u, manifest_rq=manifest_rq)
+                c_key = hashlib.sha256(f"controlled:{u.id}:dual".encode()).hexdigest()
+                unit_mock_engine = ControlledEvaluationEngine(DeterministicMockProvider([MockScenario.ANSWER_A, MockScenario.ANSWER_A]))
+                unit_service = ControlledExecutionService(repo, unit_mock_engine, evidence_class="CONTROLLED")
+                r = unit_service.execute_dual(unit=u, first_request=req, idempotency_key=c_key)
+                dispatched_units += 1
+                dispatched_passes += len(r.passes)
+
+            session.flush()
+            assert dispatched_units == 226
+            assert dispatched_passes == 452
+
+            # Run 2: Re-check pending units and verify 0
+            c_runs2 = [
+                r for r in session.query(ControlledRun).all()
+                if (r.metadata_json or {}).get("evidence_class") == "CONTROLLED"
+            ]
+            term_ids2 = {
+                r.experimental_unit_id for r in c_runs2
+                if r.status in {"SUCCEEDED", "FAILED"} or (r.status == "PARTIAL" and len(r.passes) == 2)
+            }
+            pending2 = [u for u in units if u.id not in term_ids2]
+            assert len(pending2) == 0
+        finally:
+            savepoint.rollback()
+    finally:
+        session.close()
+
+
+def test_exact_failed_unit_offline_no_collision():
+    """Verify exact failed unit 002b7338-20b7-4d93-a384-d8a8fb88e724 executes without attempt_id collision."""
+    from database import SessionLocal
+    from controlled_models import ControlledRun, ExperimentalUnit, PassAttempt
+    from run_controlled_experiment import materialize_evaluation_request
+    from controlled_evaluation import ControlledExecutionService, ControlledEvaluationEngine
+    from controlled_persistence import ControlledPersistence
+    from mock_provider import DeterministicMockProvider, MockScenario
+    import hashlib
+
+    session = SessionLocal()
+    try:
+        unit = session.get(ExperimentalUnit, "002b7338-20b7-4d93-a384-d8a8fb88e724")
+        assert unit is not None
+
+        old_run = session.query(ControlledRun).filter(ControlledRun.experimental_unit_id == unit.id).first()
+        assert old_run is not None
+        old_attempt_ids = {a.attempt_id for a in session.query(PassAttempt).filter(PassAttempt.run_id == old_run.id).all()}
+        assert len(old_attempt_ids) > 0
+
+        req, is_dual = materialize_evaluation_request(session, unit, manifest_rq={unit.manifest_id: "RQ5"})
+        canonical_key = hashlib.sha256(f"controlled:{unit.id}:dual".encode()).hexdigest()
+
+        savepoint = session.begin_nested()
+        try:
+            mock_engine = ControlledEvaluationEngine(DeterministicMockProvider([MockScenario.ANSWER_A, MockScenario.ANSWER_A]))
+            repo = ControlledPersistence(session)
+            service = ControlledExecutionService(repo, mock_engine, evidence_class="CONTROLLED")
+            new_run = service.execute_dual(unit=unit, first_request=req, idempotency_key=canonical_key)
+            session.flush()
+
+            assert new_run.parent_run_id == old_run.id
+            new_attempts = session.query(PassAttempt).filter(PassAttempt.run_id == new_run.id).all()
+            assert len(new_attempts) == 2
+            for a in new_attempts:
+                assert a.attempt_id not in old_attempt_ids
+        finally:
+            savepoint.rollback()
+    finally:
+        session.close()
+
+
+def test_retry_identity_deterministic_and_unique():
+    """Verify attempt_id generation across retries and passes is deterministic and globally distinct."""
+    from database import SessionLocal
+    from controlled_models import ControlledRun, ExperimentalUnit
+    from controlled_persistence import ControlledPersistence
+    import hashlib
+
+    session = SessionLocal()
+    try:
+        unit = session.query(ExperimentalUnit).first()
+        repo = ControlledPersistence(session)
+        savepoint = session.begin_nested()
+        try:
+            test_key = hashlib.sha256(f"test:retry:{unit.id}".encode()).hexdigest()
+            test_run = repo.create_run(unit=unit, idempotency_key=test_key, requested_model="deepseek/deepseek-chat")
+
+            att1_0 = repo.begin_attempt(run=test_run, pass_number=1)
+            repo.finish_attempt(att1_0, state="FAILED_RETRYABLE", failure_category="RATE_LIMIT")
+
+            att1_1 = repo.begin_attempt(run=test_run, pass_number=1)
+            repo.finish_attempt(att1_1, state="FAILED_RETRYABLE", failure_category="RATE_LIMIT")
+
+            att1_2 = repo.begin_attempt(run=test_run, pass_number=1)
+            repo.finish_attempt(att1_2, state="FAILED_FINAL", failure_category="RATE_LIMIT")
+
+            att2_0 = repo.begin_attempt(run=test_run, pass_number=2)
+            repo.finish_attempt(att2_0, state="SUCCEEDED")
+
+            attempt_ids = [att1_0.attempt_id, att1_1.attempt_id, att1_2.attempt_id, att2_0.attempt_id]
+            assert len(set(attempt_ids)) == 4
+        finally:
+            savepoint.rollback()
     finally:
         session.close()
 

@@ -221,7 +221,7 @@ class ControlledPersistence:
         if existing and existing[-1].state == "FAILED_FINAL" and not ((existing[-1].details_json or {}).get("authorized_rerun") is True):
             raise RuntimeError("FAILED_FINAL pass cannot be resent without recorded AUTHORIZED_RERUN resolution")
         attempt_index = len(existing)
-        material = f"{run.idempotency_key}|{pass_number}|{attempt_index}"
+        material = f"{run.id}|{pass_number}|{attempt_index}"
         row = PassAttempt(run_id=run.id, pass_number=pass_number, attempt_index=attempt_index, attempt_id=hashlib.sha256(material.encode()).hexdigest(), state="IN_PROGRESS")
         self.session.add(row); self.session.flush(); return row
 
