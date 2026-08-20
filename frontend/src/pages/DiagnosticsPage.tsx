@@ -44,18 +44,18 @@ export const DiagnosticsPage: React.FC = () => {
     const rows: string[][] = [
       ['Category', 'Metric', 'Value', 'Details'],
       ['Judge Model', 'Model Name', `"${judgeModel}"`, ''],
-      ['Logical Consistency', 'Overall Score', `${((consistencyData?.overall_consistency_score ?? 0) * 100).toFixed(1)}%`, 'Ordering invariance rate'],
-      ['Logical Consistency', 'Position Consistency', `${((consistencyData?.position_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Verdict invariance under A/B swap'],
-      ['Logical Consistency', 'Domain Specialization', `${((consistencyData?.cross_category_consistency_rate ?? 0) * 100).toFixed(1)}%`, 'Category win rate variance'],
-      ['Logical Consistency', 'Position Flips', `${consistencyData?.inconsistencies_count ?? 0}`, 'Flagged pairwise verdict reversals'],
-      ['Slot-Win Imbalance', 'Position A Wins', `${biasData?.position_data?.position_a ?? 0}`, 'Legacy slot A total selections'],
-      ['Slot-Win Imbalance', 'Position B Wins', `${biasData?.position_data?.position_b ?? 0}`, 'Legacy slot B total selections'],
-      ['Slot-Win Imbalance', 'Ties', `${biasData?.position_data?.tie ?? 0}`, 'Legacy tie decisions'],
-      ['Formatting Association', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 0}`, 'Historical markdown-heavy selections'],
-      ['Format Bias', 'Plain Text Chosen', `${biasData?.format_bias?.plain_text_chosen ?? 0}`, 'Plain text selections'],
-      ['Format Bias', 'Chi-Square Stat', `${biasData?.format_bias?.chi2_stat ?? 0}`, 'Chi2 goodness of fit'],
-      ['Format Bias', 'p-value', `${biasData?.format_bias?.p_value ?? 1}`, 'Raw p-value'],
-      ['Format Bias', 'p-value (BH Adjusted)', `${biasData?.format_bias?.p_value_adjusted ?? 1}`, 'Benjamini-Hochberg adjusted p-value'],
+      ['Logical Consistency', 'Overall Score', consistencyData?.overall_consistency_score != null ? `${(consistencyData.overall_consistency_score * 100).toFixed(1)}%` : 'N/A', 'Ordering invariance rate'],
+      ['Logical Consistency', 'Position Consistency', consistencyData?.position_consistency_rate != null ? `${(consistencyData.position_consistency_rate * 100).toFixed(1)}%` : 'N/A', 'Verdict invariance under A/B swap'],
+      ['Logical Consistency', 'Domain Specialization', consistencyData?.cross_category_consistency_rate != null ? `${(consistencyData.cross_category_consistency_rate * 100).toFixed(1)}%` : 'N/A', 'Category win rate variance'],
+      ['Logical Consistency', 'Position Flips', `${consistencyData?.inconsistencies_count ?? 'N/A'}`, 'Flagged pairwise verdict reversals'],
+      ['Slot-Win Imbalance', 'Position A Wins', `${biasData?.position_data?.position_a ?? 'N/A'}`, 'Legacy slot A total selections'],
+      ['Slot-Win Imbalance', 'Position B Wins', `${biasData?.position_data?.position_b ?? 'N/A'}`, 'Legacy slot B total selections'],
+      ['Slot-Win Imbalance', 'Ties', `${biasData?.position_data?.tie ?? 'N/A'}`, 'Legacy tie decisions'],
+      ['Formatting Association', 'Markdown Chosen', `${biasData?.format_bias?.markdown_chosen ?? 'N/A'}`, 'Historical markdown-heavy selections'],
+      ['Formatting Association', 'Plain Text Chosen', `${biasData?.format_bias?.plain_text_chosen ?? 'N/A'}`, 'Plain text selections'],
+      ['Formatting Association', 'Chi-Square Stat', `${biasData?.format_bias?.chi2_stat ?? 'N/A'}`, 'Chi2 goodness of fit'],
+      ['Formatting Association', 'p-value', `${biasData?.format_bias?.p_value ?? 'N/A'}`, 'Raw p-value'],
+      ['Formatting Association', 'p-value (BH Adjusted)', `${biasData?.format_bias?.p_value_adjusted ?? 'N/A'}`, 'Benjamini-Hochberg adjusted p-value'],
       ['Self Preference', 'Judge Family', `"${selfPrefData?.judge_family ?? ''}"`, 'Model provider family'],
       ['Self Preference', 'Self Win Rate', selfPrefData?.self_win_rate != null ? `${(selfPrefData.self_win_rate * 100).toFixed(1)}%` : 'N/A', 'Same family win rate'],
       ['Self Preference', 'Baseline Win Rate', selfPrefData?.baseline_win_rate != null ? `${(selfPrefData.baseline_win_rate * 100).toFixed(1)}%` : 'N/A', 'Other family win rate'],
@@ -65,7 +65,7 @@ export const DiagnosticsPage: React.FC = () => {
 
     if (biasData?.domain_kappa) {
       biasData.domain_kappa.forEach((dk) => {
-        rows.push(['Domain Reliability', `Kappa (${dk.domain})`, dk.kappa.toFixed(3), 'Domain stratified Cohen Kappa']);
+        rows.push(['Domain Reliability', `Kappa (${dk.domain})`, dk.kappa != null ? dk.kappa.toFixed(3) : 'N/A', 'Domain stratified Cohen Kappa']);
       });
     }
 
@@ -121,7 +121,7 @@ export const DiagnosticsPage: React.FC = () => {
           <h3 className="text-xs font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
             Logical Consistency — {judgeModel}
           </h3>
-          {consistencyData?.inter_judge_reliability && (
+          {consistencyData?.inter_judge_reliability?.inter_judge_kappa != null && (
             <span className="hidden sm:block text-[11px] font-mono text-neutral-500 dark:text-neutral-500">
               &kappa; vs {consistencyData.inter_judge_reliability.model_b}:{' '}
               <span className="text-neutral-700 dark:text-neutral-300 font-medium">
@@ -147,7 +147,7 @@ export const DiagnosticsPage: React.FC = () => {
                 <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
               ) : (
                 <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
-                  {((consistencyData?.overall_consistency_score ?? 0) * 100).toFixed(1)}%
+                  {consistencyData?.overall_consistency_score != null ? `${(consistencyData.overall_consistency_score * 100).toFixed(1)}%` : 'N/A'}
                 </p>
               )}
               <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
@@ -164,7 +164,7 @@ export const DiagnosticsPage: React.FC = () => {
                 <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
               ) : (
                 <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
-                  {((consistencyData?.position_consistency_rate ?? 0) * 100).toFixed(1)}%
+                  {consistencyData?.position_consistency_rate != null ? `${(consistencyData.position_consistency_rate * 100).toFixed(1)}%` : 'N/A'}
                 </p>
               )}
               <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
@@ -181,7 +181,7 @@ export const DiagnosticsPage: React.FC = () => {
                 <div className="h-7 w-20 bg-neutral-200 dark:bg-neutral-800 animate-pulse rounded mb-1" />
               ) : (
                 <p className="text-2xl font-mono font-bold text-neutral-900 dark:text-white tracking-tight">
-                  {((consistencyData?.cross_category_consistency_rate ?? 0) * 100).toFixed(1)}%
+                  {consistencyData?.cross_category_consistency_rate != null ? `${(consistencyData.cross_category_consistency_rate * 100).toFixed(1)}%` : 'N/A'}
                 </p>
               )}
               <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">
@@ -202,7 +202,7 @@ export const DiagnosticsPage: React.FC = () => {
                     ? 'text-red-600/90 dark:text-red-400/90'
                     : 'text-neutral-900 dark:text-white'
                 }`}>
-                  {consistencyData?.inconsistencies_count ?? 0}
+                  {consistencyData?.inconsistencies_count ?? 'N/A'}
                 </p>
               )}
               <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1 leading-snug">

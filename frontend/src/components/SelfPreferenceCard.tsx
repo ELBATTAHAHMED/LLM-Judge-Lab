@@ -132,7 +132,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
           </span>
         </div>
         <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-0.5">
-          Does the judge favor its own model family ({data.judge_family.toUpperCase()})?
+          Legacy exploratory association only; final RQ6 is NOT ESTIMABLE (`UNBALANCED_PRESENTATION`).
         </p>
       </div>
 

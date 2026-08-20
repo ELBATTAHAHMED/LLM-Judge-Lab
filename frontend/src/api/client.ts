@@ -6,17 +6,10 @@ import type {
   BiasStatsResponse,
   QualitativeRecord,
   QualitativeBucket,
-  EvaluateRequest,
-  EvaluateResponse,
-  CalibratedEvaluateRequest,
-  CalibratedEvaluateResponse,
-  EnsembleEvaluateRequest,
-  EnsembleEvaluateResponse,
   ConsistencyStatsResponse,
   DatasetCountResponse,
   InterJudgeReliability,
   SelfPreferenceResponse,
-  MacroBenchmarkResponse,
   ControlledResultsResponse,
 } from './types';
 
@@ -106,60 +99,6 @@ export async function getQualitativeBucket(
   });
   return response.data;
 }
-
-/**
- * Execute live G-EVAL evaluation comparing Answer A vs Answer B
- */
-export async function executeLiveEvaluation(
-  payload: EvaluateRequest
-): Promise<EvaluateResponse> {
-  const m = (payload.model_name || '').toLowerCase();
-  const isLocal = m.includes('llama') || m.includes('ollama') || m.includes('local');
-  const timeoutMs = isLocal ? 180000 : 120000; // 3 mins for local single-pass, 2 mins for cloud
-  const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload, { timeout: timeoutMs });
-  return response.data;
-}
-
-/**
- * Execute active real-time in-flight bias mitigated evaluation (Dual A/B Swap)
- */
-export async function executeCalibratedEvaluation(
-  payload: CalibratedEvaluateRequest
-): Promise<CalibratedEvaluateResponse> {
-  const m = (payload.model_name || '').toLowerCase();
-  const isLocal = m.includes('llama') || m.includes('ollama') || m.includes('local');
-  const timeoutMs = isLocal ? 240000 : 180000; // 4 mins for local Dual A/B Swap, 3 mins for cloud
-  const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, { timeout: timeoutMs });
-  return response.data;
-}
-
-/**
- * Execute concurrent multi-judge ensemble voting evaluation
- */
-export async function executeEnsembleEvaluation(
-  payload: EnsembleEvaluateRequest
-): Promise<EnsembleEvaluateResponse> {
-  const timeoutMs = 300000; // 5 mins timeout for multi-model ensemble
-  try {
-    const response = await apiClient.post<EnsembleEvaluateResponse>('/api/evaluate/ensemble', payload, { timeout: timeoutMs });
-    return response.data;
-  } catch (err: unknown) {
-    if (axios.isAxiosError(err)) {
-      console.error('[Ensemble API Error Details]', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        message: err.message,
-        payloadSent: payload,
-      });
-      const detailMsg = err.response?.data?.detail || err.message;
-      throw new Error(typeof detailMsg === 'string' ? detailMsg : JSON.stringify(detailMsg));
-    }
-    console.error('[Ensemble API Non-Axios Error]', err);
-    throw err;
-  }
-}
-
 
 // ── Custom React Hooks for UI Components ──────────────────────────────────────
 
@@ -388,44 +327,5 @@ export function useSelfPreferenceStats(judgeModel?: string) {
 
   return { data, loading, error, refetch: fetch };
 }
-
-/**
- * Fetch aggregate macro benchmark synthesis stats (Before vs After Mitigation)
- */
-export async function getMacroBenchmark(judgeModel?: string): Promise<MacroBenchmarkResponse> {
-  const response = await apiClient.get<MacroBenchmarkResponse>('/api/stats/macro-benchmark', {
-    params: judgeModel ? { judge_model: judgeModel } : undefined,
-  });
-  return response.data;
-}
-
-export function useMacroBenchmark(judgeModel?: string) {
-  const [data, setData] = useState<MacroBenchmarkResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await getMacroBenchmark(judgeModel);
-      setData(result);
-    } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? (err.response?.data?.detail || err.message)
-        : (err instanceof Error ? err.message : 'Failed to fetch macro benchmark stats');
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [judgeModel]);
-
-  useEffect(() => {
-    fetch();
-  }, [fetch]);
-
-  return { data, loading, error, refetch: fetch };
-}
-
 
 

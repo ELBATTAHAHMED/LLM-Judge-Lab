@@ -38,7 +38,7 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
 
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return data.map((item) => ({
+    return data.filter((item): item is DomainKappaPoint & { kappa: number } => item.kappa !== null).map((item) => ({
       domain: formatDomainName(item.domain),
       kappa: item.kappa,
       color: getKappaColor(item.kappa),

@@ -22,14 +22,15 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const chartData = data
+  const hasData = data?.markdown_chosen !== null && data?.plain_text_chosen !== null;
+  const chartData = hasData && data
     ? [
         { name: 'Markdown-Heavy', count: data.markdown_chosen, color: '#0d9488' },
         { name: 'Plain Text', count: data.plain_text_chosen, color: isDark ? '#404040' : '#737373' },
       ]
     : [];
 
-  const total = chartData.reduce((sum, item) => sum + item.count, 0);
+  const total = chartData.reduce((sum, item) => sum + (item.count ?? 0), 0);
 
   const pValueFormatted = typeof data?.p_value === 'number'
     ? data.p_value < 0.001
@@ -53,7 +54,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
               Selection frequency when candidates differ in Markdown formatting
             </p>
           </div>
-          {data && (
+          {hasData && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-teal-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-teal-400 dark:border-neutral-700 shadow-none ring-0">
               &chi;&sup2; = {chi2Formatted} ({pValueFormatted || 'p-val N/A'})
             </span>
@@ -69,6 +70,8 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
           <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs flex-1">
             {error}
           </div>
+        ) : !hasData ? (
+          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible exploratory formatting observations.</div>
         ) : (
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             <div className="h-56 w-full">
@@ -117,7 +120,7 @@ export const FormatBiasChart: React.FC<Props> = ({ data, loading, error }) => {
             <p className="text-neutral-500 text-[11px]">{p.name}</p>
             <p className="font-semibold text-neutral-900 dark:text-neutral-200 text-sm">{p.count}</p>
             <p className="text-[10px] text-neutral-500">
-              {total > 0 ? `${((p.count / total) * 100).toFixed(1)}%` : '0%'}
+              {total > 0 && p.count !== null ? `${((p.count / total) * 100).toFixed(1)}%` : 'N/A'}
             </p>
           </div>
         ))}

@@ -32,6 +32,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
 
   const { data, loading, error, refetch } = useInterJudgeKappa(modelA, modelB);
 
+  const hasData = data?.status === 'AVAILABLE' && data.inter_judge_kappa !== null && data.agreement_rate !== null;
   const kappa = data?.inter_judge_kappa ?? 0;
   const agreement = (data?.agreement_rate ?? 0) * 100;
   const nTrials = data?.overlapping_trials ?? 0;
@@ -133,6 +134,8 @@ export const InterJudgeComparisonCard: React.FC = () => {
         <div className="p-4 rounded bg-red-950/40 border border-red-800/40 text-red-600 dark:text-red-400 text-xs font-mono">
           {error}
         </div>
+      ) : !hasData ? (
+        <div className="p-6 text-center font-mono text-xs text-neutral-500">No eligible exploratory overlap for this comparison.</div>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-center">

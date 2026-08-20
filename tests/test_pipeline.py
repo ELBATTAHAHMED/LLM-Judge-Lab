@@ -76,32 +76,9 @@ def test_bias_telemetry_endpoint(client):
     assert isinstance(data["inter_judge_kappa"], (int, float))
 
 
-def test_macro_benchmark_endpoint(client):
-    """Verify GET /api/stats/macro-benchmark returns all required before/after synthesis metrics."""
-    response = client.get("/api/stats/macro-benchmark")
-    assert response.status_code == 200
-    data = response.json()
-    
-    required_keys = [
-        "judge_model",
-        "total_evaluations",
-        "baseline_kappa",
-        "calibrated_kappa",
-        "delta_kappa",
-        "baseline_accuracy",
-        "calibrated_accuracy",
-        "delta_accuracy",
-        "baseline_flip_rate",
-        "mitigated_flip_rate",
-        "flip_rate_reduction",
-    ]
-    for key in required_keys:
-        assert key in data, f"Missing required macro benchmark key: {key}"
-
-    assert data["total_evaluations"] > 0
-    assert isinstance(data["delta_kappa"], (int, float))
-    assert isinstance(data["delta_accuracy"], (int, float))
-    assert isinstance(data["flip_rate_reduction"], (int, float))
+def test_retired_macro_benchmark_endpoint_is_not_available(client):
+    """Historical macro synthesis is not an active scientific API surface."""
+    assert client.get("/api/stats/macro-benchmark").status_code == 404
 
 
 

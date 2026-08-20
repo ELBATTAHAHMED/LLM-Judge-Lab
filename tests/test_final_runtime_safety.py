@@ -56,12 +56,36 @@ def test_public_leaderboard_is_read_only_when_artifacts_are_absent(monkeypatch, 
     assert calls == []
 
 
-def test_legacy_leaderboard_recalculation_is_disabled_by_default(monkeypatch):
-    monkeypatch.delenv("JUDGELAB_ENABLE_LEGACY_LEADERBOARD_RECALCULATION", raising=False)
-    request = main.CalculateLeaderboardRequest(judge_model="gpt-4o-mini")
-    try:
-        main.trigger_leaderboard_calculation(request, object())
-    except main.HTTPException as exc:
-        assert exc.status_code == 403
-    else:
-        raise AssertionError("legacy recalculation was unexpectedly enabled")
+def test_retired_legacy_mutation_and_macro_routes_are_not_exposed():
+    paths = {route.path for route in main.app.routes}
+    assert "/api/leaderboard/calculate" not in paths
+    assert "/api/stats/macro-benchmark" not in paths
+
+
+def test_health_is_unhealthy_and_sanitized_when_database_is_unavailable():
+    class UnavailableDatabase:
+        def execute(self, *_args, **_kwargs):
+            raise RuntimeError("postgresql://user:secret@host:5432/private")
+
+    response = main.health_check(UnavailableDatabase())
+    assert response.status == "unhealthy"
+    assert response.database == "unavailable"
+    assert "secret" not in response.message
+    assert "host" not in response.message
+
+
+def test_legacy_bias_endpoint_uses_explicit_no_data_semantics():
+    class EmptyResult:
+        def fetchall(self):
+            return []
+
+    class EmptyDatabase:
+        def execute(self, *_args, **_kwargs):
+            return EmptyResult()
+
+    payload = main.get_bias_stats(EmptyDatabase(), "gpt-4o-mini")
+    assert payload["evidence_class"] == "LEGACY_EXPLORATORY"
+    assert payload["status"] == "NO_DATA"
+    assert payload["n"] == 0
+    assert payload["position_data"]["position_a"] is None
+    assert payload["format_bias"]["p_value"] is None

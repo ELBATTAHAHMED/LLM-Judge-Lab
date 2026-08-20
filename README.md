@@ -1,271 +1,114 @@
 # LLM-as-a-Judge Reliability Lab
 
-[![Academic PFE](https://img.shields.io/badge/Academic%20Project-Master%20IPS%20PFE-blue.svg)](https://github.com/ELBATTAHAHMED/LLM-Judge-Lab)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-19.0-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.0+-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+This repository contains the final controlled study and a reproducible dashboard
+for auditing pairwise LLM judgments. The authoritative scientific record is the
+Phase 10 analysis frozen in `evidence/final/phase11/`; historical leaderboard,
+diagnostic, and qualitative views are explicitly `LEGACY_EXPLORATORY`.
 
-**Author:** Ahmed El Battah  
-**Degree:** Master Intelligent Processing Systems (IPS - Projet de Fin d'Études / Master's Thesis)  
-**Repository:** [ELBATTAHAHMED/LLM-Judge-Lab](https://github.com/ELBATTAHAHMED/LLM-Judge-Lab)
+## Final controlled evidence
 
----
+The completed execution accounts for **13,400 / 13,400 controlled units** and
+**16,600 / 16,600 pass slots**, with 0 pending units and 7 / 7 canonical
+`AnalysisRun` records completed.
 
-## Research evidence status (August 2026)
+| RQ | Final controlled result |
+| --- | --- |
+| RQ1 — Human Alignment | 58.44% agreement with human preference reference labels; Cohen's kappa 0.3121; N=770. |
+| RQ2 — Stochastic Consistency | 96.56% consistency; N=1,474 complete groups. No temperature comparison is estimable. |
+| RQ3 — Position Sensitivity / Bias | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Per-judge decisive flips: Claude 27.13%, GPT-4o-mini 19.01%, Llama 14.18%, DeepSeek 6.43%. |
+| RQ4 — Controlled Redundant-Length Effect | 0.44% redundant-variant win rate; N=685. This is a narrow redundant-text control, not a general claim about verbosity. |
+| RQ5 — Controlled Presentation-Format Effect | 1.11% format-variant win rate; N=719. This applies to the implemented controlled transformation only. |
+| RQ6 — Matched Source-Family Preference | **NOT ESTIMABLE** — `UNBALANCED_PRESENTATION`. No numeric source-family effect is claimed. |
+| RQ7 — BASELINE SINGLE-PASS vs DUAL_SWAP Mitigation | Agreement 60.65% → 68.78% (+8.13 pp); valid coverage 95.63% → 72.88% (-22.75 pp). DUAL_SWAP improved agreement among retained decisions while reducing valid coverage. |
 
-Final controlled execution is complete: **13,400 / 13,400 units** and
-**16,600 / 16,600 pass slots** are accounted, with **0 pending** units and
-**7 / 7 AnalysisRuns** completed. Final findings use only `CONTROLLED`
-evidence. `PILOT`, `SUPERSEDED_CONTROLLED`, `LIVE_SANDBOX`, and
-`LEGACY_EXPLORATORY` records are not final scientific evidence.
+Human preferences are reference labels, not ground truth. The results do not
+claim a universally best judge, universal causal bias, or universal mitigation
+improvement.
 
-The immutable reproducibility package is
-[`evidence/final/phase11/`](evidence/final/phase11/). Verify it offline with
-`python evidence/final/phase11/VERIFY_PACKAGE.py`. Its frozen release tag is
-`phase11-final-evidence-frozen-v1`; the synchronized frontend release tag is
-`phase12-final-frontend-sync-v1`.
+## Reproducing the final dashboard
 
-### Final controlled research questions and results
+Normal application startup is read-only: it does not run schema maintenance,
+experiments, or provider calls. Provider credentials are not required to
+inspect the final dashboard or verify the frozen package.
 
-- **RQ1 — Human Alignment:** 58.44% agreement with human preference reference
-  labels; Cohen's kappa 0.3121.
-- **RQ2 — Stochastic Consistency:** 96.56% consistency.
-- **RQ3 — Position Sensitivity / Bias:** 16.70% paired decisive flip rate.
-- **RQ4 — Controlled Redundant-Length Effect:** 0.44% redundant-variant win
-  rate; this is not a broad verbosity-bias conclusion.
-- **RQ5 — Controlled Presentation-Format Effect:** 1.11% format-variant win
-  rate; superseded pre-fix RQ5 runs are excluded.
-- **RQ6 — Matched Source-Family Preference:** **NOT ESTIMABLE** because of
-  `UNBALANCED_PRESENTATION`.
-- **RQ7 — BASELINE SINGLE-PASS vs DUAL_SWAP Mitigation:** agreement increased
-  from 60.65% to 68.78% (+8.13 pp), while valid coverage decreased from 95.63%
-  to 72.88% (-22.75 pp). This is a mitigation trade-off, not universal
-  reliability improvement.
-
----
-
-## 📌 Executive Summary
-
-**JudgeLab** is a reproducible full-stack research platform for evaluating the
-reliability of LLM-as-a-Judge systems in pairwise response comparison. The
-final study evaluates OpenAI GPT-4o-mini, Claude 3 Haiku, DeepSeek Chat, and
-Llama 3.3 70B against human preference reference labels, using frozen
-controlled protocols and explicit evidence provenance.
-
-The dashboard presents final controlled RQ1–RQ7 findings separately from
-historical exploratory diagnostics. It does not convert exploratory telemetry
-into final claims.
-
----
-
-## 🏗 System Architecture & Technology Stack
-
-The platform follows a decoupled, production-grade full-stack architecture:
-
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                   React 19 + TypeScript Web Frontend                     │
-│        (Vite, Tailwind CSS, Recharts Minimalist Analytics UI)            │
-└────────────────────────────────────┬─────────────────────────────────────┘
-                                     │ HTTP / REST API (Axios)
-                                     ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         FastAPI Backend Server                           │
-│        (Asynchronous API, Pydantic Validation, CORS Handler)            │
-└──────────────────┬─────────────────────────────────┬─────────────────────┘
-                   │                                 │
-     SQLAlchemy    │                                 │ Parallel Multi-Threading
-                   ▼                                 ▼
-┌────────────────────────────────────┐    ┌────────────────────────────────┐
-│   PostgreSQL Persistence Layer     │    │      LLM API Providers         │
-│ (Prompts, Answers, Human Choices,  │    │ • OpenAI (GPT-4o-mini)         │
-│  >19,000 Empirical Decision Rows)  │    │ • OpenRouter (DeepSeek/Claude) │
-└────────────────────────────────────┘    │ • Local Ollama (Llama 3)       │
-                                          └────────────────────────────────┘
-```
-
-### Technology Stack
-- **Backend Core**: FastAPI (Asynchronous REST API framework), Pydantic v2 (Schema validation & data parsing), NumPy & SciPy (Inferential statistics & regression), scikit-learn (Cohen's Kappa & K-fold cross-validation), pandas (Dataframe aggregation).
-- **Persistence Layer**: PostgreSQL database managed via SQLAlchemy ORM (Handling **19,211 historical decision rows** across 4 major model families with auto-increment sequence resynchronization).
-- **Frontend Core**: React 19, TypeScript 5.0+, Vite 8, React Router DOM v7.
-- **Analytics & Styling**: Recharts (Interactive SVG scatter plots, bar charts, heatmap matrices), Tailwind CSS v4 (Enterprise Bloomberg-terminal minimalist aesthetic with dark/light mode support), Lucide React (System iconography).
-
----
-
-## 🔬 Mathematical Methodology & Econometric Models
-
-JudgeLab implements advanced econometric models, inferential statistics, and real-time debiasing protocols:
-
-### 1. Latent Quality Parameter Estimation (Bradley-Terry MLE)
-Raw win rates suffer from strength-of-schedule confounding. JudgeLab fits a **Bradley-Terry Maximum Likelihood Estimation ($\theta$)** model using `scipy.optimize.minimize` (Davidson 1970 tie-formulation L-BFGS-B optimization):
-$$\mathbb{P}(M_i \succ M_j) = \frac{e^{\theta_i}}{e^{\theta_i} + e^{\theta_j} + e^{\gamma + 0.5(\theta_i + \theta_j)}}$$
-
-This produces a judge-relative pairwise ranking ($\theta$), conditional on the historical sample and available comparisons; it is not objective model merit.
-
-### 2. Length-Neutralized Quality Calibration (5-Fold CV OLS Residual Decomposition)
-To isolate genuine answer quality from length inflation, JudgeLab executes a 5-fold cross-validated **Ordinary Least Squares (OLS) regression** modeling verdict probability against word-count disparity ($\Delta W = W_A - W_B$):
-$$Y_{ij} = \alpha + \beta \cdot \Delta W_{ij} + \varepsilon_{ij}$$
-
-The out-of-sample residual $\varepsilon_{ij}$ represents the length-neutralized quality score, producing zero-centered rankings that strip verbosity inflation ($\beta$).
-
-### 3. Controlled Dual-Pass A/B Swap Protocol
-Final RQ3 measures paired decisive flip rate from matched A/B and B/A passes.
-Aggregate legacy slot-win imbalance remains separate and is not a substitute
-for the controlled metric.
-
-### 4. Dynamic Self-Preference Hypothesis Testing
-Evaluates model family favoritism using exact SciPy binomial testing (`binomtest`). The null hypothesis baseline ($p_0$) is dynamically computed as the judge model's baseline win rate against rival model families:
-$$H_0: p_{\text{self}} \le p_{\text{rival\_baseline}} \quad \text{vs} \quad H_1: p_{\text{self}} > p_{\text{rival\_baseline}}$$
-
-Historical source-family associations remain exploratory. Final RQ6 is
-`NOT ESTIMABLE` because the controlled presentation is unbalanced; no numeric
-source-family effect is claimed.
-
----
-
-## 📁 Repository Directory Structure
-
-```
-LLM-Judge-Lab/
-├── backend/                        # FastAPI Python Asynchronous Server & Services
-│   ├── main.py                     # Main API Server & 12 REST Route Handlers
-│   ├── database.py                 # SQLAlchemy Database Engine & Sequence Resync
-│   ├── models.py                   # ORM Database Schemas (Prompts, Answers, Decisions)
-│   ├── judge_engine.py             # Pure Evaluation Engine & Mitigation Protocols
-│   ├── analyze_results.py          # Statistical Analysis & Matplotlib Visualization Engine
-│   ├── analyze_consistency.py      # Multi-Turn Logical Consistency & Self-Preference Engine
-│   ├── calculate_latent_quality.py # Bradley-Terry MLE Optimization Model
-│   ├── calculate_neutralized_scores.py # 5-Fold CV OLS Residual Length Neutralization Model
-│   ├── generate_ablation_matrix.py # Component Ablation Study Matrix Generator
-│   ├── generate_perturbations.py # Counterfactual Synthetic Perturbation Engine
-│   ├── stochastic_test.py          # Empirical Repeated-Run Stochastic Flip Test Runner
-│   ├── ingest_data.py              # MT-Bench & Vicuna Dataset Ingestion Pipeline
-│   └── verify_db.py                # Database Health & FK Integrity Audit Script
-├── frontend/                       # React 19 + TypeScript + Vite Web UI
-│   ├── src/
-│   │   ├── api/                    # Axios API Client & Custom React Hooks
-│   │   ├── components/             # Reusable UI Analytics Components & Charts
-│   │   ├── context/                # ThemeContext & JudgeContext
-│   │   ├── layouts/                # Dashboard Shell & Collapsible Sidebar Layout
-│   │   ├── pages/                  # Leaderboard, Synthesis, Diagnostics, Explorer, LiveLab
-│   │   └── index.css               # Core Tailwind CSS Styling Directives
-│   ├── package.json
-│   └── vite.config.ts
-├── tests/                          # Automated PyTest Test Suite
-│   ├── test_pipeline.py            # End-to-End Backend Test Cases (11/11 Passing)
-│   └── test_api_connections.py     # Live API Connectivity Diagnostic Script
-├── qualitative_data/               # Stratified Qualitative Case Buckets & Results
-├── requirements.txt                # Python Dependencies
-└── README.md                       # Master Thesis Project Documentation
-```
-
----
-
-## 🚀 Quick Start Guide
-
-### Prerequisites
-* **Python**: 3.11 or higher
-* **Node.js**: v18.0 or higher (`npm`)
-* **Database**: PostgreSQL (or local SQLite fallback)
-
----
-
-### Step 1: Clone Repository & Setup Python Environment
-
-```bash
-# Clone the repository
+```powershell
 git clone https://github.com/ELBATTAHAHMED/LLM-Judge-Lab.git
 cd LLM-Judge-Lab
-
-# Create and activate virtual environment
 python -m venv .venv
-
-# On Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-
-# On Linux / macOS:
-source .venv/bin/activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
----
-
-### Step 2: Configure Environment Variables (`.env`)
-
-Create a `.env` file in the project root directory:
-
-```env
-# Database Connection (PostgreSQL)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/judgelab
-
-# LLM Provider API Keys
-OPENAI_API_KEY=your_openai_api_key_here
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-
-# Local Model Provider (Optional Ollama setup)
-OLLAMA_BASE_URL=http://localhost:11434/v1
-```
-
----
-
-### Step 3: Ingest Dataset & Audit Database
-
-```bash
-# Ingest prompts, answers, and human preference data into PostgreSQL
-python backend/ingest_data.py
-
-# Verify database health and FK integrity
-python backend/verify_db.py
-```
-
----
-
-### Step 4: Launch Backend API Server
-
-```bash
-# Start FastAPI server on http://localhost:8000
-uvicorn backend.main:app --reload --port 8000
-```
-*Interactive Swagger API documentation is available at `http://localhost:8000/docs`.*
-
----
-
-### Step 5: Launch Frontend Client
-
-In a separate terminal window:
-
-```bash
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 cd frontend
 npm install
+cd ..
+Copy-Item .env.example .env
+```
+
+Set `DATABASE_URL` in `.env` for a local PostgreSQL database. Restore the
+canonical snapshot with your matching PostgreSQL client and database name:
+
+```powershell
+pg_restore --clean --if-exists --no-owner --dbname judgelab backups/judgelab-phase11-final-evidence-20260820.dump
+```
+
+Then use two terminals:
+
+```powershell
+uvicorn backend.main:app --reload --port 8000
+```
+
+```powershell
+cd frontend
 npm run dev
 ```
-*Access the web application at `http://localhost:5173`.*
 
----
+Open `http://localhost:5173/controlled-results`. The final scientific pages
+(`/controlled-results` and `/synthesis`) use only `/api/controlled/results`,
+which fail-closes to the pinned canonical AnalysisRuns rather than falling back
+to legacy data. Verify the offline evidence package independently:
 
-### Step 6: Execute PyTest Verification Suite
-
-```bash
-pytest tests/test_pipeline.py -v
+```powershell
+python evidence/final/phase11/VERIFY_PACKAGE.py
 ```
 
----
+Expected Phase 11 root digest:
 
-## 📄 License & Citation
-
-This project is released under the MIT License.
-
-```bibtex
-@mastersthesis{elbattah2026llmjudge,
-  author       = {Ahmed El Battah},
-  title        = {LLM-as-a-Judge Reliability Lab: Empirical Auditing and Active Calibration of Systematic Evaluator Biases},
-  school       = {Master Intelligent Processing Systems (IPS)},
-  year         = {2026},
-  type         = {Projet de Fin d'\'Etudes (PFE)}
-}
+```text
+f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13
 ```
+
+## Dataset provenance
+
+The frozen final dataset identity is recorded in
+`evidence/final/phase11/dataset/`:
+
+- DatasetVersion: `2f8c7bba-08b1-4d8b-8b0e-b564e8a61886`
+- Version/name: `controlled-final-plan-v1`
+- Source name: `judgelab-canonical-human-reference`
+- SHA-256: `b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510`
+- Human preference reference-label policy: `unordered-pair-consensus-v1`
+- Canonical unordered human-reference pairs: 1,615 (107 prompts; 2,139 answers)
+
+The checked-in raw/source files are `data/question.jsonl`,
+`data/human_judgment.jsonl`, and model-answer JSONL files for Alpaca, Claude,
+GPT-3.5, GPT-4, Llama, and Vicuna. The frozen lineage canonicalizes human
+judgments as unordered consensus pairs, records the import filters and identity
+in the DatasetVersion evidence, then materializes checksum-linked controlled
+variants for RQ4 and RQ5. Final inclusion/exclusion, unit, pass, attempt, and
+analysis lineage are preserved in the Phase 11 package rather than recreated at
+runtime. License/attribution metadata requires external verification.
+
+## Evidence boundaries
+
+- `evidence/final/phase11/` is immutable and includes the offline verifier,
+  manifests, database snapshot, provenance, analysis tables, and checksums.
+- `exports/phase10/` contains final analysis exports; the frozen Phase 11 copy
+  is the release evidence.
+- The sidebar intentionally excludes the Live Sandbox. Backend live-provider
+  endpoints remain disabled by default and require a separate operator token;
+  they are not part of the controlled study.
+- The leaderboard and diagnostics are retained only as labeled historical,
+  exploratory views. The retired macro benchmark and leaderboard-recalculation
+  routes are not exposed by the final application.
+
+For a concise technical and scientific record, see
+[`PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md).

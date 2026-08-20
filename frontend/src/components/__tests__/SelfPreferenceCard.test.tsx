@@ -6,6 +6,9 @@ import type { SelfPreferenceResponse } from '../../api/types';
 
 describe('SelfPreferenceCard Component (DOM Testing Library Audit)', () => {
   const emptyDataset: SelfPreferenceResponse = {
+    evidence_class: 'LEGACY_EXPLORATORY',
+    status: 'NO_DATA',
+    n: 0,
     judge_model: 'deepseek/deepseek-chat',
     judge_family: 'deepseek',
     self_win_rate: null,
@@ -19,6 +22,9 @@ describe('SelfPreferenceCard Component (DOM Testing Library Audit)', () => {
   };
 
   const validDataset: SelfPreferenceResponse = {
+    evidence_class: 'LEGACY_EXPLORATORY',
+    status: 'AVAILABLE',
+    n: 100,
     judge_model: 'gpt-4o-mini',
     judge_family: 'gpt',
     self_win_rate: 0.75,

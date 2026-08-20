@@ -30,6 +30,15 @@ and inspection rather than treating an LLM judgment as objective truth.
 The final DatasetVersion is `2f8c7bba-08b1-4d8b-8b0e-b564e8a61886`
 (`controlled-final-plan-v1`), with dataset SHA-256
 `b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510`.
+Its source name is `judgelab-canonical-human-reference`; the frozen identity
+records 107 prompts, 2,139 answers, and 1,615 canonical unordered human
+reference pairs under `unordered-pair-consensus-v1`. Checked-in source material
+consists of `data/question.jsonl`, `data/human_judgment.jsonl`, and the model
+answer JSONL files. The recorded lineage normalizes those judgments into the
+canonical unordered reference pairs, applies the frozen import filters, then
+creates checksum-linked controlled RQ4/RQ5 variants. Dataset version metadata,
+exclusions, variants, and final controlled inclusion are preserved in the Phase
+11 package. License/attribution metadata requires external verification.
 
 The controlled execution comprises **13,400 units** and **16,600 pass slots**.
 Its four configured judges are `gpt-4o-mini`,

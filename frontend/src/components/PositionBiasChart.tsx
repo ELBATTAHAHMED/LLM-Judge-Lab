@@ -22,7 +22,8 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const chartData = data
+  const hasData = data?.position_a !== null && data?.position_b !== null && data?.tie !== null;
+  const chartData = hasData && data
     ? [
         { name: 'Position A', count: data.position_a, color: '#737373' },
         { name: 'Position B', count: data.position_b, color: '#818cf8' }, // Subtle desaturated indigo highlight
@@ -30,8 +31,8 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
       ]
     : [];
 
-  const posA = data?.position_a || 0;
-  const posB = data?.position_b || 0;
+  const posA = data?.position_a ?? 0;
+  const posB = data?.position_b ?? 0;
   const binaryTotal = posA + posB;
   const chi2Stat = binaryTotal > 0 ? Math.pow(posA - posB, 2) / binaryTotal : 0;
   const preferredPos = posB >= posA ? 'Position B' : 'Position A';
@@ -51,7 +52,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
               Selection frequency by physical choice order in prompt
             </p>
           </div>
-          {data && (
+          {hasData && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-400 dark:border-neutral-700 shadow-none ring-0">
               &chi;&sup2; = {chi2Stat.toFixed(2)} (df=1)
             </span>
@@ -64,6 +65,8 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
           </div>
         ) : error ? (
           <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs flex-1">{error}</div>
+        ) : !hasData ? (
+          <div className="h-64 flex items-center justify-center text-neutral-500 text-xs flex-1">No eligible exploratory slot-win observations.</div>
         ) : (
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             <div className="h-56 w-full">
@@ -113,7 +116,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             <p className="text-neutral-500 text-[11px]">{p.name}</p>
             <p className="font-semibold text-neutral-900 dark:text-neutral-200 text-sm">{p.count}</p>
             <p className="text-[10px] text-neutral-500">
-              {total > 0 ? `${((p.count / total) * 100).toFixed(1)}%` : '0%'}
+              {total > 0 && p.count !== null ? `${((p.count / total) * 100).toFixed(1)}%` : 'N/A'}
             </p>
           </div>
         ))}

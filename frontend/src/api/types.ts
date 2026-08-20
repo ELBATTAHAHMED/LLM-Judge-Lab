@@ -12,25 +12,28 @@ export interface VerbosityDataPoint {
 }
 
 export interface PositionData {
-  position_a: number;
-  position_b: number;
-  tie: number;
+  position_a: number | null;
+  position_b: number | null;
+  tie: number | null;
 }
 
 export interface DomainKappaPoint {
   domain: string;
-  kappa: number;
+  kappa: number | null;
 }
 
 export interface FormatBiasData {
-  markdown_chosen: number;
-  plain_text_chosen: number;
-  p_value: number;
-  p_value_adjusted?: number;
-  chi2_stat: number;
+  markdown_chosen: number | null;
+  plain_text_chosen: number | null;
+  p_value: number | null;
+  p_value_adjusted?: number | null;
+  chi2_stat: number | null;
 }
 
 export interface BiasStatsResponse {
+  evidence_class: 'LEGACY_EXPLORATORY';
+  status: 'AVAILABLE' | 'NO_DATA';
+  n: number;
   verbosity_data: VerbosityDataPoint[];
   position_data: PositionData;
   domain_kappa: DomainKappaPoint[];
@@ -121,28 +124,38 @@ export interface EnsembleEvaluateResponse {
 
 
 export interface InterJudgeReliability {
-  inter_judge_kappa: number;
+  evidence_class: 'LEGACY_EXPLORATORY';
+  status: 'AVAILABLE' | 'NO_DATA';
+  n: number;
+  inter_judge_kappa: number | null;
   overlapping_trials: number;
-  agreement_rate: number;
+  agreement_rate: number | null;
   model_a: string;
   model_b: string;
 }
 
 export interface ConsistencyStatsResponse {
+  evidence_class: 'LEGACY_EXPLORATORY';
+  status: 'AVAILABLE' | 'NO_DATA';
+  n: number;
   judge_model: string;
-  overall_consistency_score: number;
-  position_consistency_rate: number;
-  cross_category_consistency_rate: number;
-  inconsistencies_count: number;
+  overall_consistency_score: number | null;
+  position_consistency_rate: number | null;
+  cross_category_consistency_rate: number | null;
+  inconsistencies_count: number | null;
   inter_judge_reliability?: InterJudgeReliability;
 }
 
 export interface DatasetCountResponse {
-  count: number;
+  status: 'AVAILABLE' | 'NO_DATA' | 'UNAVAILABLE';
+  count: number | null;
   message: string;
 }
 
 export interface SelfPreferenceResponse {
+  evidence_class: 'LEGACY_EXPLORATORY';
+  status: 'AVAILABLE' | 'NO_DATA';
+  n: number;
   judge_model: string;
   judge_family: string;
   self_win_rate: number | null;

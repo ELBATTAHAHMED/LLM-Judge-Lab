@@ -135,7 +135,7 @@ def _classify_format_text(text_content: str) -> str:
 # ── Pydantic Response Schemas ──────────────────────────────────────────────────
 
 class HealthCheckResponse(BaseModel):
-    status: str
+    status: Literal["healthy", "degraded", "unhealthy"]
     database: str
     message: str
 
@@ -149,8 +149,11 @@ class LeaderboardItem(BaseModel):
 
 
 class BiasStatsResponse(BaseModel):
+    evidence_class: Literal["LEGACY_EXPLORATORY"]
+    status: Literal["AVAILABLE", "NO_DATA"]
+    n: int
     verbosity_data: list[dict[str, Any]]
-    position_data: dict[str, int]
+    position_data: dict[str, int | None]
     domain_kappa: list[dict[str, Any]]
     format_bias: dict[str, Any]
     inter_judge_kappa: float | None = None
@@ -175,23 +178,26 @@ class CalibratedEvaluationResponse(BaseModel):
 
 
 class DatasetCountResponse(BaseModel):
-    count: int
+    status: Literal["AVAILABLE", "NO_DATA", "UNAVAILABLE"]
+    count: int | None
     message: str
 
 
-class CalculateLeaderboardRequest(BaseModel):
-    judge_model: str = Field(default="gpt-4o-mini", description="Judge model identifier to calculate leaderboard for")
-
-
 class InterJudgeKappaResponse(BaseModel):
-    inter_judge_kappa: float
+    evidence_class: Literal["LEGACY_EXPLORATORY"]
+    status: Literal["AVAILABLE", "NO_DATA"]
+    n: int
+    inter_judge_kappa: float | None
     overlapping_trials: int
-    agreement_rate: float
+    agreement_rate: float | None
     model_a: str
     model_b: str
 
 
 class SelfPreferenceResponse(BaseModel):
+    evidence_class: Literal["LEGACY_EXPLORATORY"]
+    status: Literal["AVAILABLE", "NO_DATA"]
+    n: int
     judge_model: str
     judge_family: str
     self_win_rate: float | None = None
@@ -259,7 +265,7 @@ class ControlledResultsResponse(BaseModel):
 @app.get("/", response_model=HealthCheckResponse)
 @app.get("/health", response_model=HealthCheckResponse)
 def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
-    """Simple health check endpoint verifying application and database status."""
+    """Report dependency health without exposing connection details."""
     try:
         db.execute(text("SELECT 1"))
         return HealthCheckResponse(
@@ -267,11 +273,11 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
             database="connected",
             message="LLM-as-a-Judge Reliability Lab Backend is running.",
         )
-    except Exception as e:
+    except Exception:
         return HealthCheckResponse(
-            status="healthy",
-            database="disconnected",
-            message=f"Backend is running. Database unreachable: {str(e)}",
+            status="unhealthy",
+            database="unavailable",
+            message="Database connectivity is unavailable.",
         )
 
 
@@ -421,11 +427,15 @@ def get_self_preference(
     judge_model_norm = normalize_model_id(judge_model)
     try:
         from analyze_consistency import compute_self_preference_bias
-        return compute_self_preference_bias(db, judge_model_name=judge_model_norm)
-    except Exception as exc:
+        payload = compute_self_preference_bias(db, judge_model_name=judge_model_norm)
+        payload["evidence_class"] = "LEGACY_EXPLORATORY"
+        payload["n"] = int(payload.get("total_self_matchups") or 0)
+        payload["status"] = "AVAILABLE" if payload["n"] else "NO_DATA"
+        return payload
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to compute self-preference bias: {str(exc)}",
+            detail="Exploratory source-family telemetry is unavailable.",
         )
 
 
@@ -444,11 +454,19 @@ def get_inter_judge_kappa(
     model_b_norm = normalize_model_id(model_b)
     try:
         from analyze_consistency import compute_inter_judge_kappa
-        return compute_inter_judge_kappa(db.get_bind(), model_a=model_a_norm, model_b=model_b_norm)
-    except Exception as exc:
+        payload = compute_inter_judge_kappa(db.get_bind(), model_a=model_a_norm, model_b=model_b_norm)
+        n = int(payload.get("overlapping_trials") or 0)
+        payload["evidence_class"] = "LEGACY_EXPLORATORY"
+        payload["status"] = "AVAILABLE" if n else "NO_DATA"
+        payload["n"] = n
+        if not n:
+            payload["inter_judge_kappa"] = None
+            payload["agreement_rate"] = None
+        return payload
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to compute inter-judge kappa: {str(exc)}",
+            detail="Exploratory inter-judge telemetry is unavailable.",
         )
 
 
@@ -460,21 +478,25 @@ def get_dataset_count(db: Session = Depends(get_db)) -> DatasetCountResponse:
     """Return the exact count of human_preferences records in the database."""
     try:
         count_val = db.execute(text("SELECT COUNT(*) FROM human_preferences")).scalar() or 0
+        count = int(count_val)
         return DatasetCountResponse(
-            count=int(count_val),
-            message="Total human preference pairwise comparisons in benchmark database.",
+            status="AVAILABLE" if count else "NO_DATA",
+            count=count,
+            message="Total human preference pairwise comparisons in benchmark database." if count else "No human preference comparisons are available.",
         )
-    except Exception as exc:
+    except Exception:
         return DatasetCountResponse(
-            count=0,
-            message=f"Database query error: {str(exc)}",
+            status="UNAVAILABLE",
+            count=None,
+            message="Dataset count is unavailable because the database could not be queried.",
         )
 
 
 # ── GET /api/stats/macro-benchmark ───────────────────────────────────────────
 
-@app.get("/api/stats/macro-benchmark", response_model=MacroBenchmarkResponse)
-def get_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> dict:
+# Retired in the final application: this historical macro synthesis could
+# fabricate fallback values and is neither a final endpoint nor a dashboard input.
+def _retired_macro_benchmark_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> dict:
     """
     Returns aggregate benchmark-wide macro metrics comparing Baseline LLM-as-a-Judge
     against the Calibrated Multi-Judge / Dual A/B Swap Reliability Pipeline.
@@ -747,15 +769,13 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     return _df_to_records(result_df)
 
 
-@app.post("/api/leaderboard/calculate", response_model=list[LeaderboardItem])
-def trigger_leaderboard_calculation(req: CalculateLeaderboardRequest, db: Session = Depends(get_db)) -> list[dict]:
+# Retired in the final application: no public route may recalculate or write
+# legacy leaderboard artifacts.
+def _retired_trigger_leaderboard_calculation(judge_model: str, db: Session) -> list[dict]:
     """
     Explicit development-only recalculation of legacy CSV artifacts.
     """
-    if os.getenv("JUDGELAB_ENABLE_LEGACY_LEADERBOARD_RECALCULATION", "false").lower() != "true":
-        raise HTTPException(status_code=403, detail="Legacy leaderboard recalculation is disabled in the final application.")
-    req.judge_model = normalize_model_id(req.judge_model)
-    return compute_and_save_leaderboard(db.get_bind(), req.judge_model)
+    raise RuntimeError("Retired legacy leaderboard recalculation is unavailable in the final application.")
 
 
 @app.get("/api/consistency")
@@ -776,15 +796,18 @@ def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt
         if df.empty:
             target_comparator = "deepseek/deepseek-chat" if judge_model == "gpt-4o-mini" else "gpt-4o-mini"
             return {
+                "evidence_class": "LEGACY_EXPLORATORY",
+                "status": "NO_DATA",
+                "n": 0,
                 "judge_model": judge_model,
-                "overall_consistency_score": 0.0,
-                "position_consistency_rate": 0.0,
-                "cross_category_consistency_rate": 0.0,
-                "inconsistencies_count": 0,
+                "overall_consistency_score": None,
+                "position_consistency_rate": None,
+                "cross_category_consistency_rate": None,
+                "inconsistencies_count": None,
                 "inter_judge_reliability": {
-                    "inter_judge_kappa": 0.0,
+                    "inter_judge_kappa": None,
                     "overlapping_trials": 0,
-                    "agreement_rate": 0.0,
+                    "agreement_rate": None,
                     "model_a": judge_model,
                     "model_b": target_comparator,
                 },
@@ -802,6 +825,9 @@ def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt
         )
 
         return {
+            "evidence_class": "LEGACY_EXPLORATORY",
+            "status": "AVAILABLE",
+            "n": len(df),
             "judge_model": judge_model,
             "overall_consistency_score": overall,
             "position_consistency_rate": pos_score,
@@ -809,8 +835,8 @@ def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt
             "inconsistencies_count": pos_results.get("inconsistencies", 0),
             "inter_judge_reliability": inter_judge,
         }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to compute consistency metrics: {str(exc)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Exploratory consistency telemetry is unavailable.")
 
 
 # ── GET /api/stats/bias ───────────────────────────────────────────────────────
@@ -855,6 +881,21 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         """)
 
         verbosity_rows = db.execute(verbosity_sql, {"judge_model": judge_model}).fetchall()
+
+        if not verbosity_rows:
+            return {
+                "evidence_class": "LEGACY_EXPLORATORY",
+                "status": "NO_DATA",
+                "n": 0,
+                "verbosity_data": [],
+                "position_data": {"position_a": None, "position_b": None, "tie": None},
+                "domain_kappa": [],
+                "format_bias": {
+                    "markdown_chosen": None, "plain_text_chosen": None,
+                    "p_value": None, "p_value_adjusted": None, "chi2_stat": None,
+                },
+                "inter_judge_kappa": None,
+            }
 
         verbosity_data = [
             {"word_count_diff": row.word_count_diff, "llm_verdict": row.llm_verdict}
@@ -930,15 +971,15 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
                 try:
                     if len(group) > 1:
                         score = float(cohen_kappa_score(group["human_choice"], group["llm_choice"]))
-                        domain_kappa_dict[str(cat)] = round(score, 3) if not math.isnan(score) else 0.0
+                        domain_kappa_dict[str(cat)] = round(score, 3) if not math.isnan(score) else None
                     else:
-                        domain_kappa_dict[str(cat)] = 0.0
+                        domain_kappa_dict[str(cat)] = None
                 except Exception:
-                    domain_kappa_dict[str(cat)] = 0.0
+                    domain_kappa_dict[str(cat)] = None
 
             domain_kappa = [
                 {"domain": cat, "kappa": score}
-                for cat, score in sorted(domain_kappa_dict.items(), key=lambda x: x[1], reverse=True)
+                for cat, score in sorted(domain_kappa_dict.items(), key=lambda x: (x[1] is not None, x[1] or 0), reverse=True)
             ]
         else:
             domain_kappa = []
@@ -984,36 +1025,39 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
             chi2_fmt = float(chi2_fmt) if not math.isnan(chi2_fmt) else 0.0
             p_val_fmt = float(p_val_fmt) if not math.isnan(p_val_fmt) else 1.0
         else:
-            chi2_fmt = 0.0
-            p_val_fmt = 1.0
+            chi2_fmt = None
+            p_val_fmt = None
 
         format_bias = {
             "markdown_chosen": markdown_chosen,
             "plain_text_chosen": plain_text_chosen,
-            "p_value": round(p_val_fmt, 6),
-            "p_value_adjusted": round(float(_adjust_pvalues_bh([p_val_fmt])[0]), 6),
-            "chi2_stat": round(chi2_fmt, 3),
+            "p_value": round(p_val_fmt, 6) if p_val_fmt is not None else None,
+            "p_value_adjusted": round(float(_adjust_pvalues_bh([p_val_fmt])[0]), 6) if p_val_fmt is not None else None,
+            "chi2_stat": round(chi2_fmt, 3) if chi2_fmt is not None else None,
         }
 
         # ── Inter-Judge Agreement (RQ6) ──────────────────────────────────────
         try:
             target_comparator = "deepseek/deepseek-chat" if judge_model == "gpt-4o-mini" else "gpt-4o-mini"
             inter_judge_res = compute_inter_judge_kappa(db.get_bind(), model_a=judge_model, model_b=target_comparator)
-            inter_judge_kappa = inter_judge_res.get("inter_judge_kappa")
+            inter_judge_kappa = inter_judge_res.get("inter_judge_kappa") if int(inter_judge_res.get("overlapping_trials") or 0) else None
         except Exception:
             inter_judge_kappa = None
 
         return {
+            "evidence_class": "LEGACY_EXPLORATORY",
+            "status": "AVAILABLE",
+            "n": len(verbosity_data),
             "verbosity_data": verbosity_data,
             "position_data":  position_data,
             "domain_kappa":   domain_kappa,
             "format_bias":    format_bias,
             "inter_judge_kappa": inter_judge_kappa,
         }
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=500,
-            detail=f"Database query failed: {str(exc)}"
+            detail="Exploratory bias telemetry is unavailable."
         )
 
 
