@@ -9,11 +9,13 @@ import { EvidenceBadge } from '../components/EvidenceBadge';
 export const LeaderboardPage: React.FC = () => {
   const { judgeModel } = useJudge();
   const { data, loading, error, refetch } = useLeaderboard(judgeModel);
-  const { count, loading: countLoading } = useDatasetCount();
+  const { count, loading: countLoading, error: countError } = useDatasetCount();
 
-  const formattedCount = count !== null && count !== undefined ? count.toLocaleString() : '0';
+  const formattedCount = count !== null && count !== undefined ? count.toLocaleString() : 'Unavailable';
   const pairwiseCountStr = countLoading
     ? 'Loading dataset count...'
+    : countError
+    ? 'Dataset count unavailable'
     : `${formattedCount} Pairwise Matchups`;
 
   return (

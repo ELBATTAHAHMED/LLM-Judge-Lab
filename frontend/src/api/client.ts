@@ -6,12 +6,23 @@ import type {
   BiasStatsResponse,
   QualitativeRecord,
   QualitativeBucket,
+  EvaluateRequest,
+  EvaluateResponse,
+  CalibratedEvaluateRequest,
+  CalibratedEvaluateResponse,
+  EnsembleEvaluateRequest,
+  EnsembleEvaluateResponse,
   ConsistencyStatsResponse,
   DatasetCountResponse,
   InterJudgeReliability,
   SelfPreferenceResponse,
   ControlledResultsResponse,
 } from './types';
+
+/** Kept per request: callers must never persist or log this operator token. */
+export const liveSandboxHeaders = (operatorToken: string) => ({
+  'X-Live-Sandbox-Token': operatorToken,
+});
 
 /**
  * Resolve backend API base URL.
@@ -155,6 +166,31 @@ export function useLeaderboard(judgeModel?: string) {
   }, [fetch]);
 
   return { data, loading, error, refetch: fetch };
+}
+
+/** Manual-only endpoints. The backend remains disabled until explicitly enabled. */
+export async function executeLiveEvaluation(payload: EvaluateRequest, operatorToken: string): Promise<EvaluateResponse> {
+  const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload, {
+    headers: liveSandboxHeaders(operatorToken),
+    timeout: 120000,
+  });
+  return response.data;
+}
+
+export async function executeCalibratedEvaluation(payload: CalibratedEvaluateRequest, operatorToken: string): Promise<CalibratedEvaluateResponse> {
+  const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, {
+    headers: liveSandboxHeaders(operatorToken),
+    timeout: 180000,
+  });
+  return response.data;
+}
+
+export async function executeEnsembleEvaluation(payload: EnsembleEvaluateRequest, operatorToken: string): Promise<EnsembleEvaluateResponse> {
+  const response = await apiClient.post<EnsembleEvaluateResponse>('/api/evaluate/ensemble', payload, {
+    headers: liveSandboxHeaders(operatorToken),
+    timeout: 300000,
+  });
+  return response.data;
 }
 
 export function useBiasStats(judgeModel?: string) {

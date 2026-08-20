@@ -5,6 +5,7 @@ import {
   Trophy,
   Activity,
   Search,
+  FlaskConical,
   Award,
   ClipboardCheck,
   Sun,
@@ -105,6 +106,11 @@ export const DashboardLayout: React.FC = () => {
       label: 'Qualitative Explorer',
       icon: Search,
     },
+    {
+      path: '/live-lab',
+      label: 'Live Evaluation',
+      icon: FlaskConical,
+    },
   ];
 
   const getPageTitle = (pathname: string) => {
@@ -120,6 +126,8 @@ export const DashboardLayout: React.FC = () => {
         return 'Controlled Experiments';
       case '/qualitative-explorer':
         return 'Qualitative Explorer';
+      case '/live-lab':
+        return 'Live Evaluation';
       default:
         return 'Overview';
     }
