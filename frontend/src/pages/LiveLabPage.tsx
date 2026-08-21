@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation } from '../api/client';
+import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation, useLiveSandboxStatus } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse, EnsembleEvaluateResponse } from '../api/types';
 import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
@@ -44,6 +44,7 @@ function safeLiveError(error: unknown): string {
 
 export const LiveLabPage: React.FC = () => {
   const { judgeModel } = useJudge();
+  const { enabled: liveSandboxEnabled } = useLiveSandboxStatus();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
@@ -172,6 +173,11 @@ export const LiveLabPage: React.FC = () => {
           <p className="text-xs text-neutral-500 mt-1">
             <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LIVE_SANDBOX" /></span>LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
           </p>
+          {liveSandboxEnabled && (
+            <span className="mt-1 inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
+              Live execution enabled
+            </span>
+          )}
         </div>
         <div className="relative flex items-center gap-1 self-start sm:self-auto">
           <button

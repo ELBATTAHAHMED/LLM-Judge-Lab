@@ -20,6 +20,7 @@ import hmac
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
+from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,10 @@ from sqlalchemy.orm import Session
 # backend/main.py lives inside backend/
 BACKEND_DIR = Path(__file__).parent.resolve()
 ROOT_DIR    = BACKEND_DIR.parent.resolve()
+
+# Resolve the local configuration from the repository root so the manual-only
+# sandbox setting survives local restarts regardless of the Uvicorn cwd.
+load_dotenv(ROOT_DIR / ".env")
 
 # Ensure backend/ directory is in sys.path so 'database' and 'models' import cleanly
 if str(BACKEND_DIR) not in sys.path:
@@ -92,9 +97,13 @@ app.add_middleware(
 )
 
 
+def _live_sandbox_provider_calls_enabled() -> bool:
+    return os.getenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false").strip().lower() == "true"
+
+
 def _require_live_sandbox_authorization(x_live_sandbox_token: str | None = Header(default=None)) -> None:
     """Separate disabled-by-default boundary; never accepts controlled auth."""
-    if os.getenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false").lower() != "true":
+    if not _live_sandbox_provider_calls_enabled():
         raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
     expected = os.getenv("LIVE_SANDBOX_OPERATOR_TOKEN")
     if not expected or not x_live_sandbox_token or not hmac.compare_digest(expected, x_live_sandbox_token):
@@ -142,6 +151,11 @@ class HealthCheckResponse(BaseModel):
     status: Literal["healthy", "degraded", "unhealthy"]
     database: str
     message: str
+
+
+class LiveSandboxStatusResponse(BaseModel):
+    """Public, secret-free availability indicator for the manual-only UI."""
+    provider_calls_enabled: bool
 
 
 class LeaderboardItem(BaseModel):
@@ -286,6 +300,12 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
             database="unavailable",
             message="Database connectivity is unavailable.",
         )
+
+
+@app.get("/api/live-sandbox/status", response_model=LiveSandboxStatusResponse)
+def live_sandbox_status() -> LiveSandboxStatusResponse:
+    """Expose only the provider-gate state; credentials remain server-side."""
+    return LiveSandboxStatusResponse(provider_calls_enabled=_live_sandbox_provider_calls_enabled())
 
 
 @app.get("/api/controlled/results", response_model=ControlledResultsResponse)

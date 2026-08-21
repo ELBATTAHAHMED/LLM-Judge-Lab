@@ -106,6 +106,20 @@ def test_live_provider_failure_is_sanitized_after_authorization(monkeypatch):
     assert "secret" not in error.value.detail
 
 
+def test_live_sandbox_status_and_authorization_use_the_explicit_local_flag(monkeypatch):
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "true")
+    monkeypatch.setenv("LIVE_SANDBOX_OPERATOR_TOKEN", "test-operator-token")
+
+    assert main.live_sandbox_status().provider_calls_enabled is True
+    main._require_live_sandbox_authorization("test-operator-token")
+
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
+    assert main.live_sandbox_status().provider_calls_enabled is False
+    with pytest.raises(HTTPException) as error:
+        main._require_live_sandbox_authorization("test-operator-token")
+    assert error.value.status_code == 403
+
+
 def test_live_persistence_failure_is_sanitized_after_authorization(monkeypatch):
     class FailingDatabase:
         def begin_nested(self):

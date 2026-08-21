@@ -8,6 +8,7 @@ import type {
   QualitativeBucket,
   EvaluateRequest,
   EvaluateResponse,
+  LiveSandboxStatusResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
   EnsembleEvaluateRequest,
@@ -196,6 +197,29 @@ export async function executeLiveEvaluation(payload: EvaluateRequest, operatorTo
     timeout: 120000,
   });
   return response.data;
+}
+
+/** Secret-free indicator only; authorization and credentials remain server-side. */
+export async function getLiveSandboxStatus(): Promise<LiveSandboxStatusResponse> {
+  const response = await apiClient.get<LiveSandboxStatusResponse>('/api/live-sandbox/status');
+  if (typeof response.data?.provider_calls_enabled !== 'boolean') {
+    throw new Error('Live Sandbox status response is invalid.');
+  }
+  return response.data;
+}
+
+export function useLiveSandboxStatus() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getLiveSandboxStatus()
+      .then((status) => { if (active) setEnabled(status.provider_calls_enabled); })
+      .catch(() => { if (active) setEnabled(null); });
+    return () => { active = false; };
+  }, []);
+
+  return { enabled };
 }
 
 export async function executeCalibratedEvaluation(payload: CalibratedEvaluateRequest, operatorToken: string): Promise<CalibratedEvaluateResponse> {
