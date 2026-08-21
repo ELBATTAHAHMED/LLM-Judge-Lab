@@ -73,10 +73,6 @@ export interface EvaluateResponse {
   model_name: string;
 }
 
-export interface LiveSandboxStatusResponse {
-  provider_calls_enabled: boolean;
-}
-
 export interface CalibratedEvaluateRequest {
   question: string;
   answer_a: string;

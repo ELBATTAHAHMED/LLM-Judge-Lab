@@ -16,8 +16,7 @@ import uuid
 import datetime
 import json
 import asyncio
-import hmac
-from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks, Header
+from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from dotenv import load_dotenv
@@ -101,13 +100,10 @@ def _live_sandbox_provider_calls_enabled() -> bool:
     return os.getenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false").strip().lower() == "true"
 
 
-def _require_live_sandbox_authorization(x_live_sandbox_token: str | None = Header(default=None)) -> None:
-    """Separate disabled-by-default boundary; never accepts controlled auth."""
+def _require_live_sandbox_enabled() -> None:
+    """Disabled-by-default boundary before any manual provider transport."""
     if not _live_sandbox_provider_calls_enabled():
         raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
-    expected = os.getenv("LIVE_SANDBOX_OPERATOR_TOKEN")
-    if not expected or not x_live_sandbox_token or not hmac.compare_digest(expected, x_live_sandbox_token):
-        raise HTTPException(status_code=403, detail="Separate live sandbox operator authorization is required before provider transport.")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -151,11 +147,6 @@ class HealthCheckResponse(BaseModel):
     status: Literal["healthy", "degraded", "unhealthy"]
     database: str
     message: str
-
-
-class LiveSandboxStatusResponse(BaseModel):
-    """Public, secret-free availability indicator for the manual-only UI."""
-    provider_calls_enabled: bool
 
 
 class LeaderboardItem(BaseModel):
@@ -300,12 +291,6 @@ def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
             database="unavailable",
             message="Database connectivity is unavailable.",
         )
-
-
-@app.get("/api/live-sandbox/status", response_model=LiveSandboxStatusResponse)
-def live_sandbox_status() -> LiveSandboxStatusResponse:
-    """Expose only the provider-gate state; credentials remain server-side."""
-    return LiveSandboxStatusResponse(provider_calls_enabled=_live_sandbox_provider_calls_enabled())
 
 
 @app.get("/api/controlled/results", response_model=ControlledResultsResponse)
@@ -1350,7 +1335,7 @@ def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_
 
 
 @app.post("/api/evaluate", response_model=EvaluateResponse)
-def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict:
+def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict:
     """
     Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
@@ -1417,7 +1402,7 @@ class CalibratedEvaluationRequest(BaseModel):
 
 
 @app.post("/api/evaluate/calibrated", response_model=CalibratedEvaluationResponse)
-def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict[str, Any]:
+def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
@@ -1502,7 +1487,7 @@ class MultiJudgeEnsembleResponse(BaseModel):
 
 
 @app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
-def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict[str, Any]:
+def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
     """
     Executes concurrent multi-judge ensemble voting across selected LLM judge models.
     Aggregates individual verdicts into a majority-rule consensus verdict.

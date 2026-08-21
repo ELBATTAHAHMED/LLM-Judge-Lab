@@ -61,6 +61,38 @@ def test_noncanonical_controlled_analysisrun_cannot_replace_final_evidence(tmp_p
 def test_live_sandbox_provider_routes_are_disabled_before_transport(monkeypatch):
     import main
     calls = []
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
     monkeypatch.setattr(main, "call_judge", lambda **_: calls.append(True))
     response = TestClient(app).post("/api/evaluate", json={"prompt": "q", "answer_a": "a", "answer_b": "b"})
     assert response.status_code == 403 and calls == []
+
+
+def test_live_sandbox_env_gate_allows_a_route_without_a_token_header(monkeypatch):
+    import main
+
+    class FakeDatabase:
+        def begin_nested(self):
+            from contextlib import nullcontext
+            return nullcontext()
+
+        def commit(self):
+            pass
+
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "true")
+    monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
+    monkeypatch.setattr(main, "call_judge", lambda **_: type("Result", (), {"verdict": "A", "reasoning": "mocked"})())
+    monkeypatch.setattr(main, "_get_or_create_prompt", lambda *_args, **_kwargs: 1)
+    monkeypatch.setattr(main, "_insert_answer_safe", lambda *_args, **_kwargs: 2)
+    monkeypatch.setattr(main, "_insert_decision_safe", lambda *_args, **_kwargs: None)
+
+    def override_db():
+        yield FakeDatabase()
+
+    app.dependency_overrides[get_db] = override_db
+    try:
+        response = TestClient(app).post("/api/evaluate", json={"prompt": "q", "answer_a": "a", "answer_b": "b", "model_name": "gpt-4o-mini"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["winner"] == "A"

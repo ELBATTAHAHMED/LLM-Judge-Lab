@@ -93,7 +93,7 @@ def test_legacy_bias_endpoint_uses_explicit_no_data_semantics():
     assert payload["format_bias"]["p_value"] is None
 
 
-def test_live_provider_failure_is_sanitized_after_authorization(monkeypatch):
+def test_live_provider_failure_is_sanitized_after_env_gate(monkeypatch):
     monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
     monkeypatch.setattr(main, "call_judge", lambda **_: (_ for _ in ()).throw(RuntimeError("https://user:secret@example.invalid/provider")))
     request = main.EvaluateRequest(prompt="q", answer_a="a", answer_b="b")
@@ -106,21 +106,20 @@ def test_live_provider_failure_is_sanitized_after_authorization(monkeypatch):
     assert "secret" not in error.value.detail
 
 
-def test_live_sandbox_status_and_authorization_use_the_explicit_local_flag(monkeypatch):
+def test_live_sandbox_env_gate_uses_the_explicit_local_flag(monkeypatch):
     monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "true")
-    monkeypatch.setenv("LIVE_SANDBOX_OPERATOR_TOKEN", "test-operator-token")
 
-    assert main.live_sandbox_status().provider_calls_enabled is True
-    main._require_live_sandbox_authorization("test-operator-token")
+    assert main._live_sandbox_provider_calls_enabled() is True
+    main._require_live_sandbox_enabled()
 
     monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
-    assert main.live_sandbox_status().provider_calls_enabled is False
+    assert main._live_sandbox_provider_calls_enabled() is False
     with pytest.raises(HTTPException) as error:
-        main._require_live_sandbox_authorization("test-operator-token")
+        main._require_live_sandbox_enabled()
     assert error.value.status_code == 403
 
 
-def test_live_persistence_failure_is_sanitized_after_authorization(monkeypatch):
+def test_live_persistence_failure_is_sanitized_after_env_gate(monkeypatch):
     class FailingDatabase:
         def begin_nested(self):
             raise RuntimeError("postgresql://user:secret@example.invalid/private")

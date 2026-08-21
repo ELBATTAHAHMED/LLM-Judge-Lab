@@ -8,7 +8,6 @@ import type {
   QualitativeBucket,
   EvaluateRequest,
   EvaluateResponse,
-  LiveSandboxStatusResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
   EnsembleEvaluateRequest,
@@ -19,11 +18,6 @@ import type {
   SelfPreferenceResponse,
   ControlledResultsResponse,
 } from './types';
-
-/** Kept per request: callers must never persist or log this operator token. */
-export const liveSandboxHeaders = (operatorToken: string) => ({
-  'X-Live-Sandbox-Token': operatorToken,
-});
 
 /**
  * Resolve backend API base URL.
@@ -191,48 +185,22 @@ export function useLeaderboard(judgeModel?: string) {
 }
 
 /** Manual-only endpoints. The backend remains disabled until explicitly enabled. */
-export async function executeLiveEvaluation(payload: EvaluateRequest, operatorToken: string): Promise<EvaluateResponse> {
+export async function executeLiveEvaluation(payload: EvaluateRequest): Promise<EvaluateResponse> {
   const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload, {
-    headers: liveSandboxHeaders(operatorToken),
     timeout: 120000,
   });
   return response.data;
 }
 
-/** Secret-free indicator only; authorization and credentials remain server-side. */
-export async function getLiveSandboxStatus(): Promise<LiveSandboxStatusResponse> {
-  const response = await apiClient.get<LiveSandboxStatusResponse>('/api/live-sandbox/status');
-  if (typeof response.data?.provider_calls_enabled !== 'boolean') {
-    throw new Error('Live Sandbox status response is invalid.');
-  }
-  return response.data;
-}
-
-export function useLiveSandboxStatus() {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    getLiveSandboxStatus()
-      .then((status) => { if (active) setEnabled(status.provider_calls_enabled); })
-      .catch(() => { if (active) setEnabled(null); });
-    return () => { active = false; };
-  }, []);
-
-  return { enabled };
-}
-
-export async function executeCalibratedEvaluation(payload: CalibratedEvaluateRequest, operatorToken: string): Promise<CalibratedEvaluateResponse> {
+export async function executeCalibratedEvaluation(payload: CalibratedEvaluateRequest): Promise<CalibratedEvaluateResponse> {
   const response = await apiClient.post<CalibratedEvaluateResponse>('/api/evaluate/calibrated', payload, {
-    headers: liveSandboxHeaders(operatorToken),
     timeout: 180000,
   });
   return response.data;
 }
 
-export async function executeEnsembleEvaluation(payload: EnsembleEvaluateRequest, operatorToken: string): Promise<EnsembleEvaluateResponse> {
+export async function executeEnsembleEvaluation(payload: EnsembleEvaluateRequest): Promise<EnsembleEvaluateResponse> {
   const response = await apiClient.post<EnsembleEvaluateResponse>('/api/evaluate/ensemble', payload, {
-    headers: liveSandboxHeaders(operatorToken),
     timeout: 300000,
   });
   return response.data;

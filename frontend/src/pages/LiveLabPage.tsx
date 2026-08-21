@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation, useLiveSandboxStatus } from '../api/client';
+import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse, EnsembleEvaluateResponse } from '../api/types';
 import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
-import { EvidenceBadge } from '../components/EvidenceBadge';
 import { ModelIcon, SingleModelIcon, formatModelName } from '../components/ModelIcons';
-import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square, LockKeyhole } from 'lucide-react';
+import { Play, RefreshCw, FlaskConical, CheckCircle2, Sparkles, ShieldCheck, AlertTriangle, Layers, ChevronDown, Check, Users, CheckSquare, Square } from 'lucide-react';
 
 const DEFAULT_PROMPT = `What are the top attractions and cultural experiences in Hawaii?`;
 
@@ -31,12 +30,7 @@ function safeLiveError(error: unknown): string {
   if (!error.response) return error.code === 'ECONNABORTED'
     ? 'The provider request timed out. No final controlled evidence was affected.'
     : 'The backend is unavailable. Check that the local API server is running.';
-  if (error.response.status === 403) {
-    const detail = typeof error.response.data?.detail === 'string' ? error.response.data.detail.toLowerCase() : '';
-    return detail.includes('disabled')
-      ? 'Live Sandbox is disabled. Set ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true on the backend before running a manual evaluation.'
-      : 'Live Sandbox authorization was rejected. Check the operator token.';
-  }
+  if (error.response.status === 403) return 'Local live execution is disabled. Set ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true on the backend before running a manual evaluation.';
   if (error.response.status === 400 || error.response.status === 422) return 'Check the prompt, answers, and selected evaluation options.';
   if (error.response.status === 408 || error.response.status === 504) return 'The provider request timed out. Try again or select a different configuration.';
   return 'The provider or backend could not complete this manual evaluation. No frozen evidence was changed.';
@@ -44,12 +38,9 @@ function safeLiveError(error: unknown): string {
 
 export const LiveLabPage: React.FC = () => {
   const { judgeModel } = useJudge();
-  const { enabled: liveSandboxEnabled } = useLiveSandboxStatus();
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [answerA, setAnswerA] = useState(DEFAULT_ANSWER_A);
   const [answerB, setAnswerB] = useState(DEFAULT_ANSWER_B);
-  const [operatorToken, setOperatorToken] = useState('');
-  const [isAccessOpen, setIsAccessOpen] = useState(false);
   const [modelName, setModelName] = useState(judgeModel);
   const [evalMode, setEvalMode] = useState<'standard' | 'calibrated' | 'ensemble'>('standard');
   const [mitigationStrategy, setMitigationStrategy] = useState<'dual_ab' | 'verbosity_penalized' | 'none'>('dual_ab');
@@ -93,10 +84,6 @@ export const LiveLabPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!operatorToken.trim()) {
-      setError('Enter the Live Sandbox operator token to authorize this manual evaluation.');
-      return;
-    }
     if (!prompt.trim() || !answerA.trim() || !answerB.trim()) {
       setError('Please provide a Prompt, Answer A, and Answer B.');
       return;
@@ -118,7 +105,7 @@ export const LiveLabPage: React.FC = () => {
           answer_b: answerB,
           judge_models: selectedEnsembleModels,
           mitigation_strategy: mitigationStrategy,
-        }, operatorToken.trim());
+        });
         setEnsembleResult(res);
         setStandardResult(null);
         setCalibratedResult(null);
@@ -129,7 +116,7 @@ export const LiveLabPage: React.FC = () => {
           answer_b: answerB,
           model_name: modelName,
           mitigation_strategy: mitigationStrategy,
-        }, operatorToken.trim());
+        });
         setCalibratedResult(res);
         setStandardResult(null);
         setEnsembleResult(null);
@@ -139,7 +126,7 @@ export const LiveLabPage: React.FC = () => {
           answer_a: answerA,
           answer_b: answerB,
           model_name: modelName,
-        }, operatorToken.trim());
+        });
         setStandardResult(res);
         setCalibratedResult(null);
         setEnsembleResult(null);
@@ -171,41 +158,10 @@ export const LiveLabPage: React.FC = () => {
             Live Evaluation Sandbox
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            <span className="mr-2 inline-block"><EvidenceBadge evidenceClass="LIVE_SANDBOX" /></span>LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
+            LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
           </p>
-          {liveSandboxEnabled && (
-            <span className="mt-1 inline-flex rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-700 dark:text-emerald-300">
-              Live execution enabled
-            </span>
-          )}
         </div>
-        <div className="relative flex items-center gap-1 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => setIsAccessOpen((open) => !open)}
-            aria-label="Configure live access"
-            title="Configure live access"
-            className="rounded p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white"
-          >
-            <LockKeyhole className="h-3.5 w-3.5" />
-          </button>
-          {isAccessOpen && (
-            <div className="absolute right-0 top-9 z-30 w-72 rounded border border-neutral-200 bg-white p-3 shadow-xl dark:border-neutral-800 dark:bg-neutral-950">
-              <label htmlFor="live-operator-token" className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider mb-1">
-                Operator token
-              </label>
-              <input
-                id="live-operator-token"
-                type="password"
-                autoComplete="off"
-                value={operatorToken}
-                onChange={(e) => setOperatorToken(e.target.value)}
-                placeholder="Required to run an evaluation"
-                className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500"
-              />
-              <p className="mt-1 text-[10px] text-neutral-500">Held in memory only; never stored, committed, or logged.</p>
-            </div>
-          )}
+        <div className="flex items-center gap-1 self-start sm:self-auto">
           <button
             type="button"
             onClick={handleReset}

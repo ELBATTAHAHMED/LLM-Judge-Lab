@@ -127,8 +127,8 @@ runtime. License/attribution metadata requires external verification.
   references to the executed manifest, run ledger, and canonical AnalysisRun;
   it does not amend or reseal Phase 11.
 - Live Evaluation remains visible as a manual demo workflow. Backend
-  live-provider endpoints are disabled by default and require a separate
-  operator token; they are not part of the controlled study.
+  live-provider endpoints are disabled by default and are not part of the
+  controlled study.
 - The leaderboard and diagnostics are retained only as labeled historical,
   exploratory views. The retired macro benchmark and leaderboard-recalculation
   routes are not exposed by the final application.
