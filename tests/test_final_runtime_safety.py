@@ -6,6 +6,8 @@ import os
 from types import SimpleNamespace
 
 import main
+import pytest
+from fastapi import HTTPException
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, canonical_final_analysis_runs
 
 
@@ -89,3 +91,36 @@ def test_legacy_bias_endpoint_uses_explicit_no_data_semantics():
     assert payload["n"] == 0
     assert payload["position_data"]["position_a"] is None
     assert payload["format_bias"]["p_value"] is None
+
+
+def test_live_provider_failure_is_sanitized_after_authorization(monkeypatch):
+    monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
+    monkeypatch.setattr(main, "call_judge", lambda **_: (_ for _ in ()).throw(RuntimeError("https://user:secret@example.invalid/provider")))
+    request = main.EvaluateRequest(prompt="q", answer_a="a", answer_b="b")
+
+    with pytest.raises(HTTPException) as error:
+        main.evaluate_judge(request, object())
+
+    assert error.value.status_code == 502
+    assert error.value.detail == "Provider request failed."
+    assert "secret" not in error.value.detail
+
+
+def test_live_persistence_failure_is_sanitized_after_authorization(monkeypatch):
+    class FailingDatabase:
+        def begin_nested(self):
+            raise RuntimeError("postgresql://user:secret@example.invalid/private")
+
+        def rollback(self):
+            pass
+
+    monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
+    monkeypatch.setattr(main, "call_judge", lambda **_: SimpleNamespace(verdict="A", reasoning="reasoning"))
+    request = main.EvaluateRequest(prompt="q", answer_a="a", answer_b="b")
+
+    with pytest.raises(HTTPException) as error:
+        main.evaluate_judge(request, FailingDatabase())
+
+    assert error.value.status_code == 500
+    assert error.value.detail == "Unable to persist live evaluation."
+    assert "secret" not in error.value.detail

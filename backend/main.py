@@ -1,5 +1,6 @@
 import sys
 import threading
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
@@ -39,6 +40,9 @@ from evidence_contract import EvidenceClass  # noqa: E402
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, canonical_final_analysis_runs  # noqa: E402
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
+
+
+logger = logging.getLogger(__name__)
 
 QUALITATIVE_DIR      = ROOT_DIR / "qualitative_data"
 
@@ -1335,7 +1339,8 @@ def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_
 def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict:
     """
     Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
-    Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
+    Enforces a strict Zero-Mock policy. Internal failures are logged server-side
+    and do not expose operational details to the client.
     Results are persisted to PostgreSQL so live evaluations accumulate in the database.
     """
     if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
@@ -1344,7 +1349,8 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None 
     try:
         _validate_api_key_or_raise(req.model_name)
     except ValueError as val_err:
-        raise HTTPException(status_code=500, detail=str(val_err))
+        logger.warning("Live evaluation is not configured", exc_info=val_err)
+        raise HTTPException(status_code=503, detail="Live evaluation is not configured.") from val_err
 
     try:
         result = call_judge(
@@ -1368,10 +1374,8 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None 
                 db.commit()
         except Exception as db_exc:
             db.rollback()
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database persistence failed: {str(db_exc)}"
-            ) from db_exc
+            logger.exception("Unable to persist live evaluation")
+            raise HTTPException(status_code=500, detail="Unable to persist live evaluation.") from db_exc
 
         return {
             "winner": verdict,
@@ -1381,10 +1385,8 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None 
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Standard evaluation failed: {str(exc)}"
-        )
+        logger.exception("Live provider request failed")
+        raise HTTPException(status_code=502, detail="Provider request failed.") from exc
 
 
 
@@ -1404,13 +1406,15 @@ class CalibratedEvaluationRequest(BaseModel):
 def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_authorization)) -> dict[str, Any]:
     """
     Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
-    Enforces a strict Zero-Mock policy: errors bubble up transparently via HTTPException.
+    Enforces a strict Zero-Mock policy. Internal failures are logged server-side
+    and do not expose operational details to the client.
     Final calibrated verdict is persisted to PostgreSQL so live evaluations accumulate in the database.
     """
     try:
         _validate_api_key_or_raise(req.model_name)
     except ValueError as val_err:
-        raise HTTPException(status_code=500, detail=str(val_err))
+        logger.warning("Calibrated live evaluation is not configured", exc_info=val_err)
+        raise HTTPException(status_code=503, detail="Live evaluation is not configured.") from val_err
 
     try:
         res = call_calibrated_judge(
@@ -1437,10 +1441,8 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
                 db.commit()
         except Exception as db_exc:
             db.rollback()
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database persistence failed: {str(db_exc)}"
-            ) from db_exc
+            logger.exception("Unable to persist live evaluation")
+            raise HTTPException(status_code=500, detail="Unable to persist live evaluation.") from db_exc
 
         return {
             "status": "success",
@@ -1456,10 +1458,8 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Calibrated evaluation failed: {str(exc)}"
-        )
+        logger.exception("Calibrated live provider request failed")
+        raise HTTPException(status_code=502, detail="Provider request failed.") from exc
 
 
 # ── Multi-Judge Ensemble Endpoint ──────────────────────────────────────────────
@@ -1502,7 +1502,8 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
         try:
             _validate_api_key_or_raise(m)
         except ValueError as val_err:
-            raise HTTPException(status_code=500, detail=str(val_err))
+            logger.warning("Ensemble live evaluation is not configured", exc_info=val_err)
+            raise HTTPException(status_code=503, detail="Live evaluation is not configured.") from val_err
 
     try:
         res = call_multi_judge_ensemble(
@@ -1530,7 +1531,7 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
                 db.commit()
         except Exception as db_exc:
             db.rollback()
-            print(f"[WARN] Failed to persist ensemble decisions to DB: {db_exc}")
+            logger.exception("Unable to persist live ensemble evaluation")
 
         return {
             "status": "success",
@@ -1545,9 +1546,7 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Multi-judge ensemble evaluation failed: {str(exc)}"
-        )
+        logger.exception("Live ensemble provider request failed")
+        raise HTTPException(status_code=502, detail="Provider request failed.") from exc
 
 
