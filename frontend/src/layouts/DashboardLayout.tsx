@@ -82,9 +82,9 @@ export const DashboardLayout: React.FC = () => {
 
   const navItems = [
     {
-      path: '/controlled-results',
-      label: 'Controlled Experiments',
-      icon: ClipboardCheck,
+      path: '/leaderboard',
+      label: 'Leaderboard',
+      icon: Trophy,
     },
     {
       path: '/synthesis',
@@ -92,14 +92,14 @@ export const DashboardLayout: React.FC = () => {
       icon: Award,
     },
     {
+      path: '/controlled-results',
+      label: 'Controlled Experiments',
+      icon: ClipboardCheck,
+    },
+    {
       path: '/diagnostics',
       label: 'Bias Diagnostics',
       icon: Activity,
-    },
-    {
-      path: '/leaderboard',
-      label: 'Leaderboard',
-      icon: Trophy,
     },
     {
       path: '/qualitative-explorer',

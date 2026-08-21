@@ -19,7 +19,7 @@ export const App: React.FC = () => {
           <Suspense fallback={<div className="p-8 text-center text-gray-500 font-sans">Loading module...</div>}>
             <Routes>
               <Route path="/" element={<DashboardLayout />}>
-                <Route index element={<Navigate to="/synthesis" replace />} />
+                <Route index element={<Navigate to="/leaderboard" replace />} />
                 <Route path="leaderboard" element={<LeaderboardPage />} />
                 <Route path="synthesis" element={<SynthesisPage />} />
                 <Route path="diagnostics" element={<DiagnosticsPage />} />
