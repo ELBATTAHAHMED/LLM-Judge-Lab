@@ -77,13 +77,13 @@ AI Judge Verdict: ${activeRecord.ai_winner}
 Word Count Disparity: ${activeRecord.word_count_diff > 0 ? '+' : ''}${activeRecord.word_count_diff} words
 
 --- INPUT PROMPT ---
-${activeRecord.prompt_text || 'Prompt text grounded in baseline reference dataset.'}
+${activeRecord.prompt_text || 'Provenance unavailable; prompt text is not displayed.'}
 
 --- CANDIDATE ANSWER A (${activeRecord.answer_a_model || 'Answer A'}) ---
-${activeRecord.answer_a_text || 'Detailed candidate response grounded in factual context.'}
+${activeRecord.answer_a_text || 'Provenance unavailable; answer text is not displayed.'}
 
 --- CANDIDATE ANSWER B (${activeRecord.answer_b_model || 'Answer B'}) ---
-${activeRecord.answer_b_text || 'Concise candidate response providing relevant summary details.'}
+${activeRecord.answer_b_text || 'Provenance unavailable; answer text is not displayed.'}
 
 --- VERBATIM G-EVAL REASONING ---
 ${activeRecord.reasoning_text}
@@ -347,7 +347,7 @@ ${activeRecord.reasoning_text}
                   <span>Input Prompt Question</span>
                 </div>
                 <p className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed pt-0.5">
-                  {activeRecord.prompt_text || 'Compose an engaging travel blog post or analytical comparison grounded in standard baseline reference data.'}
+                  {activeRecord.prompt_text || 'Provenance unavailable; prompt text is not displayed.'}
                 </p>
               </div>
 
@@ -356,26 +356,26 @@ ${activeRecord.reasoning_text}
                 <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-1.5 flex flex-col">
                   <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5 text-xs font-mono">
                     <span className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                      <SingleModelIcon modelName={activeRecord.model_names.split(/\s+vs\s+/i)[0] || ''} className="w-3.5 h-3.5" />
+                      <SingleModelIcon modelName={activeRecord.answer_a_model || ''} className="w-3.5 h-3.5" />
                       <span>Answer A</span>
                     </span>
                     <span className="text-[10px] text-neutral-500">Candidate A</span>
                   </div>
                   <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
-                    {activeRecord.answer_a_text || 'Detailed candidate response grounded in factual context and structured reasoning.'}
+                    {activeRecord.answer_a_text || 'Provenance unavailable; answer text is not displayed.'}
                   </div>
                 </div>
 
                 <div className="p-3.5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-1.5 flex flex-col">
                   <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1.5 text-xs font-mono">
                     <span className="font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                      <SingleModelIcon modelName={activeRecord.model_names.split(/\s+vs\s+/i)[1] || ''} className="w-3.5 h-3.5" />
+                      <SingleModelIcon modelName={activeRecord.answer_b_model || ''} className="w-3.5 h-3.5" />
                       <span>Answer B</span>
                     </span>
                     <span className="text-[10px] text-neutral-500">Candidate B</span>
                   </div>
                   <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
-                    {activeRecord.answer_b_text || 'Concise candidate response providing relevant summary details and key concepts.'}
+                    {activeRecord.answer_b_text || 'Provenance unavailable; answer text is not displayed.'}
                   </div>
                 </div>
               </div>

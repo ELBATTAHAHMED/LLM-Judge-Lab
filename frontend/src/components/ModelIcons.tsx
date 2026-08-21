@@ -1,3 +1,4 @@
+// oxlint-disable react/only-export-components -- this icon module intentionally exports display helpers with components.
 import React from 'react';
 import { Bot } from 'lucide-react';
 

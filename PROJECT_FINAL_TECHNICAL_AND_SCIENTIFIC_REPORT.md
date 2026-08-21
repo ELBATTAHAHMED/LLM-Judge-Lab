@@ -136,7 +136,7 @@ checksums, and a standard-library verifier.
 
 ## 8. Final Frontend State
 
-- `/` opens `/synthesis`, the concise executive synthesis of controlled findings.
+- `/` opens `/leaderboard`; the controlled synthesis remains available at `/synthesis`.
 - `/controlled-results` is the primary navigation tab and presents the complete
   current controlled RQ1–RQ7 evidence.
 - Leaderboard content is historical/exploratory, not final controlled evidence.

@@ -53,6 +53,9 @@ export interface QualitativeRecord {
   answer_b_text?: string;
   answer_a_model?: string;
   answer_b_model?: string;
+  answer_a_id?: number;
+  answer_b_id?: number;
+  provenance_status?: 'VERIFIED' | 'UNAVAILABLE';
 }
 
 export type QualitativeBucket = 'verbosity' | 'forced_choice' | 'position_bias' | 'baseline_alignment';

@@ -1,3 +1,4 @@
+// oxlint-disable react/only-export-components -- the provider and its hook are one public context contract.
 import React, { createContext, useContext, useState } from 'react';
 
 interface JudgeContextType {

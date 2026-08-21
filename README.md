@@ -69,7 +69,7 @@ cd frontend
 npm run dev
 ```
 
-Open `http://localhost:5173/` (Synthesis is the default; Controlled Experiments
+Open `http://localhost:5173/` (Leaderboard is the default; Controlled Experiments
 is the primary navigation tab). The final scientific pages
 (`/controlled-results` and `/synthesis`) use only `/api/controlled/results`,
 which fail-closes to the pinned canonical AnalysisRuns rather than falling back

@@ -1198,35 +1198,29 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
                 prompts_map = {row[0]: row[1] for row in conn.execute(p_stmt, {"pids": pids}).fetchall()}
 
                 # Batch query answers
-                a_stmt = sa_text(
-                    "SELECT id, prompt_id, model_name, text FROM answers WHERE prompt_id IN :pids ORDER BY id ASC"
-                ).bindparams(bindparam("pids", expanding=True))
-
-                answers_map: dict[int, list[tuple[str, str]]] = {}
+                a_stmt = sa_text("SELECT id, prompt_id, model_name, text FROM answers WHERE prompt_id IN :pids").bindparams(bindparam("pids", expanding=True))
+                answers_map: dict[tuple[int, str], list[tuple[int, str]]] = {}
                 for row in conn.execute(a_stmt, {"pids": pids}).fetchall():
-                    answers_map.setdefault(row[1], []).append((row[2], row[3]))
+                    answers_map.setdefault((row[1], row[2]), []).append((row[0], row[3]))
 
                 for row in records:
                     pid_int = _parse_pid(row.get("prompt_id"))
                     if pid_int is not None:
-                        if pid_int in prompts_map:
-                            row["prompt_text"] = prompts_map[pid_int]
-
-                        a_list = answers_map.get(pid_int, [])
-                        if len(a_list) >= 2:
-                            row["answer_a_model"] = a_list[0][0]
-                            row["answer_a_text"] = a_list[0][1]
-                            row["answer_b_model"] = a_list[1][0]
-                            row["answer_b_text"] = a_list[1][1]
-                        elif len(a_list) == 1:
-                            row["answer_a_model"] = a_list[0][0]
-                            row["answer_a_text"] = a_list[0][1]
+                        declared = [value.strip() for value in re.split(r"\s+vs\s+", str(row.get("model_names") or ""), flags=re.IGNORECASE)]
+                        answer_a = answers_map.get((pid_int, declared[0]), []) if len(declared) == 2 else []
+                        answer_b = answers_map.get((pid_int, declared[1]), []) if len(declared) == 2 else []
+                        if pid_int in prompts_map and len(answer_a) == len(answer_b) == 1:
+                            row.update({"prompt_text": prompts_map[pid_int], "answer_a_id": answer_a[0][0], "answer_a_model": declared[0], "answer_a_text": answer_a[0][1], "answer_b_id": answer_b[0][0], "answer_b_model": declared[1], "answer_b_text": answer_b[0][1], "provenance_status": "VERIFIED"})
+                        else:
+                            row["provenance_status"] = "UNAVAILABLE"
+                    else:
+                        row["provenance_status"] = "UNAVAILABLE"
 
         return records
     except Exception as exc:
         print(f"Database lookup notice during qualitative enrichment: {exc}")
 
-    return _df_to_records(df)
+    return [{**row, "provenance_status": "UNAVAILABLE"} for row in _df_to_records(df)]
 
 
 # ── POST /api/evaluate ────────────────────────────────────────────────────────
