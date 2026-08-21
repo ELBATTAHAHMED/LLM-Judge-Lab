@@ -33,6 +33,9 @@ export const LeaderboardPage: React.FC = () => {
         <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto leading-relaxed">
           Judge-relative pairwise ranking across <span className="font-medium text-neutral-700 dark:text-neutral-300">{formattedCount}</span> comparisons. Rankings depend on the evaluation sample, judge, and available comparisons.
         </p>
+        <p className="text-[11px] text-neutral-500 dark:text-neutral-500 max-w-2xl mx-auto">
+          Historical exploratory telemetry — not part of the final controlled RQ1–RQ7 evidence.
+        </p>
       </div>
 
       {/* Core Leaderboard Table */}

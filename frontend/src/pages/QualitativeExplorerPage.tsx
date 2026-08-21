@@ -116,6 +116,9 @@ ${activeRecord.reasoning_text}
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
             Qualitative comparison cases for the selected judge and bucket.
           </p>
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1">
+            Historical exploratory telemetry — not part of the final controlled RQ1–RQ7 evidence.
+          </p>
         </div>
 
         <button

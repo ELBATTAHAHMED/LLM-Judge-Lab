@@ -366,15 +366,15 @@ export const LiveLabPage: React.FC = () => {
             {(evalMode === 'calibrated' || evalMode === 'ensemble') && (
               <div className="pb-3 border-b border-neutral-200 dark:border-neutral-800 space-y-1">
                 <label className="block text-[11px] font-mono font-semibold text-neutral-800 dark:text-neutral-200 uppercase tracking-wider">
-                  Active Mitigation Strategy
+                  Trial Protocol
                 </label>
                 <select
                   value={mitigationStrategy}
                   onChange={(e: any) => setMitigationStrategy(e.target.value)}
                   className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 cursor-pointer"
                 >
-                  <option value="dual_ab">Dual A/B Swap (Position Bias Mitigation)</option>
-                  <option value="verbosity_penalized">Length Penalization (Verbosity Bias Mitigation)</option>
+                  <option value="dual_ab">Dual A/B Swap (two presentation orders)</option>
+                  <option value="verbosity_penalized">Length Penalization (prompt adjustment)</option>
                   <option value="none">None (Uncalibrated Baseline)</option>
                 </select>
               </div>
@@ -452,7 +452,7 @@ export const LiveLabPage: React.FC = () => {
                                 ? 'Pass 1 (Order A vs B) In-Flight...'
                                 : executionStep === 2
                                 ? 'Pass 2 (Order B vs A) In-Flight...'
-                                : 'Debiasing Consensus Synthesis...'
+                                : 'Combining dual-pass outcomes...'
                             }`)
                       : 'Executing G-EVAL Verdict...'}
                   </span>
@@ -471,10 +471,10 @@ export const LiveLabPage: React.FC = () => {
                       ? 'Run Ensemble Consensus'
                       : evalMode === 'calibrated'
                       ? (mitigationStrategy === 'verbosity_penalized'
-                          ? 'Run Length-Calibrated Evaluation Trial'
+                          ? 'Run Length-Adjusted Evaluation Trial'
                           : mitigationStrategy === 'none'
                           ? 'Run Uncalibrated Baseline Trial'
-                          : 'Run Dual A/B Swap Calibrated Trial')
+                          : 'Run Dual A/B Swap Trial')
                       : 'Run Standard G-EVAL Evaluation Trial'}
                   </span>
                 </>
@@ -498,7 +498,7 @@ export const LiveLabPage: React.FC = () => {
                     {evalMode === 'ensemble'
                       ? 'Ensemble Consensus Telemetry'
                       : evalMode === 'calibrated'
-                      ? 'Calibrated Telemetry Output'
+                      ? 'Manual Trial Output'
                       : 'Standard Evaluation Output'}
                   </span>
                 </span>
@@ -618,10 +618,10 @@ export const LiveLabPage: React.FC = () => {
                     {mitigationStrategy === 'verbosity_penalized' ? (
                       <>
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-neutral-500">Length Bias Status:</span>
+                          <span className="text-[11px] font-mono text-neutral-500">Trial Adjustment:</span>
                           <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
                             <ShieldCheck className="w-3 h-3" />
-                            <span>Verbosity Penalty Calibrated (&beta; Mitigated)</span>
+                            <span>Length penalty applied for this trial</span>
                           </span>
                         </div>
 
@@ -652,7 +652,7 @@ export const LiveLabPage: React.FC = () => {
                     ) : (
                       <>
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-mono text-neutral-500">Position Bias Status:</span>
+                          <span className="text-[11px] font-mono text-neutral-500">Dual-pass comparison:</span>
                           <span
                             className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
                               calibratedResult.position_bias_detected
@@ -663,12 +663,12 @@ export const LiveLabPage: React.FC = () => {
                             {calibratedResult.position_bias_detected ? (
                               <>
                                 <AlertTriangle className="w-3 h-3" />
-                                <span>Bias Detected (Neutralized to TIE)</span>
+                                <span>Order-sensitive change observed in this trial</span>
                               </>
                             ) : (
                               <>
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span>No Position Bias Detected</span>
+                                <span>No order-sensitive change observed in this trial</span>
                               </>
                             )}
                           </span>
@@ -693,7 +693,7 @@ export const LiveLabPage: React.FC = () => {
 
                     <div className="pt-2 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
                       <span className="text-xs font-mono font-semibold text-neutral-700 dark:text-neutral-300">
-                        Final Calibrated Verdict:
+                        Final result for this trial:
                       </span>
                       <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
                         <ShieldCheck className="w-3.5 h-3.5" />
@@ -702,22 +702,25 @@ export const LiveLabPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Statistical Debiasing Summary Callout */}
+                  {/* Single-trial summary */}
                   <div className="flex items-center justify-between px-3 py-2 rounded bg-teal-500/10 border border-teal-500/20 text-[11px] font-mono text-teal-700 dark:text-teal-300">
                     <span className="flex items-center gap-1.5 font-medium">
                       <ShieldCheck className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                      <span>Empirical Debiasing Status:</span>
+                      <span>Trial summary:</span>
                     </span>
                     <span className="font-semibold">
                       {mitigationStrategy === 'verbosity_penalized'
-                        ? 'Length Bias Penalization Injected into Judge Prompt'
+                        ? 'Length penalty applied to this trial'
                         : mitigationStrategy === 'none'
-                        ? 'Uncalibrated Single-Pass Baseline Evaluation'
+                        ? 'Single-pass result'
                         : calibratedResult.position_bias_detected
-                        ? 'Position Inconsistency Resolved via Order Inversion'
-                        : 'Order Invariance Verified (Consensus Winner)'}
+                        ? 'Dual-pass result: mapped outcomes differed'
+                        : 'Both presentation orders produced the same mapped outcome'}
                     </span>
                   </div>
+                  <p className="text-[10px] font-mono text-neutral-500">
+                    This result applies only to the current manual trial.
+                  </p>
 
                   {/* Detailed Auditable Reasoning Inspector */}
                   <div className="space-y-2">

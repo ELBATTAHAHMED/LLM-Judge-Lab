@@ -91,6 +91,9 @@ export const DiagnosticsPage: React.FC = () => {
           <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
             Model-specific telemetry from retained database decisions. Each metric shows N/A when no eligible observations exist.
           </p>
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-500 mt-1">
+            Historical exploratory telemetry — not part of the final controlled RQ1–RQ7 evidence.
+          </p>
         </div>
 
         <div className="flex items-center space-x-2 self-start sm:self-auto font-mono">
