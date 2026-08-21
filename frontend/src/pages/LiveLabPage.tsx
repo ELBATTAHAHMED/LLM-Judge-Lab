@@ -510,6 +510,11 @@ export const LiveLabPage: React.FC = () => {
                         <span className="font-bold text-neutral-800 dark:text-neutral-200">{ensembleResult.successful_models}/{ensembleResult.total_models}</span>
                       </div>
                     </div>
+                    {!ensembleResult.persisted && (
+                      <p className="text-[10px] font-mono text-amber-700 dark:text-amber-300">
+                        Result returned, but this manual trial was not saved.
+                      </p>
+                    )}
                   </div>
 
                   {/* Individual Judge Model Verdict Breakdown */}

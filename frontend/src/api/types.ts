@@ -123,6 +123,7 @@ export interface EnsembleEvaluateResponse {
   successful_models: number;
   total_input_tokens: number;
   total_output_tokens: number;
+  persisted: boolean;
 }
 
 

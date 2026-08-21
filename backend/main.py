@@ -922,7 +922,6 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
         Selection counts & Chi-Square test comparing markdown_heavy vs plain_text
     """
     judge_model = normalize_model_id(judge_model)
-    print(f"[TRACE] Executing GET /api/stats/bias endpoint for model='{judge_model}'...")
     try:
         # ── Verbosity data ────────────────────────────────────────────────────
         verbosity_sql = text("""
@@ -1484,6 +1483,7 @@ class MultiJudgeEnsembleResponse(BaseModel):
     successful_models: int
     total_input_tokens: int
     total_output_tokens: int
+    persisted: bool
 
 
 @app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
@@ -1514,6 +1514,7 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
             mitigation_strategy=req.mitigation_strategy,
         )
 
+        persisted = True
         # Persist individual judge decisions to PostgreSQL
         try:
             with db.begin_nested():
@@ -1528,9 +1529,10 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
                         reasoning_str = str(item.get("reasoning", ""))
                         _insert_decision_safe(db, prompt_id, item["model_name"], ans_a_id, ans_b_id, winner_id, reasoning_str)
                 db.commit()
-        except Exception as db_exc:
+        except Exception:
             db.rollback()
             logger.exception("Unable to persist live ensemble evaluation")
+            persisted = False
 
         return {
             "status": "success",
@@ -1541,6 +1543,7 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
             "successful_models": res.successful_models,
             "total_input_tokens": res.total_input_tokens,
             "total_output_tokens": res.total_output_tokens,
+            "persisted": persisted,
         }
     except HTTPException:
         raise

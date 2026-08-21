@@ -137,3 +137,31 @@ def test_live_persistence_failure_is_sanitized_after_env_gate(monkeypatch):
     assert error.value.status_code == 500
     assert error.value.detail == "Unable to persist live evaluation."
     assert "secret" not in error.value.detail
+
+
+def test_live_ensemble_persistence_failure_is_explicit(monkeypatch):
+    class FailingDatabase:
+        def begin_nested(self):
+            raise RuntimeError("database unavailable")
+
+        def rollback(self):
+            pass
+
+    monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
+    monkeypatch.setattr(main, "call_multi_judge_ensemble", lambda **_: SimpleNamespace(
+        consensus_verdict="A",
+        vote_counts={"A": 1, "B": 0, "TIE": 0},
+        individual_results=[{"status": "success", "verdict": "A", "model_name": "gpt-4o-mini", "reasoning": "mocked"}],
+        total_models=1,
+        successful_models=1,
+        total_input_tokens=10,
+        total_output_tokens=1,
+    ))
+
+    payload = main.evaluate_ensemble(
+        main.MultiJudgeEnsembleRequest(question="q", answer_a="a", answer_b="b", judge_models=["gpt-4o-mini"]),
+        FailingDatabase(),
+    )
+
+    assert payload["consensus_verdict"] == "A"
+    assert payload["persisted"] is False

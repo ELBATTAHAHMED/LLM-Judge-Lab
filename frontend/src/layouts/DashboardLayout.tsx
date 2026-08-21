@@ -135,6 +135,11 @@ export const DashboardLayout: React.FC = () => {
 
   const currentJudge =
     JUDGE_OPTIONS.find((opt) => opt.id === judgeModel) || JUDGE_OPTIONS[0];
+  const showJudgeSelector = !['/synthesis', '/controlled-results'].includes(location.pathname);
+
+  useEffect(() => {
+    if (!showJudgeSelector) setIsJudgeOpen(false);
+  }, [showJudgeSelector]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#171717] text-neutral-900 dark:text-neutral-100 flex font-sans antialiased selection:bg-neutral-200 dark:selection:bg-neutral-800 transition-colors duration-150">
@@ -296,8 +301,9 @@ export const DashboardLayout: React.FC = () => {
             </span>
           </div>
 
-          {/* Sleek Matte Status Chip Judge Selector */}
-          <div className="relative" ref={judgeDropdownRef}>
+          {/* Aggregate controlled pages do not vary by the global judge selector. */}
+          {showJudgeSelector && (
+            <div className="relative" ref={judgeDropdownRef}>
             <button
               type="button"
               onClick={() => setIsJudgeOpen(!isJudgeOpen)}
@@ -371,7 +377,8 @@ export const DashboardLayout: React.FC = () => {
                 })}
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1">
