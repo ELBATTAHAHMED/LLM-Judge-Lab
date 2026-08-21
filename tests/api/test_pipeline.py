@@ -1,5 +1,5 @@
 """
-tests/test_pipeline.py
+tests/api/test_pipeline.py
 ======================
 Automated PyTest suite for the JudgeLab M2 Master's Thesis Platform.
 
@@ -19,7 +19,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Ensure backend/ directory is in sys.path
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = PROJECT_ROOT / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))

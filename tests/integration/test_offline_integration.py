@@ -12,7 +12,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_analysis_adapter import pass_outcome, resume_state, rq1_from_run, rq2_from_run, rq3_from_run  # noqa: E402

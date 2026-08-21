@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_evaluation import (  # noqa: E402

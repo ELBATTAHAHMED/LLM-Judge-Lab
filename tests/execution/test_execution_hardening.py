@@ -10,7 +10,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
@@ -21,7 +21,7 @@ from controlled_providers import ProviderExecutionGate, adapter_for_judge
 from controlled_persistence import Outcome
 from controlled_analysis_metrics import RQ1Unit, analyze_rq1
 from mock_provider import DeterministicMockProvider, MockScenario
-from test_offline_integration import chain, request
+from tests.integration.test_offline_integration import chain, request
 
 
 @pytest.fixture()

@@ -14,13 +14,13 @@ from alembic.config import Config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
 from controlled_models import PassAttempt
 from mock_provider import DeterministicMockProvider, MockScenario
-from test_offline_integration import chain, request
+from tests.integration.test_offline_integration import chain, request
 
 
 @pytest.fixture()

@@ -14,7 +14,7 @@ from controlled_analysis_metrics import (
 )
 from final_evidence import PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS, PHASE11_HISTORICAL_FINAL_MANIFESTS
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parents[3]
 EXPORTS_DIR = ROOT_DIR / "exports" / "phase10"
 
 

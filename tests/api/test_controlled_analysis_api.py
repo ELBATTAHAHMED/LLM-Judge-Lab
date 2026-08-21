@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from controlled_analysis_adapter import rq1_from_run
@@ -21,7 +21,7 @@ from main import app
 from database import get_db
 from mock_provider import DeterministicMockProvider, MockScenario
 from controlled_analysis_metrics import analyze_rq1
-from test_offline_integration import chain, request
+from tests.integration.test_offline_integration import chain, request
 
 
 def test_noncanonical_controlled_analysisrun_cannot_replace_final_evidence(tmp_path):
