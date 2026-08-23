@@ -1,0 +1,84 @@
+{
+  "artifact_id": "multi-judge-preexecution-gate-v1",
+  "checked_at": "2026-08-23T20:23:03Z",
+  "phase": "PHASE_5_PROVIDER_FREE_GO_NO_GO",
+  "source_head": "54abbbeab14037d459f18dc3047167c024d9e458",
+  "protocol": {
+    "path": "evidence/multijudge_consensus/protocol_v1.json",
+    "sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+    "status": "PASS"
+  },
+  "manifest": {
+    "path": "evidence/multijudge_consensus/execution_manifest_v1.json",
+    "sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "pairs": 1611,
+    "scientific_passes": 6444,
+    "passes_per_judge": 1611,
+    "execution_authorized": false,
+    "status": "PASS"
+  },
+  "credentials": {
+    "openai_api_key_present": false,
+    "openrouter_api_key_present": false,
+    "status": "FAIL"
+  },
+  "routing": {
+    "status": "PASS",
+    "routing_config_version": "controlled-routing-v1",
+    "routing_fingerprint": "bf8d0d1ef228f60e07ceff2e1da43eeefe8ae5538d439b5d9a4c325294b7030b",
+    "fallbacks_allowed": false,
+    "routes": {
+      "gpt-4o-mini": "OPENAI_DIRECT",
+      "anthropic/claude-3-haiku": "amazon-bedrock",
+      "deepseek/deepseek-chat": "streamlake",
+      "meta-llama/llama-3.3-70b-instruct": "deepinfra/turbo"
+    }
+  },
+  "pricing": {
+    "status": "PASS_CONFIGURED_PRICING",
+    "version": "pricing-config-v1",
+    "verification_date": "2026-08-18",
+    "expected_usd": "1.3736",
+    "p90_usd": "1.9338",
+    "p90_plus_15pct_retries_usd": "2.2239",
+    "hard_cap_usd": "2.50",
+    "pre_request_enforcement_required": true
+  },
+  "retry_policy": {
+    "status": "PASS",
+    "retry_policy_version": "controlled-retry-v2",
+    "failure_policy_version": "controlled-failure-v2",
+    "completed_slots_replayed": false
+  },
+  "persistence": {
+    "configured_backend": "PostgreSQL",
+    "database_reachable": true,
+    "controlled_schema_compatible": true,
+    "real_multijudge_manifest_materialization": "MISSING",
+    "real_multijudge_execution_entrypoint": "MISSING",
+    "durable_multijudge_resume_ledger": "MISSING",
+    "status": "FAIL"
+  },
+  "payload_safety": {
+    "status": "PASS",
+    "human_reference_outcome_loaded": false,
+    "human_reference_payload_leakage": false
+  },
+  "legacy_evidence": {
+    "phase11_verifier": "PASS",
+    "research_release_v2_verifier": "PASS",
+    "rq1_to_rq7_changed": false,
+    "controlled_results_changed": false
+  },
+  "provider_activity": {
+    "provider_calls": 0,
+    "spend_usd": "0"
+  },
+  "final_decision": "NO_GO",
+  "blockers": [
+    "OPENAI_API_KEY is missing.",
+    "OPENROUTER_API_KEY is missing.",
+    "No Phase 6 real multi-judge manifest materialization/execution entry point exists.",
+    "No durable real multi-judge resume/budget ledger exists for the frozen manifest."
+  ]
+}
