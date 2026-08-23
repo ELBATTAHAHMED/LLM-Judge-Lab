@@ -63,7 +63,7 @@ def test_fresh_migration_reaches_recovered_controlled_schema(isolated_engine):
     required = {"dataset_versions", "experiments", "experimental_conditions", "experiment_manifests", "experimental_units", "counterfactual_variants", "analysis_runs", "runs", "passes"}
     assert required.issubset(set(inspection.get_table_names()))
     with isolated_engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0008_execution_provenance"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "0009_multijudge_execution_ledger"
     run_columns = {column["name"] for column in inspection.get_columns("runs")}
     assert {"requested_model", "effective_model", "provider", "repetition_index", "final_parse_status", "legacy_decision_id", "experimental_unit_id"}.issubset(run_columns)
 
