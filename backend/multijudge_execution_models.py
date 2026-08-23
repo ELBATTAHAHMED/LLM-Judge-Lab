@@ -53,6 +53,8 @@ class MultiJudgeExecutionSlot(Base):
     final_outcome: Mapped[str | None] = mapped_column(String(32))
     mapped_vote: Mapped[str | None] = mapped_column(String(32))
     raw_response_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    execution_owner: Mapped[str | None] = mapped_column(String(64))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)

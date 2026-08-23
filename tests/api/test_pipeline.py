@@ -113,8 +113,10 @@ def test_call_calibrated_judge_unit_logic():
     assert res.final_calibrated_winner == "TIE"
 
 
-def test_calibrated_evaluation_endpoint_validation(client):
+def test_calibrated_evaluation_endpoint_validation(client, monkeypatch):
     """Verify POST /api/evaluate/calibrated request payload handling."""
+    # Test suites must never inherit a developer's locally enabled live sandbox.
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
     payload = {
         "question": "Explain quantum computing simply.",
         "answer_a": "Quantum computing uses qubits...",

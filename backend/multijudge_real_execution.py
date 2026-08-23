@@ -11,10 +11,12 @@ import json
 import os
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from time import monotonic
 from typing import Any, Callable
+from uuid import uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -43,6 +45,7 @@ EXPECTED_JUDGES = (
 )
 HARD_CAP_USD = Decimal("2.50")
 PAID_CONFIRMATION = "I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION"
+LEASE_SECONDS = 300
 
 
 class MultiJudgePreflightError(PermissionError):
@@ -186,10 +189,17 @@ class MultiJudgeExecutionStore:
             if (row.displayed_a_answer_id, row.displayed_b_answer_id) != expected:
                 raise MultiJudgePreflightError("durable displayed-answer mapping mismatch")
 
-    def recover_after_restart(self, session: Session, batch: MultiJudgeExecutionBatch) -> None:
-        """Never replay a slot that might already have reached a provider."""
-        now = datetime.now(timezone.utc)
+    def recover_stale_after_restart(self, session: Session, batch: MultiJudgeExecutionBatch) -> None:
+        """Reconcile only expired/no-owner in-flight slots during --execute.
+
+        Read-only status/preflight never calls this method.  A live executor
+        owns a SENT slot through its short lease, so an observer cannot turn a
+        request that is still in flight into an ambiguous scientific slot.
+        """
+        now = datetime.utcnow()
         for slot in session.scalars(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id, MultiJudgeExecutionSlot.status.in_(("PREPARED", "SENT", "RUNNING")))):
+            if slot.status in {"SENT", "RUNNING"} and slot.execution_owner and slot.lease_expires_at and slot.lease_expires_at > now:
+                continue
             attempts = list(session.scalars(select(MultiJudgeExecutionAttempt).where(MultiJudgeExecutionAttempt.slot_id == slot.id).order_by(MultiJudgeExecutionAttempt.attempt_index.desc())))
             attempt = attempts[0] if attempts else None
             if slot.status == "PREPARED":
@@ -198,35 +208,35 @@ class MultiJudgeExecutionStore:
             else:
                 slot.status, slot.final_outcome, slot.completed_at = "AMBIGUOUS", "AMBIGUOUS", now
                 if attempt is not None: attempt.state, attempt.failure_category, attempt.completed_at = "AMBIGUOUS", "AMBIGUOUS", now
-            slot.updated_at = now
+            slot.execution_owner, slot.lease_expires_at, slot.updated_at = None, None, now
         session.flush()
 
-    def reserve_and_mark_sent(self, session: Session, batch: MultiJudgeExecutionBatch, slot_id: Any, forecast_usd: Decimal, *, mark_sent: bool = True) -> MultiJudgeExecutionAttempt | None:
+    def reserve_and_mark_sent(self, session: Session, batch: MultiJudgeExecutionBatch, slot_id: Any, forecast_usd: Decimal, *, execution_owner: str, mark_sent: bool = True) -> MultiJudgeExecutionAttempt | None:
         batch = session.scalar(select(MultiJudgeExecutionBatch).where(MultiJudgeExecutionBatch.id == batch.id).with_for_update())
         slot = session.scalar(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.id == slot_id).with_for_update())
         if batch is None or slot is None or slot.status != "PENDING":
             return None
         reserved = session.scalar(select(func.coalesce(func.sum(MultiJudgeExecutionAttempt.reserved_usd), Decimal("0"))).join(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id))
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if Decimal(reserved) + forecast_usd > HARD_CAP_USD:
             attempt = MultiJudgeExecutionAttempt(slot_id=slot.id, attempt_id=hashlib.sha256(f"{slot.planned_pass_id}|budget|{slot.attempt_count}".encode()).hexdigest(), attempt_index=slot.attempt_count, state="BLOCKED_BUDGET", failure_category="BUDGET_EXCEEDED", retry_decision="TERMINAL", reserved_usd=Decimal("0"), completed_at=now, details_json={"forecast_usd": str(forecast_usd), "hard_cap_usd": str(HARD_CAP_USD), "blocked_before_transport": True})
-            slot.attempt_count += 1; slot.status = "BUDGET_STOPPED"; slot.final_outcome = "MISSING_PASS"; slot.completed_at = now; slot.updated_at = now
+            slot.attempt_count += 1; slot.status = "BUDGET_STOPPED"; slot.final_outcome = "MISSING_PASS"; slot.completed_at = now; slot.execution_owner = None; slot.lease_expires_at = None; slot.updated_at = now
             batch.status, batch.updated_at = "BUDGET_STOPPED", now
             session.add(attempt); session.flush()
             return None
         index = slot.attempt_count
         attempt = MultiJudgeExecutionAttempt(slot_id=slot.id, attempt_id=hashlib.sha256(f"{slot.planned_pass_id}|attempt|{index}".encode()).hexdigest(), attempt_index=index, state="SENT" if mark_sent else "PREPARED", reserved_usd=forecast_usd, details_json={"forecast_usd": str(forecast_usd), "cost_kind": "RESERVED_PRE_REQUEST"})
-        slot.attempt_count += 1; slot.status = "SENT" if mark_sent else "PREPARED"; slot.started_at = slot.started_at or now; slot.updated_at = now
+        slot.attempt_count += 1; slot.status = "SENT" if mark_sent else "PREPARED"; slot.execution_owner = execution_owner if mark_sent else None; slot.lease_expires_at = now + timedelta(seconds=LEASE_SECONDS) if mark_sent else None; slot.started_at = slot.started_at or now; slot.updated_at = now
         batch.status, batch.updated_at = "RUNNING", now
         session.add(attempt); session.flush()
         return attempt
 
-    def persist_result(self, session: Session, slot_id: Any, attempt_id: str, result: NormalizedEvaluationResult) -> str:
+    def persist_result(self, session: Session, slot_id: Any, attempt_id: str, result: NormalizedEvaluationResult, *, execution_owner: str) -> str:
         slot = session.scalar(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.id == slot_id).with_for_update())
         attempt = session.scalar(select(MultiJudgeExecutionAttempt).where(MultiJudgeExecutionAttempt.attempt_id == attempt_id).with_for_update())
-        if slot is None or attempt is None or slot.status != "SENT":
+        if slot is None or attempt is None or slot.status != "SENT" or slot.execution_owner != execution_owner:
             raise MultiJudgePreflightError("result persistence does not match a sent durable slot")
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         actual = _actual_cost(slot.judge_id, result)
         attempt.input_tokens, attempt.output_tokens = result.input_tokens, result.output_tokens
         attempt.actual_usd, attempt.provider_response_id, attempt.effective_model = actual, result.provider_response_id, result.effective_model
@@ -246,7 +256,7 @@ class MultiJudgeExecutionStore:
                 slot.status, slot.final_outcome, slot.mapped_vote = "FAILED_FINAL", result.outcome.value, None
                 attempt.state, attempt.retry_decision, slot.completed_at = "FAILED_FINAL", "TERMINAL", now
             attempt.failure_category = category
-        attempt.completed_at, slot.updated_at = now, now
+        attempt.completed_at, slot.execution_owner, slot.lease_expires_at, slot.updated_at = now, None, None, now
         session.flush()
         return slot.status
 
@@ -255,7 +265,8 @@ class MultiJudgeExecutionStore:
         attempts = list(session.scalars(select(MultiJudgeExecutionAttempt).join(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id)))
         states = Counter(row.status for row in slots)
         reserved = sum((Decimal(row.reserved_usd or 0) for row in attempts), Decimal("0"))
-        return {"completed_scientific_slots": states["COMPLETED"], "terminal_failures": states["FAILED_FINAL"] + states["BUDGET_STOPPED"], "ambiguous": states["AMBIGUOUS"], "attempts": len(attempts), "retries": sum(row.attempt_index > 0 for row in attempts), "pending": states["PENDING"], "cumulative_reserved_usd": str(reserved), "spend_remaining_usd": str(HARD_CAP_USD - reserved), "batch_status": batch.status}
+        actual = sum((Decimal(row.actual_usd or 0) for row in attempts), Decimal("0"))
+        return {"completed_scientific_slots": states["COMPLETED"], "terminal_failures": states["FAILED_FINAL"] + states["BUDGET_STOPPED"], "ambiguous": states["AMBIGUOUS"], "in_flight": states["SENT"] + states["RUNNING"], "attempts": len(attempts), "retries": sum(row.attempt_index > 0 for row in attempts), "pending": states["PENDING"], "cumulative_reserved_usd": str(reserved), "cumulative_actual_usd": str(actual), "spend_remaining_usd": str(HARD_CAP_USD - reserved), "batch_status": batch.status}
 
 
 def _actual_cost(judge_id: str, result: NormalizedEvaluationResult) -> Decimal | None:
@@ -280,6 +291,31 @@ def _map_vote(slot: MultiJudgeExecutionSlot, outcome: Outcome) -> str | None:
     raise MultiJudgePreflightError("provider outcome cannot map to a frozen original answer")
 
 
+def format_live_progress(report: dict[str, Any]) -> str:
+    """Render only operational, already-durable ledger state."""
+    completed = int(report["completed_scientific_slots"])
+    terminal = int(report["terminal_failures"])
+    resolved = completed + terminal
+    percentage = (100 * resolved) / 6444
+    return (
+        f"[{resolved:5d} / 6444] {percentage:5.2f}% | pending {report['pending']} | "
+        f"attempts {report['attempts']} | retries {report['retries']} | "
+        f"failed {terminal} | ambiguous {report['ambiguous']} | "
+        f"spend reserved ${report['cumulative_reserved_usd']} "
+        f"(actual ${report['cumulative_actual_usd']}) / $2.50"
+    )
+
+
+def _report_progress(callback: Callable[[dict[str, Any]], None] | None, report: dict[str, Any]) -> None:
+    if callback is None:
+        return
+    try:
+        callback(dict(report))
+    except Exception:
+        # Reporting is observational and must never alter execution safety.
+        pass
+
+
 class MultiJudgeRealRunner:
     def __init__(self, *, transport: Transport | None = None) -> None:
         self.frozen = load_frozen_manifest()
@@ -293,26 +329,35 @@ class MultiJudgeRealRunner:
         return ({int(row[0]): str(row[1]) for row in _copy_rows("prompts")}, {int(row[0]): str(row[3]) for row in _copy_rows("answers")})
 
     def preflight(self, session: Session) -> dict[str, Any]:
-        batch = self.store.materialize(session, self.frozen)
-        self.store.recover_after_restart(session, batch)
+        """Read-only status/preflight safe to invoke during a paid run."""
+        batch = self.store.batch_for_manifest(session, self.frozen.manifest_sha256)
+        self.store.validate_materialization(session, batch, self.frozen)
         status = self.store.status(session, batch)
         credentials = credential_presence()
         # An AMBIGUOUS slot is deliberately retained and skipped, not replayed.
         # Its presence must not prevent safely resuming the other pending slots.
-        ready = all(credentials.values()) and status["batch_status"] != "BUDGET_STOPPED" and status["completed_scientific_slots"] + status["terminal_failures"] + status["ambiguous"] + status["pending"] == 6444
+        ready = all(credentials.values()) and status["batch_status"] != "BUDGET_STOPPED" and status["completed_scientific_slots"] + status["terminal_failures"] + status["ambiguous"] + status["in_flight"] + status["pending"] == 6444
         return {"state": "READY" if ready else "NOT READY", "credentials": {key: "PRESENT" if value else "MISSING" for key, value in credentials.items()}, "protocol_sha256": self.frozen.protocol_sha256, "manifest_sha256": self.frozen.manifest_sha256, "materialized_pairs": 1611, "materialized_planned_passes": 6444, "hard_cap_usd": str(HARD_CAP_USD), "routing_policy_version": routing_policy_version(), "retry_policy": RETRY_POLICY_VERSION, "failure_policy": FAILURE_POLICY_VERSION, **status}
 
-    def execute(self, session_factory: Callable[[], Session], *, confirm_paid_run: str, max_slots: int | None = None) -> dict[str, Any]:
+    def _prepare_execution(self, session: Session) -> dict[str, Any]:
+        """The only writing reconciliation path; callable only by --execute."""
+        batch = self.store.materialize(session, self.frozen)
+        self.store.recover_stale_after_restart(session, batch)
+        return self.preflight(session)
+
+    def execute(self, session_factory: Callable[[], Session], *, confirm_paid_run: str, max_slots: int | None = None, progress_callback: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
         if confirm_paid_run != PAID_CONFIRMATION:
             raise MultiJudgePreflightError("paid execution requires the exact explicit confirmation")
         if not all(credential_presence().values()):
             raise MultiJudgePreflightError("required provider credentials are missing")
+        execution_owner = uuid4().hex
         with session_factory() as session:
-            preflight = self.preflight(session); session.commit()
+            preflight = self._prepare_execution(session); session.commit()
             if preflight["state"] != "READY":
                 raise MultiJudgePreflightError("paid execution preflight is not ready")
+        _report_progress(progress_callback, preflight)
         source_prompts, source_answers = self._payload_source()
-        processed = 0
+        processed, last_progress = 0, monotonic()
         while max_slots is None or processed < max_slots:
             with session_factory() as session:
                 batch = self.store.batch_for_manifest(session, self.frozen.manifest_sha256)
@@ -322,7 +367,7 @@ class MultiJudgeRealRunner:
                 prompt_id = self.frozen.pairs[slot.canonical_pair_id]["prompt_id"]
                 question, answer_a, answer_b = source_prompts[prompt_id], source_answers[slot.displayed_a_answer_id], source_answers[slot.displayed_b_answer_id]
                 forecast = _forecast_usd(slot.judge_id, question, answer_a, answer_b)
-                attempt = self.store.reserve_and_mark_sent(session, batch, slot.id, forecast)
+                attempt = self.store.reserve_and_mark_sent(session, batch, slot.id, forecast, execution_owner=execution_owner)
                 session.commit()
                 if attempt is None:
                     return self.store.status(session, batch)
@@ -331,12 +376,15 @@ class MultiJudgeRealRunner:
                 displayed_a, displayed_b = slot.displayed_a_answer_id, slot.displayed_b_answer_id
             result = self._evaluate(slot_id, judge_id, question, answer_a, answer_b, original_a, original_b, displayed_a, displayed_b)
             with session_factory() as session:
-                state = self.store.persist_result(session, slot_id, attempt_id, result)
+                state = self.store.persist_result(session, slot_id, attempt_id, result, execution_owner=execution_owner)
                 batch = self.store.batch_for_manifest(session, self.frozen.manifest_sha256)
                 report = self.store.status(session, batch); session.commit()
             processed += 1
+            if processed % 10 == 0 or monotonic() - last_progress >= 5:
+                _report_progress(progress_callback, report); last_progress = monotonic()
             if state == "BUDGET_STOPPED":
                 return report
+        _report_progress(progress_callback, report)
         return report
 
     def _evaluate(self, slot_id: Any, judge_id: str, question: str, answer_a: str, answer_b: str, original_a: int, original_b: int, displayed_a: int, displayed_b: int) -> NormalizedEvaluationResult:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,7 +20,8 @@ sys.path.insert(0, str(ROOT / "backend"))
 from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionSlot  # noqa: E402
 from multijudge_real_execution import (  # noqa: E402
     HARD_CAP_USD, MultiJudgePreflightError,
-    MultiJudgeRealRunner, _map_vote, _validate_routes_and_pricing, credential_presence,
+    MultiJudgeRealRunner, _map_vote, _validate_routes_and_pricing,
+    credential_presence, format_live_progress,
 )
 from controlled_persistence import Outcome  # noqa: E402
 
@@ -70,12 +72,31 @@ def configured_credentials(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "fixture-openrouter")
 
 
+def _prepare(runner, session_factory):
+    """Test-only materialization, equivalent to the write phase of --execute."""
+    with session_factory() as session:
+        runner._prepare_execution(session)
+        session.commit()
+
+
+def _ledger_snapshot(session, runner):
+    batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+    slots = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id).order_by(MultiJudgeExecutionSlot.planned_pass_id).all()
+    attempts = session.query(MultiJudgeExecutionAttempt).order_by(MultiJudgeExecutionAttempt.attempt_id).all()
+    return {
+        "batch": (batch.status, batch.updated_at),
+        "slots": [(str(row.id), row.status, row.attempt_count, row.execution_owner, row.lease_expires_at, row.final_outcome, row.mapped_vote) for row in slots],
+        "attempts": [(row.attempt_id, row.state, row.retry_decision, row.failure_category, row.reserved_usd, row.actual_usd, row.completed_at) for row in attempts],
+    }
+
+
 def test_full_materialization_is_idempotent_and_preflight_never_calls_transport(session_factory, configured_credentials):
     fake = FakeTransport(); runner = MultiJudgeRealRunner(transport=fake)
+    _prepare(runner, session_factory)
     with session_factory() as session:
-        first = runner.preflight(session); session.commit()
+        first = runner.preflight(session)
     with session_factory() as session:
-        second = runner.preflight(session); session.commit()
+        second = runner.preflight(session)
         batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
         slots = list(session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id))
     assert first["state"] == second["state"] == "READY"
@@ -86,8 +107,6 @@ def test_full_materialization_is_idempotent_and_preflight_never_calls_transport(
 
 def test_durable_resume_retry_and_completed_skip(session_factory, configured_credentials):
     fake = FakeTransport(["TIMEOUT", "OK", "OK"]); runner = MultiJudgeRealRunner(transport=fake)
-    with session_factory() as session:
-        runner.preflight(session); session.commit()
     first = runner.execute(session_factory, confirm_paid_run="I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION", max_slots=1)
     assert first["completed_scientific_slots"] == 0 and first["attempts"] == 1 and first["pending"] == 6444
     second = runner.execute(session_factory, confirm_paid_run="I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION", max_slots=1)
@@ -102,19 +121,20 @@ def test_durable_resume_retry_and_completed_skip(session_factory, configured_cre
 
 def test_restart_marks_sent_request_ambiguous_and_budget_stops_before_transport(session_factory, configured_credentials):
     runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
     with session_factory() as session:
-        runner.preflight(session)
         batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
         slot = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
         slot_id = slot.id
-        assert runner.store.reserve_and_mark_sent(session, batch, slot.id, Decimal("0.0001")) is not None
+        assert runner.store.reserve_and_mark_sent(session, batch, slot.id, Decimal("0.0001"), execution_owner="dead-process") is not None
+        slot.lease_expires_at = datetime.utcnow() - timedelta(seconds=1)
         session.commit()
     with session_factory() as session:
         batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
-        runner.store.recover_after_restart(session, batch); session.commit()
+        runner.store.recover_stale_after_restart(session, batch); session.commit()
         assert session.get(MultiJudgeExecutionSlot, slot_id).status == "AMBIGUOUS"
         pending = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
-        assert runner.store.reserve_and_mark_sent(session, batch, pending.id, HARD_CAP_USD) is None
+        assert runner.store.reserve_and_mark_sent(session, batch, pending.id, HARD_CAP_USD, execution_owner="budget-check") is None
         assert session.get(MultiJudgeExecutionSlot, pending.id).status == "BUDGET_STOPPED"
 
 
@@ -122,8 +142,9 @@ def test_credentials_route_and_human_reference_safety_fail_closed(session_factor
     monkeypatch.delenv("OPENAI_API_KEY", raising=False); monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     assert credential_presence() == {"openai": False, "openrouter": False}
     runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
     with session_factory() as session:
-        report = runner.preflight(session); session.commit()
+        report = runner.preflight(session)
     assert report["state"] == "NOT READY"
     with pytest.raises(MultiJudgePreflightError, match="credentials"):
         runner.execute(session_factory, confirm_paid_run="I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION")
@@ -144,9 +165,14 @@ def test_credentials_route_and_human_reference_safety_fail_closed(session_factor
 def test_default_cli_invocation_is_preflight_only(session_factory, configured_credentials, monkeypatch):
     import run_multijudge_consensus as cli
     fake = FakeTransport(); runner = MultiJudgeRealRunner(transport=fake)
+    _prepare(runner, session_factory)
+    with session_factory() as session:
+        before = _ledger_snapshot(session, runner)
     monkeypatch.setattr(cli, "SessionLocal", session_factory)
     monkeypatch.setattr(cli, "MultiJudgeRealRunner", lambda: runner)
     assert cli.main([]) == 0
+    with session_factory() as session:
+        assert _ledger_snapshot(session, runner) == before
     assert fake.calls == 0
 
 
@@ -172,30 +198,97 @@ def test_unknown_is_a_non_vote_and_invalid_or_provider_error_never_map(session_f
     # This is the exact former failure: valid parsed UNKNOWN reached _map_vote.
     assert _map_vote(ba_slot, Outcome.UNKNOWN) is None
     runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
     with session_factory() as session:
-        runner.preflight(session)
         batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
-        slots = list(session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").limit(2))
-        for slot, outcome, error in ((slots[0], Outcome.INVALID_RESPONSE, "INVALID_RESPONSE"), (slots[1], Outcome.API_ERROR, "PROVIDER_ERROR")):
-            attempt = runner.store.reserve_and_mark_sent(session, batch, slot.id, Decimal("0.0001"))
+        slots = list(session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").limit(3))
+        unknown = runner.store.reserve_and_mark_sent(session, batch, slots[0].id, Decimal("0.0001"), execution_owner="unknown-test")
+        unknown_result = SimpleNamespace(outcome=Outcome.UNKNOWN, provider_reported_cost=None, input_tokens=12, output_tokens=7, provider_response_id="fixture-unknown", effective_model="fixture", route_provenance={}, parse_status="VALID", model_version=None, latency_ms=0, criterion_scores=None, explanation=None, error_code=None)
+        assert runner.store.persist_result(session, slots[0].id, unknown.attempt_id, unknown_result, execution_owner="unknown-test") == "COMPLETED"
+        assert slots[0].mapped_vote is None
+        for slot, outcome, error in ((slots[1], Outcome.INVALID_RESPONSE, "INVALID_RESPONSE"), (slots[2], Outcome.API_ERROR, "PROVIDER_ERROR")):
+            attempt = runner.store.reserve_and_mark_sent(session, batch, slot.id, Decimal("0.0001"), execution_owner="failure-test")
             result = SimpleNamespace(outcome=outcome, provider_reported_cost=None, input_tokens=None, output_tokens=None, provider_response_id=None, effective_model="NOT_RETURNED", route_provenance=None, parse_status="INVALID", model_version=None, latency_ms=0, criterion_scores=None, explanation=None, error_code=error)
-            assert runner.store.persist_result(session, slot.id, attempt.attempt_id, result) == "FAILED_FINAL"
+            assert runner.store.persist_result(session, slot.id, attempt.attempt_id, result, execution_owner="failure-test") == "FAILED_FINAL"
             assert slot.mapped_vote is None
         session.commit()
 
 
 def test_ambiguous_slot_is_never_replayed_while_other_pending_slots_resume(session_factory, configured_credentials):
     fake = FakeTransport(); runner = MultiJudgeRealRunner(transport=fake)
+    _prepare(runner, session_factory)
     with session_factory() as session:
-        runner.preflight(session)
         batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
         protected = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
         protected_id = protected.id
-        runner.store.reserve_and_mark_sent(session, batch, protected_id, Decimal("0.0001"))
-        runner.store.recover_after_restart(session, batch); session.commit()
+        runner.store.reserve_and_mark_sent(session, batch, protected_id, Decimal("0.0001"), execution_owner="crashed-worker")
+        protected.lease_expires_at = datetime.utcnow() - timedelta(seconds=1)
+        runner.store.recover_stale_after_restart(session, batch); session.commit()
     report = runner.execute(session_factory, confirm_paid_run="I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION", max_slots=1)
     with session_factory() as session:
         protected = session.get(MultiJudgeExecutionSlot, protected_id)
         protected_attempts = session.query(MultiJudgeExecutionAttempt).filter_by(slot_id=protected_id).count()
     assert protected.status == "AMBIGUOUS" and protected_attempts == 1
     assert report["ambiguous"] == 1 and report["completed_scientific_slots"] == 1 and fake.calls == 1
+
+
+def test_active_sent_is_unchanged_by_repeated_preflight_and_progress(session_factory, configured_credentials):
+    """Regression for the actual crash: observers must never reconcile SENT."""
+    runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
+    with session_factory() as session:
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        slot = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
+        slot_id = slot.id
+        assert runner.store.reserve_and_mark_sent(session, batch, slot_id, Decimal("0.0001"), execution_owner="active-worker") is not None
+        session.commit()
+    with session_factory() as session:
+        before = _ledger_snapshot(session, runner)
+        first = runner.preflight(session)
+        rendered = format_live_progress(first)
+        second = runner.preflight(session)
+        assert "pending" in rendered and first == second
+    with session_factory() as session:
+        after = _ledger_snapshot(session, runner)
+        slot = session.get(MultiJudgeExecutionSlot, slot_id)
+    assert after == before
+    assert slot.status == "SENT" and slot.execution_owner == "active-worker"
+
+
+def test_active_sent_result_persists_after_read_only_monitoring(session_factory, configured_credentials):
+    runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
+    with session_factory() as session:
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        slot = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
+        slot_id = slot.id
+        attempt = runner.store.reserve_and_mark_sent(session, batch, slot_id, Decimal("0.0001"), execution_owner="active-worker")
+        attempt_id = attempt.attempt_id
+        session.commit()
+    with session_factory() as session:
+        runner.preflight(session)
+    result = SimpleNamespace(outcome=Outcome.TIE, provider_reported_cost=None, input_tokens=12, output_tokens=7, provider_response_id="fixture-tie", effective_model="fixture", route_provenance={}, parse_status="VALID", model_version=None, latency_ms=1, criterion_scores=None, explanation=None, error_code=None)
+    with session_factory() as session:
+        assert runner.store.persist_result(session, slot_id, attempt_id, result, execution_owner="active-worker") == "COMPLETED"
+        session.commit()
+        assert session.get(MultiJudgeExecutionSlot, slot_id).status == "COMPLETED"
+
+
+def test_active_lease_is_preserved_but_expired_lease_is_ambiguous(session_factory, configured_credentials):
+    runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
+    with session_factory() as session:
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        active = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
+        stale = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").offset(1).first()
+        runner.store.reserve_and_mark_sent(session, batch, active.id, Decimal("0.0001"), execution_owner="live-worker")
+        runner.store.reserve_and_mark_sent(session, batch, stale.id, Decimal("0.0001"), execution_owner="dead-worker")
+        active_id, stale_id = active.id, stale.id
+        stale.lease_expires_at = datetime.utcnow() - timedelta(seconds=1)
+        session.commit()
+    with session_factory() as session:
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        runner.store.recover_stale_after_restart(session, batch)
+        session.commit()
+        assert session.get(MultiJudgeExecutionSlot, active_id).status == "SENT"
+        assert session.get(MultiJudgeExecutionSlot, stale_id).status == "AMBIGUOUS"
