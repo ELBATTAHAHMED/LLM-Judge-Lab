@@ -1,0 +1,161 @@
+{
+  "protocol_id": "multi-judge-consensus-v1",
+  "version": 1,
+  "status": "FROZEN_PRE_EXECUTION_PROTOCOL",
+  "provider_execution": "NOT_YET_AUTHORIZED",
+  "scientific_purpose": "Secondary mitigation experiment related to RQ7: estimate the alignment and coverage trade-off of equal-weight cross-judge aggregation. It neither replaces RQ7 nor makes a direct comparison with DUAL_SWAP without a later genuinely matched population.",
+  "scope": {
+    "evidence_class": "NEW_CONTROLLED_SECONDARY_MITIGATION",
+    "additive_to_existing_rq7": true,
+    "excluded_evidence": ["PILOT", "SUPERSEDED", "historical AnalysisRuns"],
+    "forbidden_in_this_phase": ["provider execution", "outcome analysis", "AnalysisRun creation", "RQ1-RQ7 modification", "Phase 11 modification", "research release modification", "frontend/API modification"]
+  },
+  "population": {
+    "n_planned_pairs": 1611,
+    "canonical_reference_policy": "unordered-pair-consensus-v1",
+    "canonical_pair_key": ["dataset_version_id", "prompt_id", "min(original_answer_id)", "max(original_answer_id)"],
+    "canonical_pair_key_serialization": "UTF-8 JSON array in that field order, with JSON separators ',' and ':' and no whitespace.",
+    "original_answer_identity": {
+      "ORIGINAL_ANSWER_1": "the lower immutable original answer ID in the canonical pair",
+      "ORIGINAL_ANSWER_2": "the higher immutable original answer ID in the canonical pair"
+    },
+    "eligibility": [
+      "valid immutable prompt identity",
+      "two non-blank original answers",
+      "immutable original answer IDs",
+      "usable canonical human-reference label in {ANSWER_1, ANSWER_2, TIE}",
+      "no conflicting unordered human-reference group"
+    ],
+    "exclusions": ["conflicting human-reference group", "missing pair identity", "blank original answer", "invalid/missing canonical reference label"],
+    "operational_outcomes_do_not_change_population": true,
+    "human_reference_prohibitions": ["presentation assignment", "vote resolution", "tie-breaking", "judge selection", "difficulty-based exclusion"]
+  },
+  "judges": [
+    {"judge_id": "gpt-4o-mini", "provider": "OPENAI", "route": "OPENAI_DIRECT", "equal_weight": 1},
+    {"judge_id": "anthropic/claude-3-haiku", "provider": "OPENROUTER", "route": "amazon-bedrock", "equal_weight": 1},
+    {"judge_id": "deepseek/deepseek-chat", "provider": "OPENROUTER", "route": "streamlake", "equal_weight": 1},
+    {"judge_id": "meta-llama/llama-3.3-70b-instruct", "provider": "OPENROUTER", "route": "deepinfra/turbo", "equal_weight": 1}
+  ],
+  "execution_plan": {
+    "scientific_passes_per_pair_per_judge": 1,
+    "planned_scientific_passes": 6444,
+    "scientific_repetitions": 1,
+    "operational_retries_are_scientific_repetitions": false,
+    "all_judges_receive_both_orders": false,
+    "reason_not_dual_swap": "This is cross-judge aggregation, not within-judge presentation-consistency filtering."
+  },
+  "presentation_assignment": {
+    "seed": 20260823,
+    "display_labels": {"AB": "ORIGINAL_ANSWER_1 displayed as A", "BA": "ORIGINAL_ANSWER_1 displayed as B"},
+    "per_pair_constraint": "Exactly two judges receive AB and exactly two judges receive BA for every canonical pair.",
+    "per_judge_target": {"AB": [805, 806], "BA": [805, 806]},
+    "deterministic_algorithm": {
+      "pair_order": "Sort canonical-pair-key serializations by ascending SHA-256 hex digest of UTF-8 'multi-judge-consensus-v1|20260823|' + canonical_pair_key_serialization; break an impossible digest tie by the canonical-pair-key serialization.",
+      "judge_quota": "Rank judge IDs by ascending SHA-256 hex digest of UTF-8 'multi-judge-consensus-v1|20260823|quota|' + judge_id; break a digest tie by judge ID. The first two receive AB quota 806 and the other two receive AB quota 805; BA quota is 1611 minus each judge's AB quota.",
+      "assignment": "Choose a feasible binary assignment x[pair,judge] with sum_j x[pair,judge]=2 for every pair and sum_pair x[pair,judge]=the judge AB quota. x=1 denotes AB; x=0 denotes BA.",
+      "secondary_category_balance": "Among feasible assignments, minimize the sum across category and judge of absolute(AB_count - category_pair_count/2).",
+      "stable_tie_break": "Among equal category-balance assignments, minimize the lexicographic vector of SHA-256 hex digests of UTF-8 'multi-judge-consensus-v1|20260823|' + canonical_pair_key_serialization + '|' + judge_id in canonical pair order and ascending judge-ID order; break an impossible digest tie by the corresponding judge-ID bit vector."
+    },
+    "prohibited_inputs": ["answer quality", "answer text", "human-reference label", "prior judge outcome", "judge performance"],
+    "manifest_materialization": "DEFERRED_TO_PHASE_3"
+  },
+  "vote_mapping": {
+    "required_before_aggregation": true,
+    "map_displayed_A_to": "the original answer ID presented as A, then canonicalize to ORIGINAL_ANSWER_1 or ORIGINAL_ANSWER_2",
+    "map_displayed_B_to": "the original answer ID presented as B, then canonicalize to ORIGINAL_ANSWER_1 or ORIGINAL_ANSWER_2",
+    "map_displayed_TIE_to": "TIE",
+    "never_aggregate": ["raw displayed A/B labels", "UNKNOWN", "invalid parse", "API/provider error", "timeout", "refusal", "missing pass"]
+  },
+  "valid_scientific_vote": ["ORIGINAL_ANSWER_1", "ORIGINAL_ANSWER_2", "TIE"],
+  "non_votes": ["UNKNOWN", "INVALID_RESPONSE", "API_ERROR", "TIMEOUT", "REFUSAL", "MISSING_PASS"],
+  "primary_consensus": {
+    "name": "STRICT_FOUR_JUDGE_SUPERMAJORITY",
+    "minimum_valid_votes": 4,
+    "equal_judge_weights": true,
+    "decision_rule": "A consensus decision exists only when all four judges cast valid scientific votes and at least three choose the same mapped three-class label.",
+    "outcomes": {
+      "4-0": "CONSENSUS",
+      "3-1": "CONSENSUS",
+      "2-2": "NO_CONSENSUS_SPLIT",
+      "2-1-1": "NO_CONSENSUS_SPLIT",
+      "fewer_than_4_valid_votes": "NO_CONSENSUS_OPERATIONAL"
+    },
+    "forbidden": ["plurality 2-1-1", "random tie-break", "human-reference tie-break", "performance weighting", "judge removal after outcomes"]
+  },
+  "tie_handling": {
+    "tie_is_scientific_class": true,
+    "consensus_tie_rule": "Three or four TIE votes are a valid consensus TIE.",
+    "never_treat_tie_as": ["abstention", "missing", "half-answer-1/half-answer-2", "automatic failure"],
+    "consensus_outcome_space": ["ANSWER_1", "ANSWER_2", "TIE", "NO_CONSENSUS_SPLIT", "NO_CONSENSUS_OPERATIONAL"]
+  },
+  "primary_coverage": {
+    "numerator": "planned pairs with consensus outcome ANSWER_1, ANSWER_2, or TIE",
+    "denominator": 1611,
+    "excluded_from_covered_decisions": ["NO_CONSENSUS_SPLIT", "NO_CONSENSUS_OPERATIONAL"],
+    "report_separately": ["split no-consensus", "operational no-consensus"]
+  },
+  "primary_outcome": {
+    "estimand": "Three-class agreement of a primary consensus decision with the canonical human-reference label among pairs with a primary consensus decision.",
+    "numerator": "consensus label equals canonical human-reference label",
+    "denominator": "pairs with a primary consensus decision and usable frozen human reference",
+    "required_companions": ["retained N", "primary coverage"],
+    "interpretation_limit": "Human preferences are reference labels, not ground truth."
+  },
+  "primary_comparator": {
+    "population": "the exact pairs retained by the primary consensus analysis",
+    "per_judge_measure": "three-class agreement with the human-reference label",
+    "aggregate": "equal-weight mean of the four individual-judge agreements; each judge has weight 1/4",
+    "primary_delta": "consensus agreement minus equal-weight individual-judge agreement on the same consensus-covered pairs",
+    "forbidden": ["historical baseline comparison with a different denominator", "performance-based weighting"]
+  },
+  "paired_comparison_unit": {
+    "unit": "canonical answer pair",
+    "consensus_correctness": [0, 1],
+    "mean_individual_correctness": [0, 0.25, 0.5, 0.75, 1],
+    "pair_difference": "consensus_correctness - mean_individual_correctness",
+    "primary_delta": "mean(pair_difference)"
+  },
+  "secondary_outcomes": [
+    "consensus coverage",
+    "NO_CONSENSUS_SPLIT rate",
+    "NO_CONSENSUS_OPERATIONAL rate",
+    "consensus TIE rate",
+    "4-0 vote rate",
+    "3-1 vote rate",
+    "2-2 vote rate",
+    "2-1-1 vote rate",
+    "provider failure rate",
+    "invalid-response rate",
+    "per-judge agreement",
+    "per-category consensus agreement",
+    "per-category coverage"
+  ],
+  "three_valid_judge_sensitivity": {
+    "label": "THREE-VALID-JUDGE SENSITIVITY",
+    "never_replaces_primary": true,
+    "eligible_only_when": "exactly three judges have valid scientific votes",
+    "decision_rule": {"3-0": "CONSENSUS", "2-1": "CONSENSUS", "1-1-1": "NO_CONSENSUS_SPLIT"},
+    "tie_is_valid_class": true,
+    "report": ["agreement", "coverage", "N", "delta versus corresponding same-pair individual baseline"]
+  },
+  "uncertainty": {
+    "statistical_unit": "canonical answer pair",
+    "bootstrap": "pair-level nonparametric percentile bootstrap",
+    "resamples": 10000,
+    "confidence_level": 0.95,
+    "seed": 20260823,
+    "metrics": ["consensus agreement", "coverage", "primary matched agreement delta"],
+    "matched_delta_resampling": "Resample complete pair-level comparison records, preserving all four votes and the consensus result together.",
+    "forbidden": "Do not bootstrap individual passes independently."
+  },
+  "accounting": {
+    "population_pairs": 1611,
+    "planned_scientific_passes": 6444,
+    "attempt_count": "separate operational quantity",
+    "primary_result_must_expose": ["planned pairs", "complete four-valid pairs", "consensus-covered pairs", "split no-consensus pairs", "operational no-consensus pairs", "consensus ties", "valid individual votes", "invalid votes", "provider failures", "retries/attempts"],
+    "never_mix": ["pair-level exclusions with pass-level failures", "attempt count with scientific-pass count"]
+  },
+  "post_hoc_prohibitions": ["change 3-of-4 threshold", "adopt plurality because it performs better", "remove a weak judge", "accuracy-weight judges", "exclude poorly performing categories", "change TIE treatment", "promote three-valid sensitivity to primary", "choose a seed based on outcomes", "exclude difficult reference pairs"],
+  "dual_swap_rule": "Any later direct DUAL_SWAP versus multi-judge delta requires a genuinely matched common population; otherwise report separate operating points only.",
+  "interpretation_prohibitions": ["consensus eliminates bias", "consensus is objectively correct", "multiple judges are always better", "ensemble judgment is causal mitigation", "multi-judge is superior to DUAL_SWAP"]
+}
