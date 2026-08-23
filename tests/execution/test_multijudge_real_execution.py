@@ -4,6 +4,7 @@ from __future__ import annotations
 import sys
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from alembic import command
@@ -18,8 +19,9 @@ sys.path.insert(0, str(ROOT / "backend"))
 from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionSlot  # noqa: E402
 from multijudge_real_execution import (  # noqa: E402
     HARD_CAP_USD, MultiJudgePreflightError,
-    MultiJudgeRealRunner, _validate_routes_and_pricing, credential_presence,
+    MultiJudgeRealRunner, _map_vote, _validate_routes_and_pricing, credential_presence,
 )
+from controlled_persistence import Outcome  # noqa: E402
 
 
 class FakeTransport:
@@ -146,3 +148,54 @@ def test_default_cli_invocation_is_preflight_only(session_factory, configured_cr
     monkeypatch.setattr(cli, "MultiJudgeRealRunner", lambda: runner)
     assert cli.main([]) == 0
     assert fake.calls == 0
+
+
+@pytest.mark.parametrize("presentation,outcome,expected", [
+    ("AB", Outcome.ANSWER_A, "ORIGINAL_ANSWER_1"),
+    ("AB", Outcome.ANSWER_B, "ORIGINAL_ANSWER_2"),
+    ("AB", Outcome.TIE, "TIE"),
+    ("BA", Outcome.ANSWER_A, "ORIGINAL_ANSWER_2"),
+    ("BA", Outcome.ANSWER_B, "ORIGINAL_ANSWER_1"),
+    ("BA", Outcome.TIE, "TIE"),
+])
+def test_all_valid_frozen_display_mappings_round_trip(presentation, outcome, expected):
+    slot = SimpleNamespace(
+        presentation=presentation, original_answer_1_id=1318, original_answer_2_id=1635,
+        displayed_a_answer_id=1318 if presentation == "AB" else 1635,
+        displayed_b_answer_id=1635 if presentation == "AB" else 1318,
+    )
+    assert _map_vote(slot, outcome) == expected
+
+
+def test_unknown_is_a_non_vote_and_invalid_or_provider_error_never_map(session_factory, configured_credentials):
+    ba_slot = SimpleNamespace(original_answer_1_id=1318, original_answer_2_id=1635, displayed_a_answer_id=1635, displayed_b_answer_id=1318)
+    # This is the exact former failure: valid parsed UNKNOWN reached _map_vote.
+    assert _map_vote(ba_slot, Outcome.UNKNOWN) is None
+    runner = MultiJudgeRealRunner(transport=FakeTransport())
+    with session_factory() as session:
+        runner.preflight(session)
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        slots = list(session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").limit(2))
+        for slot, outcome, error in ((slots[0], Outcome.INVALID_RESPONSE, "INVALID_RESPONSE"), (slots[1], Outcome.API_ERROR, "PROVIDER_ERROR")):
+            attempt = runner.store.reserve_and_mark_sent(session, batch, slot.id, Decimal("0.0001"))
+            result = SimpleNamespace(outcome=outcome, provider_reported_cost=None, input_tokens=None, output_tokens=None, provider_response_id=None, effective_model="NOT_RETURNED", route_provenance=None, parse_status="INVALID", model_version=None, latency_ms=0, criterion_scores=None, explanation=None, error_code=error)
+            assert runner.store.persist_result(session, slot.id, attempt.attempt_id, result) == "FAILED_FINAL"
+            assert slot.mapped_vote is None
+        session.commit()
+
+
+def test_ambiguous_slot_is_never_replayed_while_other_pending_slots_resume(session_factory, configured_credentials):
+    fake = FakeTransport(); runner = MultiJudgeRealRunner(transport=fake)
+    with session_factory() as session:
+        runner.preflight(session)
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        protected = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id, status="PENDING").first()
+        protected_id = protected.id
+        runner.store.reserve_and_mark_sent(session, batch, protected_id, Decimal("0.0001"))
+        runner.store.recover_after_restart(session, batch); session.commit()
+    report = runner.execute(session_factory, confirm_paid_run="I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION", max_slots=1)
+    with session_factory() as session:
+        protected = session.get(MultiJudgeExecutionSlot, protected_id)
+        protected_attempts = session.query(MultiJudgeExecutionAttempt).filter_by(slot_id=protected_id).count()
+    assert protected.status == "AMBIGUOUS" and protected_attempts == 1
+    assert report["ambiguous"] == 1 and report["completed_scientific_slots"] == 1 and fake.calls == 1

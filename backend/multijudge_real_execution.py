@@ -270,6 +270,10 @@ def _actual_cost(judge_id: str, result: NormalizedEvaluationResult) -> Decimal |
 
 def _map_vote(slot: MultiJudgeExecutionSlot, outcome: Outcome) -> str | None:
     if outcome is Outcome.TIE: return "TIE"
+    # UNKNOWN is a completed, explicitly non-decisive provider outcome.  It
+    # must remain a non-vote rather than being forced through answer identity
+    # mapping (which only applies to displayed A/B verdicts).
+    if outcome is Outcome.UNKNOWN: return None
     answer_id = slot.displayed_a_answer_id if outcome is Outcome.ANSWER_A else slot.displayed_b_answer_id if outcome is Outcome.ANSWER_B else None
     if answer_id == slot.original_answer_1_id: return "ORIGINAL_ANSWER_1"
     if answer_id == slot.original_answer_2_id: return "ORIGINAL_ANSWER_2"
@@ -293,7 +297,9 @@ class MultiJudgeRealRunner:
         self.store.recover_after_restart(session, batch)
         status = self.store.status(session, batch)
         credentials = credential_presence()
-        ready = all(credentials.values()) and status["ambiguous"] == 0 and status["batch_status"] != "BUDGET_STOPPED" and status["completed_scientific_slots"] + status["terminal_failures"] + status["pending"] == 6444
+        # An AMBIGUOUS slot is deliberately retained and skipped, not replayed.
+        # Its presence must not prevent safely resuming the other pending slots.
+        ready = all(credentials.values()) and status["batch_status"] != "BUDGET_STOPPED" and status["completed_scientific_slots"] + status["terminal_failures"] + status["ambiguous"] + status["pending"] == 6444
         return {"state": "READY" if ready else "NOT READY", "credentials": {key: "PRESENT" if value else "MISSING" for key, value in credentials.items()}, "protocol_sha256": self.frozen.protocol_sha256, "manifest_sha256": self.frozen.manifest_sha256, "materialized_pairs": 1611, "materialized_planned_passes": 6444, "hard_cap_usd": str(HARD_CAP_USD), "routing_policy_version": routing_policy_version(), "retry_policy": RETRY_POLICY_VERSION, "failure_policy": FAILURE_POLICY_VERSION, **status}
 
     def execute(self, session_factory: Callable[[], Session], *, confirm_paid_run: str, max_slots: int | None = None) -> dict[str, Any]:
