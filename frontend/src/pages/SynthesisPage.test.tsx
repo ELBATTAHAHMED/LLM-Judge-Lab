@@ -40,7 +40,7 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     const pairedGrid = screen.getByLabelText('Paired RQ1–RQ6 findings');
     expect(pairedGrid).toHaveClass('md:grid-cols-2');
     expect([...pairedGrid.children].map((child) => child.getAttribute('data-testid'))).toEqual(['finding-rq1', 'finding-rq4', 'finding-rq2', 'finding-rq5', 'finding-rq3', 'finding-rq6']);
-    expect(screen.getByRole('heading', { name: 'Mitigation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mitigation' })).toHaveClass('border-b', 'border-neutral-200', 'pb-2');
     expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
     expect(pairedGrid).not.toContainElement(screen.getByLabelText('RQ7 Mitigation Strategies'));
     expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
