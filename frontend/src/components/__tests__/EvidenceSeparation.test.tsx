@@ -21,7 +21,7 @@ describe('controlled evidence separation', () => {
   });
 
   it('renders an explicit controlled empty state without legacy numbers', () => {
-    render(<ControlledEvidencePanel loading={false} error={null} data={{ status: 'NO_CONTROLLED_EVIDENCE', evidence_class: 'CONTROLLED', executed_runs: 0, executed_passes: 0, accounting: null, analysis_runs: {}, results: [], message: 'planned' }} />);
+    render(<ControlledEvidencePanel loading={false} error={null} data={{ status: 'NO_CONTROLLED_EVIDENCE', evidence_class: 'CONTROLLED', executed_runs: 0, executed_passes: 0, accounting: null, analysis_runs: {}, secondary_mitigations: {}, results: [], message: 'planned' }} />);
     expect(screen.getByText('NO CONTROLLED EVIDENCE')).toBeInTheDocument();
     expect(screen.getByText(/Executed runs: 0; passes: 0/i)).toBeInTheDocument();
   });
@@ -41,7 +41,7 @@ describe('controlled evidence separation', () => {
     render(<ControlledEvidencePanel loading={false} error={null} data={{
       status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
       accounting: { planned_units: 1, succeeded_units: 1, valid_partial_units: 0, failed_units: 0, pending_units: 0, planned_pass_slots: 1, valid_returned_passes: 1, failed_pass_slots: 0 },
-      analysis_runs: { RQ1: 'pinned' },
+      analysis_runs: { RQ1: 'pinned' }, secondary_mitigations: {},
       results: [controlledMetric('RQ1', 'exact_agreement', 0.5), controlledMetric('RQ6', 'stable_same_family_preference', 0.5094), controlledMetric('RQ6', 'judge:anthropic/claude-3-haiku:stable_same_family_preference', 0.8621), controlledMetric('RQ6', 'judge:gpt-4o-mini:stable_same_family_preference', 0.7576), controlledMetric('RQ6', 'judge:meta-llama/llama-3.3-70b-instruct:stable_same_family_preference', 0.09375), controlledMetric('RQ6', 'valid_stable_decisive_coverage', 0.33125), controlledMetric('RQ6', 'order_sensitive_disagreement', 0.2319), controlledMetric('RQ6', 'tie_or_abstention_rate', 0.5417), controlledMetric('RQ7', 'baseline_agreement', 0.6), controlledMetric('RQ7', 'dual_swap_agreement', 0.7), controlledMetric('RQ7', 'agreement_delta', 0.1), controlledMetric('RQ7', 'baseline_coverage', 0.9), controlledMetric('RQ7', 'dual_swap_coverage', 0.7), controlledMetric('RQ7', 'coverage_delta', -0.2), controlledMetric('RQ7', 'dual_swap_dual_pass_stability', 0.8)],
       message: 'frozen',
     }} />);

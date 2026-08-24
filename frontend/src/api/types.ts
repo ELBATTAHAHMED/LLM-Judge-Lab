@@ -241,6 +241,26 @@ export interface ControlledResultsAccounting {
   paired_excluded_valid_pass_slots?: number;
 }
 
+/** API-authoritative secondary RQ7 mitigation; the frontend derives no metrics. */
+export interface MultiJudgeConsensusSecondary {
+  analysis_run_id: string;
+  role: 'SECONDARY';
+  method_family: 'cross_judge_aggregation';
+  planned_n: number;
+  retained_n: number;
+  agreement: number;
+  coverage: number;
+  comparator: 'equal_weight_individual_judge_baseline_same_retained_pairs';
+  comparator_agreement: number;
+  matched_delta: number;
+  ci_95: { low: number; high: number };
+  protocol_id: string;
+  package_id: string;
+  direct_dualswap_comparison: 'NOT_DEFENSIBLE';
+  comparison_reason: string;
+  coverage_unit: 'canonical_answer_pairs';
+}
+
 export interface ControlledResultsResponse {
   status: 'NO_CONTROLLED_EVIDENCE' | 'CONTROLLED_RESULTS_PENDING_ANALYSIS' | string;
   evidence_class: 'CONTROLLED';
@@ -248,6 +268,9 @@ export interface ControlledResultsResponse {
   executed_passes: number;
   accounting: ControlledResultsAccounting | null;
   analysis_runs: Record<string, string>;
+  secondary_mitigations: {
+    multi_judge_consensus?: MultiJudgeConsensusSecondary;
+  };
   results: ControlledMetricResult[];
   message: string;
 }
@@ -279,7 +302,28 @@ export function isControlledResultsResponse(value: unknown): value is Controlled
     && Array.isArray(row.results)
     && row.results.every(isControlledMetricResult)
     && (row.accounting === null || isControlledResultsAccounting(row.accounting))
-    && typeof row.analysis_runs === 'object' && row.analysis_runs !== null && !Array.isArray(row.analysis_runs);
+    && typeof row.analysis_runs === 'object' && row.analysis_runs !== null && !Array.isArray(row.analysis_runs)
+    && isSecondaryMitigations(row.secondary_mitigations);
+}
+
+function isSecondaryMitigations(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const secondary = (value as Record<string, unknown>).multi_judge_consensus;
+  if (secondary === undefined) return true;
+  if (typeof secondary !== 'object' || secondary === null || Array.isArray(secondary)) return false;
+  const row = secondary as Record<string, unknown>;
+  const numeric = ['planned_n', 'retained_n', 'agreement', 'coverage', 'comparator_agreement', 'matched_delta'];
+  return row.role === 'SECONDARY'
+    && row.method_family === 'cross_judge_aggregation'
+    && row.comparator === 'equal_weight_individual_judge_baseline_same_retained_pairs'
+    && row.direct_dualswap_comparison === 'NOT_DEFENSIBLE'
+    && typeof row.analysis_run_id === 'string'
+    && typeof row.protocol_id === 'string'
+    && typeof row.package_id === 'string'
+    && numeric.every((key) => typeof row[key] === 'number')
+    && typeof row.ci_95 === 'object' && row.ci_95 !== null
+    && typeof (row.ci_95 as Record<string, unknown>).low === 'number'
+    && typeof (row.ci_95 as Record<string, unknown>).high === 'number';
 }
 
 

@@ -20,7 +20,7 @@ describe('controlled result contract', () => {
   });
 
   it('requires controlled accounting and a complete metric payload before rendering final evidence', () => {
-    const response = { status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 13_400, executed_passes: 16_600, accounting: { planned_units: 13_400, succeeded_units: 12_602, valid_partial_units: 523, failed_units: 275, pending_units: 0, planned_pass_slots: 16_600, valid_returned_passes: 16_228, failed_pass_slots: 372 }, analysis_runs: { RQ1: 'analysis-rq1' }, results: [{ ...base, evidence_class: 'CONTROLLED' }], message: 'frozen' };
+    const response = { status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 13_400, executed_passes: 16_600, accounting: { planned_units: 13_400, succeeded_units: 12_602, valid_partial_units: 523, failed_units: 275, pending_units: 0, planned_pass_slots: 16_600, valid_returned_passes: 16_228, failed_pass_slots: 372 }, analysis_runs: { RQ1: 'analysis-rq1' }, secondary_mitigations: {}, results: [{ ...base, evidence_class: 'CONTROLLED' }], message: 'frozen' };
     expect(isControlledResultsResponse(response)).toBe(true);
     expect(isControlledResultsResponse({ ...response, accounting: null })).toBe(true);
     expect(isControlledResultsResponse({ ...response, results: [{ ...base, denominator: undefined }] })).toBe(false);
