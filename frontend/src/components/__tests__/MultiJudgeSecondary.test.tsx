@@ -30,11 +30,14 @@ describe('RQ7 Multi-Judge secondary presentation', () => {
   it('renders the API-backed secondary without ranking it against primary DUAL_SWAP', () => {
     render(<ControlledEvidencePanel loading={false} error={null} data={response({ multi_judge_consensus: multiJudge })} />);
     fireEvent.click(screen.getByRole('button', { name: 'RQ7' }));
-    expect(screen.getByLabelText('DUAL_SWAP primary mitigation')).toHaveTextContent('Primary mitigation');
-    expect(screen.getByLabelText('Multi-Judge Consensus secondary mitigation')).toHaveTextContent('Secondary mitigation');
+    expect(screen.getByLabelText('DUAL_SWAP primary mitigation')).toHaveTextContent('Primary');
+    expect(screen.getByLabelText('Multi-Judge Consensus secondary mitigation')).toHaveTextContent('Secondary');
+    expect(screen.getByLabelText('DUAL_SWAP primary mitigation')).toHaveTextContent('Retained baseline agreement');
+    expect(screen.getByLabelText('Multi-Judge Consensus secondary mitigation')).toHaveTextContent('Comparator agreement');
     expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
     expect(screen.getByText(/not a direct head-to-head effect/i)).toBeInTheDocument();
     expect(screen.queryByText(/DUAL_SWAP − Multi-Judge/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('→')).not.toBeInTheDocument();
   });
 
   it('does not fabricate a secondary mitigation when the API omits it', () => {

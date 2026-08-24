@@ -26,7 +26,7 @@ const multiJudge: MultiJudgeConsensusSecondary = {
 const response: ControlledResultsResponse = {
   status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
   accounting: null, analysis_runs: {}, secondary_mitigations: { multi_judge_consensus: multiJudge },
-  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'coverage_delta', -0.2)],
+  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'baseline_agreement', 0.6), metric('RQ7', 'dual_swap_agreement', 0.7), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'dual_swap_coverage', 0.7)],
   message: 'frozen',
 };
 
@@ -34,9 +34,10 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
   it('shows the API-backed secondary finding while preserving DUAL_SWAP as primary', () => {
     controlledState.value = { data: response, loading: false, error: null };
     render(<MemoryRouter><SynthesisPage /></MemoryRouter>);
-    expect(screen.getByText('Secondary: Multi-Judge Consensus.')).toBeInTheDocument();
+    expect(screen.getByText('2 complementary strategies')).toBeInTheDocument();
+    expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveTextContent('Primary');
+    expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveTextContent('Secondary');
     expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
-    expect(screen.getByText(/DUAL_SWAP remains primary/i)).toBeInTheDocument();
     expect(screen.getByText(/not a direct head-to-head comparison/i)).toBeInTheDocument();
   });
 });

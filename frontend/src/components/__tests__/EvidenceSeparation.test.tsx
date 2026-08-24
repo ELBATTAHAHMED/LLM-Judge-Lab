@@ -50,6 +50,6 @@ describe('controlled evidence separation', () => {
     expect(screen.getByText('Stable same-family preference')).toBeInTheDocument();
     expect(screen.getByText(/no eligible source data/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'RQ7' }));
-    expect(screen.getByText('Dual-pass stability')).toBeInTheDocument();
+    expect(screen.getByText(/dual-pass stability/i)).toBeInTheDocument();
   });
 });
