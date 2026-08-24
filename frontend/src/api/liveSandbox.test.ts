@@ -4,11 +4,19 @@ import {
   executeCalibratedEvaluation,
   executeEnsembleEvaluation,
   executeLiveEvaluation,
+  getLiveSandboxStatus,
 } from './client';
 
 afterEach(() => vi.restoreAllMocks());
 
 describe('manual Live Sandbox client flow', () => {
+  it('reads only the server-provided manual execution opt-in state', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { enabled: false } } as never);
+
+    await expect(getLiveSandboxStatus()).resolves.toEqual({ enabled: false });
+    expect(get).toHaveBeenCalledWith('/api/live-sandbox/status');
+  });
+
   it('sends the selected model, answers, and protocol to the existing live endpoints', async () => {
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: {} } as never);
 

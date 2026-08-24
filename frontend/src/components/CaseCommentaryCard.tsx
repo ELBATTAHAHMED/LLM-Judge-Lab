@@ -18,7 +18,7 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
       case 'verbosity':
         return {
           title: 'Verbosity Inflation Commentary',
-          summary: `The AI judge selected the longer response (disparity: ${record.word_count_diff > 0 ? '+' : ''}${record.word_count_diff} words), overriding the human evaluator who preferred the concise answer. The reasoning text exhibits length-justifying bi-grams ("provides more", "more detailed"), confirming that answer length systematically inflated the judge's score.`,
+          summary: `The AI judge selected the longer response (disparity: ${record.word_count_diff > 0 ? '+' : ''}${record.word_count_diff} words), while the human evaluator preferred the concise answer. This selected historical case is consistent with a length-associated preference; it is not controlled evidence of a systematic length effect.`,
         };
 
       case 'forced_choice':
@@ -30,7 +30,7 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
       case 'position_bias':
         return {
           title: 'Position-Order Preference Commentary',
-          summary: `The AI judge selected the candidate answer shown in Position B. Across our benchmark evaluation trials, Position B exhibits selection bias, demonstrating sensitivity to presentation order rather than pure factual merit.`,
+          summary: `This selected historical case favored the answer shown in Position B. Controlled RQ3 is required for presentation-order sensitivity inference.`,
         };
 
 

@@ -106,6 +106,12 @@ def _require_live_sandbox_enabled() -> None:
         raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
 
 
+@app.get("/api/live-sandbox/status")
+def get_live_sandbox_status() -> dict[str, bool]:
+    """Expose only the local manual-execution opt-in state; never provider credentials."""
+    return {"enabled": _live_sandbox_provider_calls_enabled()}
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _sanitize(value: Any) -> Any:

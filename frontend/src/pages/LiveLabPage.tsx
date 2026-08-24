@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation } from '../api/client';
+import { executeLiveEvaluation, executeCalibratedEvaluation, executeEnsembleEvaluation, getLiveSandboxStatus } from '../api/client';
 import type { EvaluateResponse, CalibratedEvaluateResponse, EnsembleEvaluateResponse } from '../api/types';
 import { useJudge } from '../context/JudgeContext';
 import { TextHighlighter } from '../components/TextHighlighter';
@@ -55,6 +55,20 @@ export const LiveLabPage: React.FC = () => {
     setModelName(judgeModel);
   }, [judgeModel]);
 
+  const [liveExecutionEnabled, setLiveExecutionEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getLiveSandboxStatus()
+      .then(({ enabled }) => {
+        if (active) setLiveExecutionEnabled(enabled);
+      })
+      .catch(() => {
+        if (active) setLiveExecutionEnabled(null);
+      });
+    return () => { active = false; };
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [executionStep, setExecutionStep] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +98,10 @@ export const LiveLabPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (liveExecutionEnabled === false) {
+      setError('Local live execution is disabled by server configuration. Set ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true on the backend before running a manual evaluation.');
+      return;
+    }
     if (!prompt.trim() || !answerA.trim() || !answerB.trim()) {
       setError('Please provide a Prompt, Answer A, and Answer B.');
       return;
@@ -159,6 +177,13 @@ export const LiveLabPage: React.FC = () => {
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
             LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
+          </p>
+          <p className="text-[11px] text-neutral-500 mt-1" aria-live="polite">
+            {liveExecutionEnabled === false
+              ? 'Real provider execution is disabled by this server configuration.'
+              : liveExecutionEnabled === true
+                ? 'Real provider execution is enabled for this local server.'
+                : 'Real provider execution is controlled by this server configuration.'}
           </p>
         </div>
         <div className="flex items-center gap-1 self-start sm:self-auto">
@@ -395,7 +420,7 @@ export const LiveLabPage: React.FC = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || liveExecutionEnabled === false}
               className="w-full py-2.5 px-4 rounded bg-neutral-900 dark:bg-neutral-100 hover:bg-neutral-800 dark:hover:bg-neutral-200 text-white dark:text-neutral-900 font-mono text-xs font-semibold flex items-center justify-center space-x-2 transition-colors cursor-pointer disabled:opacity-50"
             >
               {loading ? (
@@ -429,7 +454,9 @@ export const LiveLabPage: React.FC = () => {
                     <Play className="w-3.5 h-3.5 fill-current" />
                   )}
                   <span>
-                    {evalMode === 'ensemble'
+                    {liveExecutionEnabled === false
+                      ? 'Live execution disabled by server'
+                      : evalMode === 'ensemble'
                       ? 'Run Ensemble Consensus'
                       : evalMode === 'calibrated'
                       ? (mitigationStrategy === 'verbosity_penalized'

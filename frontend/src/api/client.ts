@@ -8,6 +8,7 @@ import type {
   QualitativeBucket,
   EvaluateRequest,
   EvaluateResponse,
+  LiveSandboxStatusResponse,
   CalibratedEvaluateRequest,
   CalibratedEvaluateResponse,
   EnsembleEvaluateRequest,
@@ -185,6 +186,11 @@ export function useLeaderboard(judgeModel?: string) {
 }
 
 /** Manual-only endpoints. The backend remains disabled until explicitly enabled. */
+export async function getLiveSandboxStatus(): Promise<LiveSandboxStatusResponse> {
+  const response = await apiClient.get<LiveSandboxStatusResponse>('/api/live-sandbox/status');
+  return response.data;
+}
+
 export async function executeLiveEvaluation(payload: EvaluateRequest): Promise<EvaluateResponse> {
   const response = await apiClient.post<EvaluateResponse>('/api/evaluate', payload, {
     timeout: 120000,

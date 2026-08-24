@@ -73,6 +73,11 @@ export interface EvaluateResponse {
   model_name: string;
 }
 
+/** Safe server configuration state for the manual-only Live Evaluation Sandbox. */
+export interface LiveSandboxStatusResponse {
+  enabled: boolean;
+}
+
 export interface CalibratedEvaluateRequest {
   question: string;
   answer_a: string;

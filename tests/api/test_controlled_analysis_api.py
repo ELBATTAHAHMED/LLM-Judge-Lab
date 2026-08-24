@@ -62,9 +62,24 @@ def test_live_sandbox_provider_routes_are_disabled_before_transport(monkeypatch)
     import main
     calls = []
     monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
-    monkeypatch.setattr(main, "call_judge", lambda **_: calls.append(True))
-    response = TestClient(app).post("/api/evaluate", json={"prompt": "q", "answer_a": "a", "answer_b": "b"})
-    assert response.status_code == 403 and calls == []
+    monkeypatch.setattr(main, "call_judge", lambda **_: calls.append("standard"))
+    monkeypatch.setattr(main, "call_calibrated_judge", lambda **_: calls.append("calibrated"))
+    monkeypatch.setattr(main, "call_multi_judge_ensemble", lambda **_: calls.append("ensemble"))
+    client = TestClient(app)
+    responses = [
+        client.post("/api/evaluate", json={"prompt": "q", "answer_a": "a", "answer_b": "b"}),
+        client.post("/api/evaluate/calibrated", json={"question": "q", "answer_a": "a", "answer_b": "b"}),
+        client.post("/api/evaluate/ensemble", json={"question": "q", "answer_a": "a", "answer_b": "b", "judge_models": ["gpt-4o-mini"]}),
+    ]
+    assert [response.status_code for response in responses] == [403, 403, 403]
+    assert calls == []
+
+
+def test_live_sandbox_status_reports_only_the_server_opt_in(monkeypatch):
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "false")
+    assert TestClient(app).get("/api/live-sandbox/status").json() == {"enabled": False}
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "true")
+    assert TestClient(app).get("/api/live-sandbox/status").json() == {"enabled": True}
 
 
 def test_live_sandbox_env_gate_allows_a_route_without_a_token_header(monkeypatch):
