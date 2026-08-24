@@ -379,13 +379,18 @@ def materialize(session: Session, manifest: dict[str, Any], ledger: dict[str, An
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(); parser.add_argument("--preflight", action="store_true"); parser.add_argument("--status", action="store_true"); parser.add_argument("--execute", action="store_true"); parser.add_argument("--confirm-paid-execution")
+    parser = argparse.ArgumentParser(); parser.add_argument("--preflight", action="store_true"); parser.add_argument("--status", action="store_true"); parser.add_argument("--reconcile-stale-in-flight", action="store_true"); parser.add_argument("--execute", action="store_true"); parser.add_argument("--confirm-paid-execution")
     args = parser.parse_args()
     if args.execute and args.confirm_paid_execution != CONFIRMATION: raise SourceCorrectedPreflightError("paid execution requires the exact confirmation phrase")
     from database import SessionLocal
     from source_corrected_real_execution import SourceCorrectedRunner, render_dashboard
     if args.status:
         report, caps = SourceCorrectedRunner(SessionLocal).status()
+        print(render_dashboard(report, caps)); return 0
+    if args.reconcile_stale_in_flight:
+        runner = SourceCorrectedRunner(SessionLocal)
+        report = runner.reconcile_stale_in_flight()
+        _, caps = runner.status()
         print(render_dashboard(report, caps)); return 0
     if args.execute:
         def progress(report, caps, elapsed, rate):

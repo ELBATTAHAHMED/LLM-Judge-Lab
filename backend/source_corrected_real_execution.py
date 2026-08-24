@@ -18,6 +18,7 @@ from typing import Any, Callable
 from uuid import uuid4
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from build_source_text_reconciliation import load_raw_source, sha
@@ -43,6 +44,11 @@ TERMINAL = {"COMPLETED", "FAILED", "AMBIGUOUS"}
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def as_utc(value: datetime) -> datetime:
+    """Normalize legacy/SQLite naïve timestamps before lease comparison."""
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 def credentials_present() -> dict[str, bool]:
@@ -123,7 +129,7 @@ class SourceCorrectedStore:
     def recover(self, session: Session, batch: SourceCorrectedExecutionBatch) -> None:
         now = utc_now()
         for slot in session.scalars(select(SourceCorrectedExecutionSlot).where(SourceCorrectedExecutionSlot.batch_id == batch.id, SourceCorrectedExecutionSlot.state.in_(("RESERVED", "SENT"))).with_for_update()):
-            if slot.lease_expires_at and slot.lease_expires_at > now: continue
+            if slot.lease_expires_at and as_utc(slot.lease_expires_at) > now: continue
             attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.slot_id == slot.id).order_by(SourceCorrectedExecutionAttempt.attempt_index.desc()))
             if slot.state == "RESERVED":
                 slot.state, slot.execution_owner, slot.lease_expires_at = "PENDING", None, None
@@ -214,7 +220,10 @@ def render_dashboard(report: dict[str, Any], caps: dict[str, str], *, elapsed: f
     judge_total={"gpt-4o-mini":1590,"anthropic/claude-3-haiku":1609,"deepseek/deepseek-chat":1595,"meta-llama/llama-3.3-70b-instruct":1655}
     lines = ["SOURCE-CORRECTED EXECUTION", "=" * 60, f"Overall [{'#'*filled}{'-'*(width-filled)}] {completed} / {planned} {100*completed/planned:5.1f}%", f"Completed {completed} | Pending {report['pending']} | In progress {report['in_progress']} | Failed {report['failed']} | Ambiguous {report['ambiguous']}", f"Attempts {report['attempts']} | Retries {report['retries']} | Elapsed {int(elapsed//60):02d}:{int(elapsed%60):02d} | Rate {rate*60:.1f} passes/min | ETA {eta}", "", "Per judge: " + " | ".join(f"{j}: {report['per_judge'].get(j,0)}/{judge_total[j]}" for j in judge_total), "Per RQ:"]
     lines += [f"{rq:14} {report['per_rq'].get(rq,0):4}/{total}" for rq,total in rq_total.items()]
-    lines += ["", f"OpenAI     actual ${report['spend']['OPENAI']['actual']} + reserved ${report['spend']['OPENAI']['reserved']} / ${caps['OPENAI']}", f"OpenRouter actual ${report['spend']['OPENROUTER']['actual']} + reserved ${report['spend']['OPENROUTER']['reserved']} / ${caps['OPENROUTER']}", f"Global     actual ${report['spend']['GLOBAL']['actual']} + reserved ${report['spend']['GLOBAL']['reserved']} / ${caps['GLOBAL']}", "Last event: " + report["last_event"], "=" * 60]
+    lines += ["", f"OpenAI     actual ${report['spend']['OPENAI']['actual']} + reserved ${report['spend']['OPENAI']['reserved']} / ${caps['OPENAI']}", f"OpenRouter actual ${report['spend']['OPENROUTER']['actual']} + reserved ${report['spend']['OPENROUTER']['reserved']} / ${caps['OPENROUTER']}", f"Global     actual ${report['spend']['GLOBAL']['actual']} + reserved ${report['spend']['GLOBAL']['reserved']} / ${caps['GLOBAL']}", "Last event: " + report["last_event"]]
+    if report.get("stop_reason"):
+        lines += ["EXECUTION STOPPED", "Reason: " + str(report["stop_reason"])]
+    lines += ["=" * 60]
     return "\n".join(lines)
 
 
@@ -241,6 +250,16 @@ class SourceCorrectedRunner:
     def status(self) -> tuple[dict[str, Any], dict[str, str]]:
         with self.session_factory() as session:
             batch = self.batch(session); return self.store.status(session, batch), {**batch.provider_hard_caps_json, "GLOBAL": str(batch.global_hard_cap_usd)}
+
+    def reconcile_stale_in_flight(self) -> dict[str, Any]:
+        """Fail closed for expired claims without evaluating a provider."""
+        with self.session_factory() as session:
+            batch = self.batch(session)
+            self.store.recover(session, batch)
+            self.store.finalize_if_exhausted(session, batch)
+            report = self.store.status(session, batch)
+            session.commit()
+            return report
 
     def execute(self, *, confirmation: str, max_slots: int | None = None, progress: Callable[[dict[str, Any], dict[str,str], float, float], None] | None = None) -> dict[str, Any]:
         if confirmation != "I_CONFIRM_SOURCE_CORRECTED_PAID_EXECUTION": raise SourceCorrectedPreflightError("paid execution requires exact confirmation")
@@ -270,7 +289,7 @@ class SourceCorrectedRunner:
                 except SourceCorrectedPreflightError:
                     raise
                 processed += 1
-                if processed % 10 == 0 or monotonic()-last > 1:
+                if progress and (processed % 10 == 0 or monotonic()-last > 1):
                     report,caps = self.status(); elapsed=monotonic()-started; rate=(report["completed"]-done_at_start)/elapsed if elapsed else 0
                     if progress: progress(report,caps,elapsed,rate)
                     last=monotonic()
@@ -279,8 +298,23 @@ class SourceCorrectedRunner:
             return report
         except KeyboardInterrupt:
             report,caps=self.status()
+            report["stop_reason"] = "INTERRUPTED"
             if progress: progress(report,caps,monotonic()-started,(report["completed"]-done_at_start)/max(monotonic()-started,0.001))
-            print("Execution paused safely. Run the SAME paid command again to resume.", file=sys.stderr)
+            print("EXECUTION STOPPED\nReason: INTERRUPTED", file=sys.stderr)
+            return report
+        except Exception as exc:
+            # Do not alter a durable SENT attempt here: without a persisted
+            # response it must later be explicitly reconciled as AMBIGUOUS.
+            report, caps = self.status()
+            if isinstance(exc, SourceCorrectedPreflightError):
+                reason = f"SOURCE_INVARIANT: {str(exc)[:160]}"
+            elif isinstance(exc, SQLAlchemyError):
+                reason = "DATABASE_PERSISTENCE_ERROR"
+            else:
+                reason = f"UNEXPECTED_EXECUTOR_ERROR: {type(exc).__name__}"
+            report["stop_reason"] = reason
+            if progress: progress(report,caps,monotonic()-started,(report["completed"]-done_at_start)/max(monotonic()-started,0.001))
+            print(f"EXECUTION STOPPED\nReason: {reason}", file=sys.stderr)
             return report
 
     def _evaluate(self, row: dict[str, Any], request: EvaluationRequest) -> NormalizedEvaluationResult:
