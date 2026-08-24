@@ -64,6 +64,8 @@ def test_full_6449_slot_mock_rehearsal_uses_frozen_manifest_without_network():
     assert final["planned"] == final["completed"] == final["attempts"] == 6449
     assert final["failed"] == final["ambiguous"] == 0 and len(transport.sent) == 6449
     assert mock_dry_run(runner.manifest)["mock_transport_calls"] == 6449
+    dashboard = render_dashboard(final, {"OPENAI": "1", "OPENROUTER": "2", "GLOBAL": "3"}, elapsed=60, rate=1)
+    assert "6449 / 6449" in dashboard and "100.0%" in dashboard
     engine.dispose()
 
 
