@@ -43,8 +43,16 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     expect(screen.getByRole('heading', { name: 'Mitigation' })).toBeInTheDocument();
     expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
     expect(pairedGrid).not.toContainElement(screen.getByLabelText('RQ7 Mitigation Strategies'));
-    expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveTextContent('Primary');
-    expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveTextContent('Secondary');
+    expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
+    expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
+    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('PRIMARY');
+    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('SECONDARY');
+    expect([...screen.getByTestId('dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Matched N']);
+    expect([...screen.getByTestId('multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Retained / planned']);
+    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('Presentation-consistency filtering');
+    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('Cross-judge aggregation');
+    expect(screen.getByTestId('dual-swap-footer')).toHaveTextContent(/Dual-pass stability/i);
+    expect(screen.getByTestId('multi-judge-footer')).toHaveTextContent(/equal-weight individual-judge baseline/i);
     expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
     expect(screen.getByText(/not a direct head-to-head comparison/i)).toBeInTheDocument();
   });
