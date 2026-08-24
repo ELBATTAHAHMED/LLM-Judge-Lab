@@ -1,0 +1,117 @@
+{
+  "artifact_id": "dualswap-vs-multijudge-comparison-v1",
+  "baseline_composition_diagnostic": {
+    "all_dual_swap_canonical_pairs_are_in_multi_judge_planned_population": true,
+    "dual_swap_pair_by_judge_repetition_prevents_pair_level_direct_baseline_normalization": true,
+    "status": "DESCRIPTIVE_ONLY"
+  },
+  "category_comparability": {
+    "no_per_category_direct_effect_computed": true,
+    "shared_canonical_pair_category_counts_from_dual_swap_observations": {
+      "coding": 93,
+      "extraction": 105,
+      "humanities": 99,
+      "math": 99,
+      "reasoning": 99,
+      "roleplay": 106,
+      "stem": 116,
+      "writing": 83
+    },
+    "status": "DESCRIPTIVE_ONLY"
+  },
+  "constraints": {
+    "no_api_frontend_modification": true,
+    "no_judge_aggregation_invented": true,
+    "no_phase11_or_release_modification": true,
+    "no_rq7_modification": true,
+    "no_superiority_claim": true
+  },
+  "direct_comparison": {
+    "bootstrap_ci_95": null,
+    "coverage_comparison": "NOT_COMPARABLE_AS_MATCHED_DELTA",
+    "decision": "DIRECT_MATCHED_COMPARISON_NOT_DEFENSIBLE",
+    "direct_delta": null,
+    "matched_n": null
+  },
+  "dual_swap_unit": {
+    "frozen_pair_level_aggregation_rule": null,
+    "judge_models": [
+      "anthropic/claude-3-haiku",
+      "deepseek/deepseek-chat",
+      "gpt-4o-mini",
+      "meta-llama/llama-3.3-70b-instruct"
+    ],
+    "planned_n": 800,
+    "unique_canonical_pairs": 653,
+    "unit": "canonical answer pair \u00d7 judge"
+  },
+  "exact_identity_overlap": {
+    "both_method_retained_common_n": null,
+    "both_method_retained_common_n_status": "NOT_DEFINED_NO_FROZEN_PAIR_LEVEL_DUAL_SWAP_AGGREGATION",
+    "dual_swap_canonical_pairs": 653,
+    "dual_swap_retained_pair_by_judge_rows_on_multi_covered_pairs": 428,
+    "multi_judge_covered_within_overlap_n": 450,
+    "multi_judge_covered_within_overlap_sha256": "97f0e78adc65af25ec6817e788cd0bd6d41be546abdf17293f825032c444b96f",
+    "multi_judge_planned_pairs": 1611,
+    "overlap_n": 653,
+    "overlap_sha256": "643fae37c0e06f3a02a21269101e4660348cfd7ed7febfbd537e56a9733c4d56"
+  },
+  "historical_unmatched_plus_8_13_pp_used_as_primary": false,
+  "lineage": {
+    "manifest_sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "phase8_sha256": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693",
+    "phase9_sha256": "c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3",
+    "protocol_sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+    "rq7_analysis_run_id": "fa24666d-b4c9-4b1d-a767-cfc59c4380ac",
+    "rq7_analysis_seed": 20260818,
+    "rq7_manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea"
+  },
+  "multi_judge_unit": {
+    "consensus_covered_n": 1125,
+    "planned_n": 1611,
+    "unit": "canonical answer pair"
+  },
+  "phase": "PHASE_10_FAIR_COMPARISON",
+  "provider_activity": {
+    "provider_calls": 0,
+    "spend_usd": "0"
+  },
+  "rq7_independent_reconstruction": {
+    "agreement_delta": 0.007029876977152899,
+    "agreement_delta_ci_high": 0.015817223198594025,
+    "agreement_delta_ci_low": 0,
+    "baseline_agreement": 0.6766256590509666,
+    "baseline_coverage": 0.95625,
+    "coverage_delta": -0.22750000000000004,
+    "dual_swap_agreement": 0.6836555360281195,
+    "dual_swap_coverage": 0.72875,
+    "matched_n": 569,
+    "planned_pair_by_judge_n": 800
+  },
+  "separate_operating_points": {
+    "dual_swap": {
+      "agreement_delta": 0.007029876977152899,
+      "agreement_delta_ci_high": 0.015817223198594025,
+      "agreement_delta_ci_low": 0,
+      "baseline_agreement": 0.6766256590509666,
+      "baseline_coverage": 0.95625,
+      "coverage_delta": -0.22750000000000004,
+      "dual_swap_agreement": 0.6836555360281195,
+      "dual_swap_coverage": 0.72875,
+      "matched_n": 569,
+      "planned_pair_by_judge_n": 800
+    },
+    "multi_judge": {
+      "agreement": 0.7066666666666667,
+      "coverage": 0.6983240223463687,
+      "covered_n": 1125,
+      "equal_weight_individual_baseline": 0.658,
+      "matched_delta": 0.048666666666666664,
+      "planned_n": 1611
+    }
+  },
+  "unit_compatibility": {
+    "reason": "DUAL_SWAP has repeated pair\u00d7judge observations (800 rows over 653 canonical pairs); Multi-Judge has one canonical-pair decision. No frozen RQ7 method aggregates the repeated DUAL_SWAP judge observations to a pair-level outcome.",
+    "status": "FAIL"
+  }
+}
