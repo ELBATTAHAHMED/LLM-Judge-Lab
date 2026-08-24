@@ -17,11 +17,11 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionSlot  # noqa: E402
+from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionBatch, MultiJudgeExecutionSlot  # noqa: E402
 from multijudge_real_execution import (  # noqa: E402
     HARD_CAP_USD, MultiJudgePreflightError,
     MultiJudgeRealRunner, _map_vote, _validate_routes_and_pricing,
-    credential_presence, format_live_progress,
+    credential_presence, format_live_progress, utc_now,
 )
 from controlled_persistence import Outcome  # noqa: E402
 
@@ -292,3 +292,22 @@ def test_active_lease_is_preserved_but_expired_lease_is_ambiguous(session_factor
         session.commit()
         assert session.get(MultiJudgeExecutionSlot, active_id).status == "SENT"
         assert session.get(MultiJudgeExecutionSlot, stale_id).status == "AMBIGUOUS"
+
+
+def test_exhausted_batch_finalizes_as_completed_without_claiming_all_slots_succeeded(session_factory, configured_credentials):
+    runner = MultiJudgeRealRunner(transport=FakeTransport())
+    _prepare(runner, session_factory)
+    with session_factory() as session:
+        batch = runner.store.batch_for_manifest(session, runner.frozen.manifest_sha256)
+        slots = session.query(MultiJudgeExecutionSlot).filter_by(batch_id=batch.id).all()
+        for index, slot in enumerate(slots):
+            slot.status = "COMPLETED" if index else "FAILED_FINAL"
+        assert runner.store.finalize_if_exhausted(session, batch) is True
+        session.commit()
+        assert session.get(MultiJudgeExecutionBatch, batch.id).status == "COMPLETED"
+
+
+def test_multi_judge_metadata_uses_timezone_aware_utc_for_future_writes():
+    assert utc_now().tzinfo is not None
+    assert MultiJudgeExecutionAttempt.__table__.c.started_at.type.timezone is True
+    assert MultiJudgeExecutionSlot.__table__.c.completed_at.type.timezone is True

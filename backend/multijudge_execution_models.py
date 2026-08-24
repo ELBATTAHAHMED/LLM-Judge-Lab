@@ -23,8 +23,8 @@ class MultiJudgeExecutionBatch(Base):
     hard_cap_usd: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="MATERIALIZED")
     provenance_json: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class MultiJudgeExecutionSlot(Base):
@@ -55,10 +55,10 @@ class MultiJudgeExecutionSlot(Base):
     raw_response_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     execution_owner: Mapped[str | None] = mapped_column(String(64))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-    started_at: Mapped[datetime | None] = mapped_column(DateTime)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
 class MultiJudgeExecutionAttempt(Base):
@@ -80,5 +80,5 @@ class MultiJudgeExecutionAttempt(Base):
     effective_model: Mapped[str | None] = mapped_column(String(255))
     route_provenance_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     details_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
-    started_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

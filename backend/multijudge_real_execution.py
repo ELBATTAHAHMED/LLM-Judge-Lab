@@ -11,7 +11,7 @@ import json
 import os
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from time import monotonic
@@ -46,6 +46,16 @@ EXPECTED_JUDGES = (
 HARD_CAP_USD = Decimal("2.50")
 PAID_CONFIRMATION = "I_CONFIRM_MULTI_JUDGE_PAID_EXECUTION"
 LEASE_SECONDS = 300
+
+
+def utc_now() -> datetime:
+    """Single canonical timestamp source for durable execution metadata."""
+    return datetime.now(timezone.utc)
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Accept legacy SQLite test values while production records are aware UTC."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 class MultiJudgePreflightError(PermissionError):
@@ -196,9 +206,9 @@ class MultiJudgeExecutionStore:
         owns a SENT slot through its short lease, so an observer cannot turn a
         request that is still in flight into an ambiguous scientific slot.
         """
-        now = datetime.utcnow()
+        now = utc_now()
         for slot in session.scalars(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id, MultiJudgeExecutionSlot.status.in_(("PREPARED", "SENT", "RUNNING")))):
-            if slot.status in {"SENT", "RUNNING"} and slot.execution_owner and slot.lease_expires_at and slot.lease_expires_at > now:
+            if slot.status in {"SENT", "RUNNING"} and slot.execution_owner and slot.lease_expires_at and _as_utc(slot.lease_expires_at) > now:
                 continue
             attempts = list(session.scalars(select(MultiJudgeExecutionAttempt).where(MultiJudgeExecutionAttempt.slot_id == slot.id).order_by(MultiJudgeExecutionAttempt.attempt_index.desc())))
             attempt = attempts[0] if attempts else None
@@ -217,7 +227,7 @@ class MultiJudgeExecutionStore:
         if batch is None or slot is None or slot.status != "PENDING":
             return None
         reserved = session.scalar(select(func.coalesce(func.sum(MultiJudgeExecutionAttempt.reserved_usd), Decimal("0"))).join(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id))
-        now = datetime.utcnow()
+        now = utc_now()
         if Decimal(reserved) + forecast_usd > HARD_CAP_USD:
             attempt = MultiJudgeExecutionAttempt(slot_id=slot.id, attempt_id=hashlib.sha256(f"{slot.planned_pass_id}|budget|{slot.attempt_count}".encode()).hexdigest(), attempt_index=slot.attempt_count, state="BLOCKED_BUDGET", failure_category="BUDGET_EXCEEDED", retry_decision="TERMINAL", reserved_usd=Decimal("0"), completed_at=now, details_json={"forecast_usd": str(forecast_usd), "hard_cap_usd": str(HARD_CAP_USD), "blocked_before_transport": True})
             slot.attempt_count += 1; slot.status = "BUDGET_STOPPED"; slot.final_outcome = "MISSING_PASS"; slot.completed_at = now; slot.execution_owner = None; slot.lease_expires_at = None; slot.updated_at = now
@@ -236,7 +246,7 @@ class MultiJudgeExecutionStore:
         attempt = session.scalar(select(MultiJudgeExecutionAttempt).where(MultiJudgeExecutionAttempt.attempt_id == attempt_id).with_for_update())
         if slot is None or attempt is None or slot.status != "SENT" or slot.execution_owner != execution_owner:
             raise MultiJudgePreflightError("result persistence does not match a sent durable slot")
-        now = datetime.utcnow()
+        now = utc_now()
         actual = _actual_cost(slot.judge_id, result)
         attempt.input_tokens, attempt.output_tokens = result.input_tokens, result.output_tokens
         attempt.actual_usd, attempt.provider_response_id, attempt.effective_model = actual, result.provider_response_id, result.effective_model
@@ -259,6 +269,22 @@ class MultiJudgeExecutionStore:
         attempt.completed_at, slot.execution_owner, slot.lease_expires_at, slot.updated_at = now, None, None, now
         session.flush()
         return slot.status
+
+    def finalize_if_exhausted(self, session: Session, batch: MultiJudgeExecutionBatch) -> bool:
+        """Mark a fully resolved execution batch completed, never 'all succeeded'."""
+        batch = session.scalar(select(MultiJudgeExecutionBatch).where(MultiJudgeExecutionBatch.id == batch.id).with_for_update())
+        if batch is None:
+            raise MultiJudgePreflightError("frozen execution batch is missing")
+        states = Counter(session.scalars(select(MultiJudgeExecutionSlot.status).where(MultiJudgeExecutionSlot.batch_id == batch.id)))
+        total = sum(states.values())
+        unresolved = states["PENDING"] + states["PREPARED"] + states["SENT"] + states["RUNNING"]
+        terminal = states["COMPLETED"] + states["FAILED_FINAL"] + states["BUDGET_STOPPED"] + states["AMBIGUOUS"]
+        if total != 6444 or unresolved or terminal != 6444:
+            return False
+        if batch.status != "COMPLETED":
+            batch.status, batch.updated_at = "COMPLETED", utc_now()
+            session.flush()
+        return True
 
     def status(self, session: Session, batch: MultiJudgeExecutionBatch) -> dict[str, Any]:
         slots = list(session.scalars(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id)))
@@ -363,6 +389,7 @@ class MultiJudgeRealRunner:
                 batch = self.store.batch_for_manifest(session, self.frozen.manifest_sha256)
                 slot = session.scalar(select(MultiJudgeExecutionSlot).where(MultiJudgeExecutionSlot.batch_id == batch.id, MultiJudgeExecutionSlot.status == "PENDING").order_by(MultiJudgeExecutionSlot.planned_pass_id))
                 if slot is None:
+                    self.store.finalize_if_exhausted(session, batch)
                     report = self.store.status(session, batch); session.commit(); return report
                 prompt_id = self.frozen.pairs[slot.canonical_pair_id]["prompt_id"]
                 question, answer_a, answer_b = source_prompts[prompt_id], source_answers[slot.displayed_a_answer_id], source_answers[slot.displayed_b_answer_id]
@@ -385,6 +412,11 @@ class MultiJudgeRealRunner:
             if state == "BUDGET_STOPPED":
                 return report
         _report_progress(progress_callback, report)
+        with session_factory() as session:
+            batch = self.store.batch_for_manifest(session, self.frozen.manifest_sha256)
+            self.store.finalize_if_exhausted(session, batch)
+            report = self.store.status(session, batch)
+            session.commit()
         return report
 
     def _evaluate(self, slot_id: Any, judge_id: str, question: str, answer_a: str, answer_b: str, original_a: int, original_b: int, displayed_a: int, displayed_b: int) -> NormalizedEvaluationResult:
