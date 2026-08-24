@@ -1,0 +1,179 @@
+{
+  "artifact_id": "multi-judge-postexecution-integrity-v1",
+  "audited_at": "2026-08-24T10:52:55+00:00",
+  "phase": "PHASE_7_POST_EXECUTION_INTEGRITY_AUDIT",
+  "source_head": "34515b7417bba8c4b6d402a3d913c19aa1a05ab5",
+  "provider_activity": {
+    "provider_calls": 0,
+    "spend_added_usd": "0"
+  },
+  "frozen_artifacts": {
+    "protocol_id": "multi-judge-consensus-v1",
+    "protocol_path": "evidence/multijudge_consensus/protocol_v1.json",
+    "protocol_sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+    "manifest_path": "evidence/multijudge_consensus/execution_manifest_v1.json",
+    "manifest_sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "status": "PASS"
+  },
+  "phase7_initial_failure_and_phase7b_remediation": {
+    "initial_batch_status": "RUNNING",
+    "initial_attempt_completion_before_started_at": 6530,
+    "root_causes": {
+      "batch": "The real runner returned after finding no PENDING slot but never performed a terminal batch transition.",
+      "timestamps": "PostgreSQL generated naive started_at values in Africa/Casablanca (+01:00), while the application wrote naive UTC completed_at values."
+    },
+    "remediation": {
+      "batch": "Idempotent RUNNING-to-COMPLETED finalization after all 6444 slots reached terminal states.",
+      "timestamps": "Deterministically subtracted one hour from exactly 6530 inverted attempt starts in the proven 3500-3700 second window, then converted dedicated multi-judge timestamps to TIMESTAMP WITH TIME ZONE UTC."
+    },
+    "post_remediation": {
+      "batch_status": "COMPLETED",
+      "attempt_completion_before_started_at": 0,
+      "all_attempt_timestamps_timezone_aware_utc": true
+    }
+  },
+  "execution_accounting": {
+    "planned_pairs": 1611,
+    "planned_scientific_slots": 6444,
+    "slot_partition": {
+      "COMPLETED": 6390,
+      "FAILED_FINAL": 52,
+      "AMBIGUOUS": 2,
+      "PENDING": 0,
+      "total": 6444
+    },
+    "attempt_accounting": {
+      "attempts": 6543,
+      "initial_attempts": 6444,
+      "retries": 99,
+      "attempt_states": {
+        "SUCCEEDED": 6390,
+        "FAILED_RETRYABLE": 99,
+        "FAILED_FINAL": 52,
+        "AMBIGUOUS": 2
+      },
+      "retry_decisions": {
+        "FINAL": 6390,
+        "RETRY": 99,
+        "TERMINAL": 52
+      },
+      "status": "PASS"
+    }
+  },
+  "outcome_classification": {
+    "completed": {
+      "ORIGINAL_ANSWER_1": 3565,
+      "ORIGINAL_ANSWER_2": 1315,
+      "TIE": 1417,
+      "UNKNOWN_NON_VOTE": 93,
+      "total": 6390
+    },
+    "terminal_failure": {
+      "API_ERROR_RATE_LIMIT_EXHAUSTED": 38,
+      "INVALID_RESPONSE": 14,
+      "total": 52
+    },
+    "ambiguous": {
+      "total": 2,
+      "replayed": 0,
+      "durable_result_recovered": 0,
+      "fabricated_vote": 0
+    },
+    "original_answer_mapping": "PASS"
+  },
+  "presentation_integrity": {
+    "global": {"AB": 3222, "BA": 3222},
+    "per_pair": "PASS: every pair has exactly two AB and two BA slots",
+    "per_judge": {
+      "gpt-4o-mini": {"AB": 806, "BA": 805},
+      "anthropic/claude-3-haiku": {"AB": 805, "BA": 806},
+      "deepseek/deepseek-chat": {"AB": 805, "BA": 806},
+      "meta-llama/llama-3.3-70b-instruct": {"AB": 806, "BA": 805}
+    },
+    "displayed_answer_ids_match_frozen_manifest": true
+  },
+  "model_route_integrity": {
+    "configured_slots": {
+      "gpt-4o-mini": "OPENAI | gpt-4o-mini | OPENAI_DIRECT",
+      "anthropic/claude-3-haiku": "OPENROUTER | anthropic/claude-3-haiku | amazon-bedrock",
+      "deepseek/deepseek-chat": "OPENROUTER | deepseek/deepseek-chat | streamlake",
+      "meta-llama/llama-3.3-70b-instruct": "OPENROUTER | meta-llama/llama-3.3-70b-instruct | deepinfra/turbo"
+    },
+    "successful_openrouter_attempts": "all have matching configured/observed frozen route provenance and fallback_observed=false",
+    "openai_effective_model": "gpt-4o-mini-2024-07-18 (vendor-reported dated snapshot of requested gpt-4o-mini)",
+    "cross_provider_contamination": 0,
+    "unexpected_fallbacks": 0,
+    "status": "PASS"
+  },
+  "settings_integrity": {
+    "prompt_template_version": "controlled-judge-pairwise-v1",
+    "prompt_sha256": "e1d041bd6a1ec4f27efe6a3377d98ec0321af02b59ee9abedf64bf349ac9b299",
+    "temperature": 0,
+    "top_p": 1,
+    "max_output_tokens": 350,
+    "retry_policy": "controlled-retry-v2",
+    "failure_policy": "controlled-failure-v2",
+    "status": "PASS: frozen manifest and execution configuration match; individual request-setting copies are not stored in the attempt ledger"
+  },
+  "human_reference_leakage": {
+    "provider_facing_ledger_contains_human_winner": false,
+    "provider_facing_ledger_contains_human_preference": false,
+    "execution_payload_source": "prompts and answers only",
+    "status": "PASS"
+  },
+  "budget": {
+    "hard_cap_usd": "2.50",
+    "reserved_usd": "2.48550295",
+    "actual_usd": "1.46018394",
+    "reserved_minus_actual_usd": "1.02531901",
+    "negative_cost_entries": 0,
+    "successful_attempts_missing_actual_cost": 0,
+    "response_id_with_missing_actual_cost": 0,
+    "status": "PASS: reservations use worst-case pre-request cost; actual uses returned/token cost where available"
+  },
+  "per_judge": {
+    "gpt-4o-mini": {"planned": 1611, "completed": 1611, "terminal_failures": 0, "ambiguous": 0, "valid_scientific_votes": 1611, "TIE": 606, "UNKNOWN_NON_VOTE": 0, "invalid_response": 0, "attempts": 1611, "retries": 0, "actual_usd": "0.26383605"},
+    "anthropic/claude-3-haiku": {"planned": 1611, "completed": 1600, "terminal_failures": 11, "ambiguous": 0, "valid_scientific_votes": 1542, "TIE": 459, "UNKNOWN_NON_VOTE": 58, "invalid_response": 11, "attempts": 1611, "retries": 0, "actual_usd": "0.56308175"},
+    "deepseek/deepseek-chat": {"planned": 1611, "completed": 1578, "terminal_failures": 32, "ambiguous": 1, "valid_scientific_votes": 1571, "TIE": 96, "UNKNOWN_NON_VOTE": 7, "invalid_response": 0, "attempts": 1683, "retries": 72, "actual_usd": "0.47443780"},
+    "meta-llama/llama-3.3-70b-instruct": {"planned": 1611, "completed": 1601, "terminal_failures": 9, "ambiguous": 1, "valid_scientific_votes": 1573, "TIE": 256, "UNKNOWN_NON_VOTE": 28, "invalid_response": 3, "attempts": 1638, "retries": 27, "actual_usd": "0.15882834"}
+  },
+  "per_category": {
+    "coding": {"planned_pairs": 199, "four_valid_pairs": 186, "operationally_incomplete_pairs": 13, "terminal_failures": 4, "ambiguous": 0},
+    "extraction": {"planned_pairs": 201, "four_valid_pairs": 179, "operationally_incomplete_pairs": 22, "terminal_failures": 14, "ambiguous": 0},
+    "humanities": {"planned_pairs": 194, "four_valid_pairs": 180, "operationally_incomplete_pairs": 14, "terminal_failures": 3, "ambiguous": 0},
+    "math": {"planned_pairs": 193, "four_valid_pairs": 184, "operationally_incomplete_pairs": 9, "terminal_failures": 6, "ambiguous": 0},
+    "reasoning": {"planned_pairs": 204, "four_valid_pairs": 183, "operationally_incomplete_pairs": 21, "terminal_failures": 9, "ambiguous": 1},
+    "roleplay": {"planned_pairs": 217, "four_valid_pairs": 194, "operationally_incomplete_pairs": 23, "terminal_failures": 2, "ambiguous": 0},
+    "stem": {"planned_pairs": 214, "four_valid_pairs": 190, "operationally_incomplete_pairs": 24, "terminal_failures": 11, "ambiguous": 0},
+    "writing": {"planned_pairs": 189, "four_valid_pairs": 177, "operationally_incomplete_pairs": 12, "terminal_failures": 3, "ambiguous": 1}
+  },
+  "structural_eligibility": {
+    "four_valid_primary_eligible_pairs": 1473,
+    "exactly_three_valid_sensitivity_pairs": 130,
+    "fewer_than_four_valid_pairs": 138,
+    "pairs_affected_by_unknown_non_vote": 86,
+    "pairs_affected_by_terminal_failure": 52,
+    "pairs_affected_by_ambiguous_state": 2
+  },
+  "database_integrity": {
+    "orphan_slots": 0,
+    "orphan_attempts": 0,
+    "duplicate_pair_judge_slots": 0,
+    "duplicate_idempotency_keys": 0,
+    "duplicate_attempt_ids": 0,
+    "attempt_count_matches_slot": true,
+    "completed_slots_replayed": 0,
+    "terminal_slots_replayed_after_terminal_state": 0,
+    "ambiguous_slots_replayed": 0,
+    "pending_slots": 0,
+    "slot_completion_timestamps_coherent": true,
+    "attempt_completion_before_started_at": 0,
+    "batch_status": "COMPLETED",
+    "batch_status_coherent_with_zero_pending": true,
+    "timestamp_columns": "TIMESTAMP WITH TIME ZONE",
+    "timestamp_convention": "timezone-aware UTC"
+  },
+  "analysis_ready": true,
+  "blockers": [],
+  "outcome_analysis_performed": false
+}

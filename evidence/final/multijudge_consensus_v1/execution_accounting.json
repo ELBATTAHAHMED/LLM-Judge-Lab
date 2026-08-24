@@ -1,0 +1,9 @@
+{
+  "ambiguous_slots": 2,
+  "attempts": 6543,
+  "completed_slots": 6390,
+  "pairs": 1611,
+  "planned_slots": 6444,
+  "retries": 99,
+  "terminal_failures": 52
+}

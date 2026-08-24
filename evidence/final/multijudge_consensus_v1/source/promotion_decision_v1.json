@@ -1,0 +1,81 @@
+{
+  "artifact_id": "multi-judge-promotion-decision-v1",
+  "phase": "PHASE_12_SCIENTIFIC_PROMOTION_DECISION",
+  "decision": "A",
+  "promotion_status": "PROMOTE_AS_OFFICIAL_SECONDARY_RQ7_MITIGATION",
+  "integration_recommended": true,
+  "integration_authorized_in_this_phase": false,
+  "lineage": {
+    "protocol_sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+    "manifest_sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "primary_analysis_sha256": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693",
+    "fair_baseline_comparison_sha256": "c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3",
+    "dualswap_comparison_sha256": "52bdec7ac98f845bc5e2d93a55daa8cc505c1d2c576029ca85468cd57789c2c8",
+    "robustness_sensitivity_sha256": "e11d258535e887a6ba929492a675d464e773fd927001746a42928aca6b1b8f81"
+  },
+  "primary_evidence": {
+    "planned_pairs": 1611,
+    "retained_pairs": 1125,
+    "coverage": 0.6983240223463687,
+    "consensus_agreement": 0.7066666666666667,
+    "equal_weight_individual_baseline": 0.658,
+    "matched_delta": 0.048666666666666664,
+    "matched_delta_ci_95": {
+      "low": 0.04022222222222222,
+      "high": 0.05733333333333333
+    }
+  },
+  "robustness_summary": {
+    "leave_one_out_deltas_pp": {
+      "omit_gpt": 4.71,
+      "omit_claude": 3.46,
+      "omit_deepseek": 4.39,
+      "omit_llama": 4.9
+    },
+    "decisive_only_delta_pp": 5.56,
+    "three_valid_delta_pp": 1.1,
+    "three_valid_secondary_ci_spans_zero": true,
+    "unanimity_delta_pp": 0.0,
+    "unanimity_coverage": 0.36995654872749845,
+    "all_category_descriptive_deltas_positive": true,
+    "interpretation": "The primary direction is stable across leave-one-out and decisive-only secondary analyses. Three-valid evidence is weaker and uncertainty spans zero; strict unanimity changes the estimand and has materially lower coverage."
+  },
+  "dualswap_boundary": {
+    "status": "REMAINS_PRIMARY_RQ7_MITIGATION",
+    "method": "within-judge presentation-consistency filtering",
+    "direct_comparison_with_multi_judge": "NOT_DEFENSIBLE",
+    "reason": "DUAL_SWAP uses repeated canonical-pair-by-judge units without a frozen pair-level aggregation rule, while Multi-Judge uses one canonical-pair consensus decision.",
+    "multi_judge_role": "SECONDARY cross-judge aggregation mitigation strategy"
+  },
+  "scientific_rationale": [
+    "The frozen primary matched comparison has a positive 4.87 percentage-point agreement difference with a 95% bootstrap CI entirely above zero on 1,125 retained pairs.",
+    "The result has transparent planned-pair coverage of 69.83% and explicit operational/split abstention accounting.",
+    "Leave-one-out analyses remain positive, decisive-only analysis remains positive, and all eight descriptive category deltas are positive.",
+    "Promotion is limited to a secondary RQ7 mitigation result; it neither replaces DUAL_SWAP nor supports a direct superiority claim."
+  ],
+  "approved_claims": [
+    "Under the frozen strict four-judge consensus protocol, Multi-Judge Consensus increased agreement with human preference reference labels by 4.87 percentage points relative to the equal-weight individual-judge baseline on the same retained pairs (95% CI +4.02 to +5.73 pp), with 69.83% planned-pair coverage.",
+    "Multi-Judge Consensus is an official secondary mitigation strategy evaluating cross-judge aggregation; DUAL_SWAP remains the primary RQ7 mitigation result evaluating within-judge presentation-consistency filtering."
+  ],
+  "prohibited_claims": [
+    "Multi-Judge is superior to DUAL_SWAP.",
+    "Bias is eliminated or causally mitigated.",
+    "Consensus is ground truth.",
+    "Ensembles always outperform individual judges.",
+    "The +4.87 pp Multi-Judge and +0.70 pp DUAL_SWAP deltas are directly comparable effects."
+  ],
+  "limitations": [
+    "Coverage is 69.83% of planned pairs; abstention is an explicit operating trade-off.",
+    "Three-valid sensitivity is weaker and its secondary CI spans zero.",
+    "Strict unanimity has no matched gain and only 37.00% planned-pair coverage.",
+    "No direct DUAL_SWAP-versus-Multi-Judge superiority analysis is scientifically defensible."
+  ],
+  "integrity_checks": {
+    "primary_result_unchanged": true,
+    "robustness_artifact_unchanged": true,
+    "dualswap_comparison_conclusion_unchanged": true,
+    "rq1_to_rq7_unchanged": true,
+    "phase12_provider_calls": 0,
+    "phase12_spend_usd": "0"
+  }
+}

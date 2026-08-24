@@ -1,0 +1,61 @@
+{
+  "host_manifest_id": "55e58905-2265-49b3-87b7-1d55daa073ea",
+  "id": "fc40faf1-b886-42f8-8faf-a616f61f3107",
+  "metrics": {
+    "agreement": 0.7066666666666667,
+    "ci_high": 0.05733333333333333,
+    "ci_low": 0.04022222222222222,
+    "coverage": 0.6983240223463687,
+    "equal_weight_individual_baseline": 0.658,
+    "four_valid_n": 1473,
+    "matched_delta": 0.048666666666666664,
+    "planned_n": 1611,
+    "retained_n": 1125
+  },
+  "result_json": {
+    "analysis_identity": "multi-judge-consensus-analysis-v1",
+    "bootstrap": {
+      "confidence_level": 0.95,
+      "method": "nonparametric_percentile",
+      "primary_metrics": [
+        "consensus_agreement",
+        "consensus_coverage",
+        "matched_consensus_minus_individual_delta"
+      ],
+      "resamples": 10000,
+      "seed": 20260823,
+      "unit": "canonical_answer_pair"
+    },
+    "evidence_class": "CONTROLLED",
+    "lineage_sha256": {
+      "dualswap_comparison_v1.json": "52bdec7ac98f845bc5e2d93a55daa8cc505c1d2c576029ca85468cd57789c2c8",
+      "execution_manifest_v1.json": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+      "fair_baseline_comparison_v1.json": "c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3",
+      "postexecution_integrity_v1.json": "9e0273c0b51917ba2ea8358c1d29041f8ed3eacd93d33839b8ebafe6b7cf4ba3",
+      "primary_analysis_v1.json": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693",
+      "promotion_decision_v1.json": "4682516428fe1206a072ad32efc0c638d7112d0b4396efe2e1ab86f5c0dba5f0",
+      "protocol_v1.json": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+      "robustness_sensitivity_v1.json": "e11d258535e887a6ba929492a675d464e773fd927001746a42928aca6b1b8f81"
+    },
+    "manifest_sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "metrics": {
+      "agreement": 0.7066666666666667,
+      "ci_high": 0.05733333333333333,
+      "ci_low": 0.04022222222222222,
+      "coverage": 0.6983240223463687,
+      "equal_weight_individual_baseline": 0.658,
+      "four_valid_n": 1473,
+      "matched_delta": 0.048666666666666664,
+      "planned_n": 1611,
+      "retained_n": 1125
+    },
+    "mitigation_role": "SECONDARY",
+    "package_id": "multijudge-consensus-v1",
+    "primary_dual_swap_analysis_run_id": "fa24666d-b4c9-4b1d-a767-cfc59c4380ac",
+    "promotion_status": "PROMOTE_AS_OFFICIAL_SECONDARY_RQ7_MITIGATION",
+    "protocol_id": "multi-judge-consensus-v1",
+    "rq_code": "RQ7"
+  },
+  "role": "SECONDARY",
+  "rq_code": "RQ7"
+}

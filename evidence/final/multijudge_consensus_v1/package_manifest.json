@@ -1,0 +1,90 @@
+{
+  "analysis_run_id": "fc40faf1-b886-42f8-8faf-a616f61f3107",
+  "cost_totals": {
+    "actual_usd": "1.46018394",
+    "hard_cap_usd": "2.50",
+    "reserved_usd": "2.48550295"
+  },
+  "execution_counts": {
+    "attempts": 6543,
+    "pairs": 1611,
+    "slots": 6444
+  },
+  "file_inventory": [
+    {
+      "path": "analysis_run.json",
+      "sha256": "4af8b424f66bb790cce4e2dd426c2b3fa119848cfa6d88d4d49fdcac7606f0d4"
+    },
+    {
+      "path": "cost_ledger.json",
+      "sha256": "8ca8db1ecc9b8467a8b751c8aae3d1cc1f9cad9e21f1789d50fd545d979ec342"
+    },
+    {
+      "path": "execution_accounting.json",
+      "sha256": "27e792a2e6007530bbfa506cbdbe3955f9ae315b4fbba6309a6b80f1491396e2"
+    },
+    {
+      "path": "exports/attempts.json",
+      "sha256": "f4b355bf7803136e2b062c9608e9933a9125e447f3fe9504b934c1cc52dda4f8"
+    },
+    {
+      "path": "exports/execution_slots.json",
+      "sha256": "b76529500890327a6268fcf8b62b7072a42d52fa991f1c4199d039036941dd66"
+    },
+    {
+      "path": "provenance.json",
+      "sha256": "7a925c641e43e0104deec3ee48c1c9cd3bfad8c7a7c409925bfb6139729b2eb2"
+    },
+    {
+      "path": "source/dualswap_comparison_v1.json",
+      "sha256": "52bdec7ac98f845bc5e2d93a55daa8cc505c1d2c576029ca85468cd57789c2c8"
+    },
+    {
+      "path": "source/execution_manifest_v1.json",
+      "sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351"
+    },
+    {
+      "path": "source/fair_baseline_comparison_v1.json",
+      "sha256": "c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3"
+    },
+    {
+      "path": "source/postexecution_integrity_v1.json",
+      "sha256": "9e0273c0b51917ba2ea8358c1d29041f8ed3eacd93d33839b8ebafe6b7cf4ba3"
+    },
+    {
+      "path": "source/primary_analysis_v1.json",
+      "sha256": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693"
+    },
+    {
+      "path": "source/promotion_decision_v1.json",
+      "sha256": "4682516428fe1206a072ad32efc0c638d7112d0b4396efe2e1ab86f5c0dba5f0"
+    },
+    {
+      "path": "source/protocol_v1.json",
+      "sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce"
+    },
+    {
+      "path": "source/robustness_sensitivity_v1.json",
+      "sha256": "e11d258535e887a6ba929492a675d464e773fd927001746a42928aca6b1b8f81"
+    },
+    {
+      "path": "VERIFY_PACKAGE.py",
+      "sha256": "5bda7f7bf0fc034f9b0388cf029d6a3ab4c9a281d0ad829beb3b4b0c68cba89a"
+    }
+  ],
+  "immutable_additive_package": true,
+  "lineage_sha256": {
+    "dualswap_comparison_v1.json": "52bdec7ac98f845bc5e2d93a55daa8cc505c1d2c576029ca85468cd57789c2c8",
+    "execution_manifest_v1.json": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "fair_baseline_comparison_v1.json": "c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3",
+    "postexecution_integrity_v1.json": "9e0273c0b51917ba2ea8358c1d29041f8ed3eacd93d33839b8ebafe6b7cf4ba3",
+    "primary_analysis_v1.json": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693",
+    "promotion_decision_v1.json": "4682516428fe1206a072ad32efc0c638d7112d0b4396efe2e1ab86f5c0dba5f0",
+    "protocol_v1.json": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce",
+    "robustness_sensitivity_v1.json": "e11d258535e887a6ba929492a675d464e773fd927001746a42928aca6b1b8f81"
+  },
+  "package_id": "multijudge-consensus-v1",
+  "package_root_digest": "126470152305268908e5685df9ff52ad5a2b6f9266e828201a1c69faac710da1",
+  "root_digest_algorithm": "SHA-256 of sorted UTF-8 SHA256<two spaces>relative_posix_path lines; manifest excluded to avoid self-reference",
+  "version": 1
+}

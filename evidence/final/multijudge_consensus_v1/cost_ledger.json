@@ -1,0 +1,12 @@
+{
+  "actual_spend_usd": "1.46018394",
+  "hard_cap_usd": "2.50",
+  "per_judge_actual_usd": {
+    "anthropic/claude-3-haiku": "0.56308175",
+    "deepseek/deepseek-chat": "0.47443780",
+    "gpt-4o-mini": "0.26383605",
+    "meta-llama/llama-3.3-70b-instruct": "0.15882834"
+  },
+  "reconciled": true,
+  "reserved_spend_usd": "2.48550295"
+}
