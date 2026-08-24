@@ -179,10 +179,12 @@ class SourceCorrectedStore:
         states, by_rq, by_judge = Counter(x.state for x in slots), Counter(), Counter()
         for row in slots:
             if row.state == "COMPLETED": by_rq[row.rq_code] += 1; by_judge[row.judge_id] += 1
-        def used(provider: str | None = None) -> Decimal:
+        def used(provider: str | None = None) -> dict[str, str]:
             chosen = attempt_pairs if provider is None else [pair for pair in attempt_pairs if pair[1] == provider]
-            return sum((Decimal(a.actual_usd) if a.actual_usd is not None else Decimal(a.reserved_usd) for a, _ in chosen), Decimal("0"))
-        return {"planned": len(slots), "completed": states["COMPLETED"], "pending": states["PENDING"], "in_progress": states["RESERVED"] + states["SENT"], "failed": states["FAILED"], "ambiguous": states["AMBIGUOUS"], "attempts": len(attempts), "retries": sum(a.attempt_index > 0 for a in attempts), "per_rq": dict(by_rq), "per_judge": dict(by_judge), "spend": {"OPENAI": str(used("OPENAI")), "OPENROUTER": str(used("OPENROUTER")), "GLOBAL": str(used())}, "batch_status": batch.status, "last_event": _last_event(slots, attempts)}
+            actual = sum((Decimal(a.actual_usd or 0) for a, _ in chosen), Decimal("0"))
+            reserved = sum((Decimal(a.reserved_usd) for a, _ in chosen if a.actual_usd is None), Decimal("0"))
+            return {"actual": str(actual), "reserved": str(reserved), "total": str(actual + reserved)}
+        return {"planned": len(slots), "completed": states["COMPLETED"], "pending": states["PENDING"], "in_progress": states["RESERVED"] + states["SENT"], "failed": states["FAILED"], "ambiguous": states["AMBIGUOUS"], "attempts": len(attempts), "retries": sum(a.attempt_index > 0 for a in attempts), "per_rq": dict(by_rq), "per_judge": dict(by_judge), "spend": {"OPENAI": used("OPENAI"), "OPENROUTER": used("OPENROUTER"), "GLOBAL": used()}, "batch_status": batch.status, "last_event": _last_event(slots, attempts)}
 
     def finalize_if_exhausted(self, session: Session, batch: SourceCorrectedExecutionBatch) -> None:
         report = self.status(session, batch)
@@ -212,7 +214,7 @@ def render_dashboard(report: dict[str, Any], caps: dict[str, str], *, elapsed: f
     judge_total={"gpt-4o-mini":1590,"anthropic/claude-3-haiku":1609,"deepseek/deepseek-chat":1595,"meta-llama/llama-3.3-70b-instruct":1655}
     lines = ["SOURCE-CORRECTED EXECUTION", "=" * 60, f"Overall [{'#'*filled}{'-'*(width-filled)}] {completed} / {planned} {100*completed/planned:5.1f}%", f"Completed {completed} | Pending {report['pending']} | In progress {report['in_progress']} | Failed {report['failed']} | Ambiguous {report['ambiguous']}", f"Attempts {report['attempts']} | Retries {report['retries']} | Elapsed {int(elapsed//60):02d}:{int(elapsed%60):02d} | Rate {rate*60:.1f} passes/min | ETA {eta}", "", "Per judge: " + " | ".join(f"{j}: {report['per_judge'].get(j,0)}/{judge_total[j]}" for j in judge_total), "Per RQ:"]
     lines += [f"{rq:14} {report['per_rq'].get(rq,0):4}/{total}" for rq,total in rq_total.items()]
-    lines += ["", f"OpenAI     ${report['spend']['OPENAI']} / ${caps['OPENAI']}", f"OpenRouter ${report['spend']['OPENROUTER']} / ${caps['OPENROUTER']}", f"Global     ${report['spend']['GLOBAL']} / ${caps['GLOBAL']}", "Last event: " + report["last_event"], "=" * 60]
+    lines += ["", f"OpenAI     actual ${report['spend']['OPENAI']['actual']} + reserved ${report['spend']['OPENAI']['reserved']} / ${caps['OPENAI']}", f"OpenRouter actual ${report['spend']['OPENROUTER']['actual']} + reserved ${report['spend']['OPENROUTER']['reserved']} / ${caps['OPENROUTER']}", f"Global     actual ${report['spend']['GLOBAL']['actual']} + reserved ${report['spend']['GLOBAL']['reserved']} / ${caps['GLOBAL']}", "Last event: " + report["last_event"], "=" * 60]
     return "\n".join(lines)
 
 
