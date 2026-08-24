@@ -268,6 +268,7 @@ class ControlledResultsResponse(BaseModel):
     executed_passes: int
     accounting: ControlledResultsAccounting | None = None
     analysis_runs: dict[str, str] = {}
+    secondary_mitigations: dict[str, dict[str, Any]] = {}
     results: list[dict[str, Any]] = []
     message: str
 
@@ -395,6 +396,15 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     published_by_rq, canonical_error = canonical_final_analysis_runs(canonical_rows)
     if published_by_rq is None:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message=canonical_error or "Canonical final controlled analysis is unavailable.")
+    secondary_runs = db.query(AnalysisRun).filter(AnalysisRun.analysis_version == "multi-judge-consensus-analysis-v1").all()
+    if len(secondary_runs) != 1:
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Promoted secondary mitigation analysis is unavailable or ambiguous.")
+    secondary_payload = secondary_runs[0].result_json or {}
+    metrics = secondary_payload.get("metrics") if secondary_payload.get("rq_code") == "RQ7" and secondary_payload.get("mitigation_role") == "SECONDARY" else None
+    required_secondary = {"planned_n", "retained_n", "agreement", "coverage", "equal_weight_individual_baseline", "matched_delta", "ci_low", "ci_high"}
+    if not isinstance(metrics, dict) or not required_secondary.issubset(metrics) or not secondary_payload.get("package_id") or not secondary_payload.get("protocol_id"):
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Promoted secondary mitigation analysis has an invalid provenance contract.")
+    secondary_mitigations = {"multi_judge_consensus": {"analysis_run_id": str(secondary_runs[0].id), "role": "SECONDARY", "method_family": "cross_judge_aggregation", "planned_n": metrics["planned_n"], "retained_n": metrics["retained_n"], "agreement": metrics["agreement"], "coverage": metrics["coverage"], "comparator": "equal_weight_individual_judge_baseline_same_retained_pairs", "comparator_agreement": metrics["equal_weight_individual_baseline"], "matched_delta": metrics["matched_delta"], "ci_95": {"low": metrics["ci_low"], "high": metrics["ci_high"]}, "protocol_id": secondary_payload["protocol_id"], "package_id": secondary_payload["package_id"], "direct_dualswap_comparison": "NOT_DEFENSIBLE", "comparison_reason": "different frozen units and estimands", "coverage_unit": "canonical_answer_pairs"}}
     rows: list[dict[str, Any]] = []
     for rq in sorted(published_by_rq):
         payload = published_by_rq[rq].result_json or {}
@@ -426,6 +436,7 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         executed_passes=len(controlled_passes),
         accounting=accounting,
         analysis_runs={rq: str(run.id) for rq, run in sorted(published_by_rq.items())},
+        secondary_mitigations=secondary_mitigations,
         results=rows,
         message="Authoritative controlled analysis selected by pinned AnalysisRun identity; Phase 11 remains immutable historical provenance.",
     )
