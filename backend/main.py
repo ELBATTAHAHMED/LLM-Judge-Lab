@@ -273,6 +273,19 @@ class ControlledResultsResponse(BaseModel):
     message: str
 
 
+def serialize_multi_judge_secondary(rows: list[AnalysisRun]) -> tuple[dict[str, dict[str, Any]] | None, str | None]:
+    """Fail closed: a promoted secondary result has one complete DB record."""
+    if len(rows) != 1:
+        return None, "Promoted secondary mitigation analysis is unavailable or ambiguous."
+    run = rows[0]
+    payload = run.result_json or {}
+    metrics = payload.get("metrics") if run.rq_code == "RQ7" and payload.get("rq_code") == "RQ7" and payload.get("mitigation_role") == "SECONDARY" else None
+    required = {"planned_n", "retained_n", "agreement", "coverage", "equal_weight_individual_baseline", "matched_delta", "ci_low", "ci_high"}
+    if not isinstance(metrics, dict) or not required.issubset(metrics) or not payload.get("package_id") or not payload.get("protocol_id"):
+        return None, "Promoted secondary mitigation analysis has an invalid provenance contract."
+    return {"multi_judge_consensus": {"analysis_run_id": str(run.id), "role": "SECONDARY", "method_family": "cross_judge_aggregation", "planned_n": metrics["planned_n"], "retained_n": metrics["retained_n"], "agreement": metrics["agreement"], "coverage": metrics["coverage"], "comparator": "equal_weight_individual_judge_baseline_same_retained_pairs", "comparator_agreement": metrics["equal_weight_individual_baseline"], "matched_delta": metrics["matched_delta"], "ci_95": {"low": metrics["ci_low"], "high": metrics["ci_high"]}, "protocol_id": payload["protocol_id"], "package_id": payload["package_id"], "direct_dualswap_comparison": "NOT_DEFENSIBLE", "comparison_reason": "different frozen units and estimands", "coverage_unit": "canonical_answer_pairs"}}, None
+
+
 # ── GET / & GET /health (Health Check) ───────────────────────────────────────
 
 @app.get("/", response_model=HealthCheckResponse)
@@ -399,12 +412,9 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     secondary_runs = db.query(AnalysisRun).filter(AnalysisRun.analysis_version == "multi-judge-consensus-analysis-v1").all()
     if len(secondary_runs) != 1:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Promoted secondary mitigation analysis is unavailable or ambiguous.")
-    secondary_payload = secondary_runs[0].result_json or {}
-    metrics = secondary_payload.get("metrics") if secondary_payload.get("rq_code") == "RQ7" and secondary_payload.get("mitigation_role") == "SECONDARY" else None
-    required_secondary = {"planned_n", "retained_n", "agreement", "coverage", "equal_weight_individual_baseline", "matched_delta", "ci_low", "ci_high"}
-    if not isinstance(metrics, dict) or not required_secondary.issubset(metrics) or not secondary_payload.get("package_id") or not secondary_payload.get("protocol_id"):
-        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Promoted secondary mitigation analysis has an invalid provenance contract.")
-    secondary_mitigations = {"multi_judge_consensus": {"analysis_run_id": str(secondary_runs[0].id), "role": "SECONDARY", "method_family": "cross_judge_aggregation", "planned_n": metrics["planned_n"], "retained_n": metrics["retained_n"], "agreement": metrics["agreement"], "coverage": metrics["coverage"], "comparator": "equal_weight_individual_judge_baseline_same_retained_pairs", "comparator_agreement": metrics["equal_weight_individual_baseline"], "matched_delta": metrics["matched_delta"], "ci_95": {"low": metrics["ci_low"], "high": metrics["ci_high"]}, "protocol_id": secondary_payload["protocol_id"], "package_id": secondary_payload["package_id"], "direct_dualswap_comparison": "NOT_DEFENSIBLE", "comparison_reason": "different frozen units and estimands", "coverage_unit": "canonical_answer_pairs"}}
+    secondary_mitigations, secondary_error = serialize_multi_judge_secondary(secondary_runs)
+    if secondary_mitigations is None:
+        return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message=secondary_error or "Promoted secondary mitigation analysis is invalid.")
     rows: list[dict[str, Any]] = []
     for rq in sorted(published_by_rq):
         payload = published_by_rq[rq].result_json or {}
