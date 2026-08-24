@@ -44,6 +44,10 @@ class SourceCorrectedExecutionSlot(Base):
     judge_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(64), nullable=False)
     route: Mapped[str] = mapped_column(String(255), nullable=False)
+    condition_code: Mapped[str | None] = mapped_column(String(80))
+    requested_model: Mapped[str | None] = mapped_column(String(255))
+    presentation: Mapped[str | None] = mapped_column(String(16))
+    corrected_record_key: Mapped[str | None] = mapped_column(String(64))
     payload_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -53,7 +57,12 @@ class SourceCorrectedExecutionSlot(Base):
     estimated_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     reserved_usd: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False, default=Decimal("0"))
     actual_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 8))
+    final_outcome: Mapped[str | None] = mapped_column(String(32))
+    error_category: Mapped[str | None] = mapped_column(String(64))
+    response_metadata_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 

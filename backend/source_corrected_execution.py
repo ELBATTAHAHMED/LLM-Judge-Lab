@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import math
+import sys
 from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal, ROUND_UP
@@ -359,8 +360,9 @@ def materialize(session: Session, manifest: dict[str, Any], ledger: dict[str, An
         if slot is not None:
             if slot.idempotency_key != row["idempotency_key"] or slot.payload_sha256 != row["rendered_payload_sha256"]:
                 raise SourceCorrectedPreflightError("existing corrected slot payload identity drift")
-            slot.rq_code = row["rq_code"]
-    additions = [SourceCorrectedExecutionSlot(batch_id=batch.id, planned_pass_id=r["planned_pass_id"], idempotency_key=r["idempotency_key"], rq_code=r["rq_code"], judge_id=r["judge_id"], provider=r["provider"], route=r["route"], payload_sha256=r["rendered_payload_sha256"], state="PENDING", estimated_input_tokens=r["estimated_input_tokens"], estimated_output_tokens=r["estimated_output_tokens"]) for r in manifest["planned_passes"] if r["planned_pass_id"] not in existing_slots]
+            model = row.get("provider_model", MODEL_REGISTRY[row["judge_id"]].requested_model)
+            slot.rq_code, slot.condition_code, slot.requested_model, slot.presentation, slot.corrected_record_key = row["rq_code"], row["condition_code"], model, row["presentation"], row["corrected_record_key"]
+    additions = [SourceCorrectedExecutionSlot(batch_id=batch.id, planned_pass_id=r["planned_pass_id"], idempotency_key=r["idempotency_key"], rq_code=r["rq_code"], condition_code=r["condition_code"], judge_id=r["judge_id"], provider=r["provider"], requested_model=r.get("provider_model", MODEL_REGISTRY[r["judge_id"]].requested_model), route=r["route"], presentation=r["presentation"], corrected_record_key=r["corrected_record_key"], payload_sha256=r["rendered_payload_sha256"], state="PENDING", estimated_input_tokens=r["estimated_input_tokens"], estimated_output_tokens=r["estimated_output_tokens"]) for r in manifest["planned_passes"] if r["planned_pass_id"] not in existing_slots]
     if additions: session.add_all(additions); session.flush()
     existing_reuse = {row.historical_pass_identity: row for row in session.scalars(select(SourceCorrectedReuseLedger).where(SourceCorrectedReuseLedger.batch_id == batch.id))}
     for row in ledger["historical_passes"]:
@@ -380,8 +382,19 @@ def main() -> int:
     parser = argparse.ArgumentParser(); parser.add_argument("--preflight", action="store_true"); parser.add_argument("--status", action="store_true"); parser.add_argument("--execute", action="store_true"); parser.add_argument("--confirm-paid-execution")
     args = parser.parse_args()
     if args.execute and args.confirm_paid_execution != CONFIRMATION: raise SourceCorrectedPreflightError("paid execution requires the exact confirmation phrase")
-    if args.execute: raise SourceCorrectedPreflightError("C2 contains no provider transport; execution remains disabled pending a future authorized phase")
     from database import SessionLocal
+    from source_corrected_real_execution import SourceCorrectedRunner, render_dashboard
+    if args.status:
+        report, caps = SourceCorrectedRunner(SessionLocal).status()
+        print(render_dashboard(report, caps)); return 0
+    if args.execute:
+        def progress(report, caps, elapsed, rate):
+            dashboard = render_dashboard(report, caps, elapsed=elapsed, rate=rate)
+            if sys.stdout.isatty(): print("\x1b[H\x1b[2J" + dashboard, flush=True)
+            else: print(dashboard, flush=True)
+        report = SourceCorrectedRunner(SessionLocal).execute(confirmation=args.confirm_paid_execution, progress=progress)
+        print("SOURCE-CORRECTED EXECUTION COMPLETE" if report["completed"] == report["planned"] else "SOURCE-CORRECTED EXECUTION STOPPED")
+        return 0
     with SessionLocal() as session:
         manifest, ledger = build_plan(session); write_plan(manifest, ledger); dry = mock_dry_run(manifest); batch = materialize(session, manifest, ledger); batch_id = str(batch.id); session.commit()
     PREFLIGHT_PATH.write_text(json.dumps({"preflight_identity": "controlled-source-text-corrected-preflight-v1", "manifest_sha256": manifest["manifest_sha256"], "dry_run": dry, "batch_id": batch_id, "execution_authorized": False, "provider_calls": 0}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
