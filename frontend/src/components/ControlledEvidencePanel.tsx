@@ -14,9 +14,18 @@ const CompactRows: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics 
 const formatPercent = (value: number): string => `${(value * 100).toFixed(2)}%`;
 const formatPp = (value: number): string => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)} pp`;
 
-const StrategyMetric: React.FC<{ label: string; value: string }> = ({ label, value }) => <div><dt className="text-[10px] text-neutral-500">{label}</dt><dd className="mt-0.5 font-mono text-sm font-semibold text-neutral-900 dark:text-white">{value}</dd></div>;
+const MitigationMetricMatrix: React.FC<{ testId: string; metrics: Array<{ label: string; value: string }> }> = ({ testId, metrics }) => (
+  <dl data-testid={testId} className="mt-3 divide-y divide-neutral-200 dark:divide-neutral-800">
+    {Array.from({ length: Math.ceil(metrics.length / 2) }, (_, rowIndex) => {
+      const row = metrics.slice(rowIndex * 2, rowIndex * 2 + 2);
+      return <div key={row[0]?.label} className="grid grid-cols-2 py-2.5 first:pt-0 last:pb-0">
+        {row.map((metric, columnIndex) => <div key={metric.label} className={columnIndex === 1 ? 'border-l border-neutral-200 pl-3 dark:border-neutral-800' : 'pr-3'}><dt className="text-[10px] text-neutral-500">{metric.label}</dt><dd className="mt-0.5 font-mono text-xs font-semibold text-neutral-900 dark:text-white">{metric.value}</dd></div>)}
+      </div>;
+    })}
+  </dl>
+);
 
-const MitigationStrategyPanel: React.FC<{ ariaLabel: string; role: 'PRIMARY' | 'SECONDARY'; name: string; family: string; metrics: Array<{ label: string; value: string }>; detail: React.ReactNode }> = ({ ariaLabel, role, name, family, metrics, detail }) => <article aria-label={ariaLabel} className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"><header><p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">{role}</p><h3 className="mt-0.5 text-sm font-semibold text-neutral-900 dark:text-white">{name}</h3><p className="mt-1 text-[11px] text-neutral-500">{family}</p></header><dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">{metrics.map((metric) => <StrategyMetric key={metric.label} {...metric} />)}</dl><p className="mt-3 border-t border-neutral-200 pt-3 text-[11px] leading-snug text-neutral-500 dark:border-neutral-800">{detail}</p></article>;
+const MitigationStrategyPanel: React.FC<{ ariaLabel: string; listId: string; role: 'PRIMARY' | 'SECONDARY'; name: string; family: string; metrics: Array<{ label: string; value: string }>; detail: React.ReactNode }> = ({ ariaLabel, listId, role, name, family, metrics, detail }) => <article aria-label={ariaLabel} className="flex h-full flex-col rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]"><header data-testid={`${listId}-header`} className="min-h-[3.75rem] border-b border-neutral-200 pb-2 dark:border-neutral-800"><p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">{role}</p><h3 className="mt-0.5 text-sm font-semibold text-neutral-900 dark:text-white">{name}</h3><p className="mt-1 text-[11px] text-neutral-500">{family}</p></header><MitigationMetricMatrix testId={`${listId}-matrix`} metrics={metrics} /><footer data-testid={`${listId}-footer`} className="mt-3 border-t border-neutral-200 pt-2 text-[11px] leading-snug text-neutral-500 dark:border-neutral-800">{detail}</footer></article>;
 
 const Rq7Mitigations: React.FC<{ metrics: ControlledMetricResult[]; mitigation?: MultiJudgeConsensusSecondary }> = ({ metrics, mitigation }) => {
   const byKey = (key: string) => metrics.find((row) => row.metric_key === key);
@@ -29,22 +38,22 @@ const Rq7Mitigations: React.FC<{ metrics: ControlledMetricResult[]; mitigation?:
     { label: 'Agreement', value: dualSwapAgreement ? formatMetricValue(dualSwapAgreement) : 'Unavailable' },
     { label: 'Comparator', value: baselineAgreement ? formatMetricValue(baselineAgreement) : 'Unavailable' },
     { label: 'Matched delta', value: agreementDelta ? formatMetricValue(agreementDelta) : 'Unavailable' },
-    { label: '95% CI', value: agreementDelta ? formatMetricCi(agreementDelta) : 'Unavailable' },
     { label: 'Coverage', value: dualSwapCoverage ? formatMetricValue(dualSwapCoverage) : 'Unavailable' },
+    { label: '95% CI', value: agreementDelta ? formatMetricCi(agreementDelta) : 'Unavailable' },
     { label: 'Matched N', value: agreementDelta?.denominator === null || agreementDelta === undefined ? 'Unavailable' : agreementDelta.denominator.toLocaleString() },
   ];
   const multiJudgeMetrics = mitigation ? [
     { label: 'Agreement', value: formatPercent(mitigation.agreement) },
     { label: 'Comparator', value: formatPercent(mitigation.comparator_agreement) },
     { label: 'Matched delta', value: formatPp(mitigation.matched_delta) },
-    { label: '95% CI', value: `${formatPp(mitigation.ci_95.low)} to ${formatPp(mitigation.ci_95.high)}` },
     { label: 'Coverage', value: formatPercent(mitigation.coverage) },
+    { label: '95% CI', value: `${formatPp(mitigation.ci_95.low)} to ${formatPp(mitigation.ci_95.high)}` },
     { label: 'Retained / planned', value: `${mitigation.retained_n.toLocaleString()} / ${mitigation.planned_n.toLocaleString()}` },
   ] : null;
-  return <div className="mt-4 space-y-3"><h3 className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">Mitigation strategies</h3><div className="grid gap-3 xl:grid-cols-2"><MitigationStrategyPanel ariaLabel="DUAL_SWAP primary mitigation" role="PRIMARY" name="DUAL_SWAP" family="Presentation-consistency filtering" metrics={dualMetrics} detail={<><span className="font-medium text-neutral-700 dark:text-neutral-300">Dual-pass stability</span> {stability ? formatMetricValue(stability) : 'Unavailable'}; unstable presentation-order decisions are filtered.</>} />{mitigation && multiJudgeMetrics && <MitigationStrategyPanel ariaLabel="Multi-Judge Consensus secondary mitigation" role="SECONDARY" name="Multi-Judge Consensus" family="Cross-judge aggregation" metrics={multiJudgeMetrics} detail={<>vs equal-weight individual-judge baseline on the same retained pairs.</>} />}</div>{mitigation && <p className="text-[11px] leading-snug text-neutral-500">DUAL_SWAP and Multi-Judge use different frozen units and comparators; their reported effects are separate operating-point results, not a direct head-to-head effect.</p>}</div>;
+  return <div className="mt-4 space-y-3"><h3 className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">Mitigation strategies</h3><div className="grid gap-3 sm:grid-cols-2"><MitigationStrategyPanel ariaLabel="DUAL_SWAP primary mitigation" listId="controlled-dual-swap" role="PRIMARY" name="DUAL_SWAP" family="Presentation-consistency filtering" metrics={dualMetrics} detail={<>Dual-pass stability · {stability ? formatMetricValue(stability) : 'Unavailable'}; unstable presentation-order decisions are filtered.</>} />{mitigation && multiJudgeMetrics && <MitigationStrategyPanel ariaLabel="Multi-Judge Consensus secondary mitigation" listId="controlled-multi-judge" role="SECONDARY" name="Multi-Judge Consensus" family="Cross-judge aggregation" metrics={multiJudgeMetrics} detail={<>Comparator: equal-weight individual-judge baseline on the same retained pairs.</>} />}</div>{mitigation && <p className="border-t border-neutral-200 pt-3 text-[11px] leading-snug text-neutral-500 dark:border-neutral-800">DUAL_SWAP and Multi-Judge use different frozen units and comparators; their reported effects are separate operating-point results, not a direct head-to-head effect.</p>}</div>;
 };
 
-const Rq7Header: React.FC = () => <div className="max-w-3xl"><h2 id="selected-rq-title" className="text-lg font-semibold text-neutral-900 dark:text-white">RQ7 · {RQ_TITLES.RQ7}</h2><p className="mt-1 text-xs leading-relaxed text-neutral-500">Two complementary mitigation strategies evaluated under different frozen comparators.</p><p className="mt-2 text-xs leading-relaxed text-neutral-500">DUAL_SWAP compares matched retained decisions under presentation-consistency filtering; Multi-Judge evaluates cross-judge aggregation against an equal-weight individual-judge baseline.</p></div>;
+const Rq7Header: React.FC = () => <div className="max-w-3xl"><h2 id="selected-rq-title" className="text-lg font-semibold text-neutral-900 dark:text-white">RQ7 · {RQ_TITLES.RQ7}</h2><p className="mt-1 text-xs leading-relaxed text-neutral-500">Two complementary mitigation strategies evaluated under different frozen comparators.</p><p className="mt-2 text-xs leading-relaxed text-neutral-500">DUAL_SWAP uses within-judge presentation-consistency filtering, while Multi-Judge uses cross-judge aggregation against an equal-weight individual baseline.</p></div>;
 
 const Rq6Summary: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }) => {
   const byKey = (key: string) => metrics.find((row) => row.metric_key === key);
