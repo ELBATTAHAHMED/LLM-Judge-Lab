@@ -7,7 +7,8 @@ Evaluation of Generated Responses** is a reproducible full-stack research
 system for studying pairwise LLM judgments. Its final contribution is a
 controlled, provenance-preserving evaluation of alignment with human preference
 reference labels, judgment consistency, presentation sensitivity, narrowly
-defined counterfactual effects, and a dual-swap mitigation trade-off.
+defined counterfactual effects, and two complementary RQ7 mitigation families:
+within-judge DUAL_SWAP filtering and cross-judge Multi-Judge Consensus.
 
 The final system keeps final controlled evidence separate from historical,
 exploratory, pilot, and live-sandbox material. It supports transparent analysis
@@ -57,6 +58,18 @@ the final provenance includes the prompt fingerprint, route fingerprint, retry
 policy, requested/effective-model data where returned, presentation order,
 condition, repetition identity, and deterministic unit/manifest identity.
 
+The additive Multi-Judge Consensus experiment evaluates a separate RQ7
+cross-judge aggregation mitigation on 1,611 eligible canonical human-reference
+answer pairs. Its four judges are GPT-4o-mini, Claude 3 Haiku, DeepSeek Chat,
+and Llama 3.3 70B. It is an official **SECONDARY** RQ7 result; DUAL_SWAP
+remains the primary RQ7 mitigation. The current additive
+`research_release_v3` snapshot contains 14 AnalysisRuns, including the
+Multi-Judge AnalysisRun `fc40faf1-b886-42f8-8faf-a616f61f3107`; it preserves,
+rather than changes, immutable Phase 11 and `research_release_v2`.
+Individual judges showed heterogeneous reliability and position sensitivity, so
+cross-judge aggregation was evaluated as a separate mitigation family rather
+than as a replacement for DUAL_SWAP.
+
 Final scientific metrics accept `CONTROLLED` evidence only. `PILOT`,
 `SUPERSEDED_CONTROLLED`, `LIVE_SANDBOX`, and `LEGACY_EXPLORATORY` evidence are
 kept for audit or historical interpretation but are not final RQ evidence.
@@ -84,6 +97,12 @@ only where the relevant RQ's predeclared denominator and pairing rules allow
 them. Missing or failed passes remain explicit and are not converted to ties,
 zeros, or fabricated outcomes.
 
+The separate Multi-Judge execution planned 6,444 scientific passes (four per
+eligible pair): 6,390 completed, 52 terminal failures, and 2 ambiguous slots,
+with 0 pending. Its durable ledger records 6,543 attempts and 99 retries. The
+reconciled actual spend was $1.46018394 under a $2.50 hard cap; retries and
+failures remain in the ledger rather than becoming extra scientific passes.
+
 ## 5. Final Scientific Results
 
 | RQ | Authoritative final result |
@@ -93,15 +112,63 @@ zeros, or fabricated outcomes.
 | RQ3 | 16.70% paired decisive flip rate (95% CI 13.76–19.82%), N=545 decisive pairs; 24.87% all-paired disagreement, N=756 complete pairs. |
 | RQ4 | 0.44% controlled redundant-variant win rate (95% CI 0–1.02%), N=685 valid controlled pairs. |
 | RQ5 | 1.11% controlled format-variant win rate (95% CI 0.42–1.95%), N=719 valid controlled pairs. |
-| RQ6 | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). Claude 86.21%, GPT-4o-mini 75.76%, and Llama 9.38%; no clear uniform cross-judge preference. |
-| RQ7 | Matched retained-decision agreement: baseline 67.66%; DUAL_SWAP 68.37%; difference +0.70 pp (95% CI 0.00–1.58; N=569). Descriptive valid coverage changes from 95.63% to 72.88%, a -22.75 pp trade-off. |
+| RQ6 | 50.94% pooled stable same-family association (81/159; 95% CI 42.77–58.49%; coverage 33.13%). Claude 86.21%, GPT-4o-mini 75.76%, and Llama 9.38%; no clear uniform cross-judge preference. |
+| RQ7 | **Primary DUAL_SWAP:** baseline 67.66%; DUAL_SWAP 68.37%; matched difference +0.70 pp (95% CI 0.00–1.58; N=569), with descriptive coverage 95.63% to 72.88% (-22.75 pp). **Secondary Multi-Judge Consensus:** 795/1,125 = 70.67% versus a 65.80% equal-weight individual-judge comparator; matched delta +4.87 pp (95% CI +4.02 to +5.73 pp), coverage 69.83% of 1,611 planned pairs. |
 
-The RQ7 matched retained-decision difference conditions on both strategies
-returning valid decisions. Coverage is reported over all planned units. It is
-not a causal treatment-effect claim or a claim that mitigation universally
-improves reliability.
+The DUAL_SWAP matched retained-decision difference conditions on valid baseline
+and DUAL_SWAP decisions. Multi-Judge uses its own same-retained-pairs
+equal-weight individual-judge comparator. Coverage is reported over each
+strategy's planned units. Neither result is a causal treatment-effect claim or
+a claim that mitigation universally improves reliability.
 
-## 6. Scientific Interpretation and Limitations
+## 6. RQ7 Mitigation Strategies
+
+RQ7 evaluates two complementary operating points, not a competition between
+methods. **DUAL_SWAP (PRIMARY)** is a within-judge presentation-consistency
+filter: it retains decisions stable under counterbalanced presentation and has a
+small matched agreement change (+0.70 pp; 95% CI 0.00–1.58 pp; N=569) alongside
+a descriptive coverage reduction from 95.63% to 72.88%. **Multi-Judge
+Consensus (SECONDARY)** is cross-judge aggregation: under its own frozen
+equal-weight individual-judge comparator, it increases agreement with human
+preference reference labels by +4.87 pp (95% CI +4.02 to +5.73 pp) on 1,125
+retained pairs, with 69.83% planned-pair coverage.
+
+### Frozen Multi-Judge protocol
+
+The frozen `multi-judge-consensus-v1` protocol evaluates each canonical pair
+once with each of GPT-4o-mini, Claude 3 Haiku, DeepSeek Chat, and Llama 3.3
+70B. The deterministic schedule uses exact 2 AB / 2 BA presentation per pair
+(seed 20260823). Each judge's vote is mapped back to the ORIGINAL answer
+identity before aggregation. `ANSWER_1`, `ANSWER_2`, and `TIE` are valid
+three-class votes; TIE is a genuine third class, not missingness or abstention.
+Operational failures produce no vote.
+
+Primary consensus requires all four votes to be valid and a 3-of-4 or 4-of-4
+agreement on the same three-class label: 4–0 and 3–1 produce consensus, whereas
+2–2 and 2–1–1 do not. Of 1,611 eligible pairs, 1,473 had four valid votes and
+1,125 met this strict consensus rule. The analysis uses canonical pair as the
+unit and a nonparametric percentile bootstrap (10,000 resamples, 95% CI,
+seed 20260823).
+
+### Interpretation, robustness, and comparison boundary
+
+The primary Multi-Judge result is 795 / 1,125 = 70.67% agreement, compared
+with 65.80% for the equal-weight individual-judge baseline on the same retained
+pairs. Sensitivity analyses are secondary: three-valid consensus gave +1.10 pp
+with a CI spanning zero; leave-one-out deltas were +4.71 pp (omit GPT), +3.46
+pp (omit Claude), +4.39 pp (omit DeepSeek), and +4.90 pp (omit Llama);
+decisive-only was +5.56 pp; and strict unanimity gave 0.00 pp with 37.00%
+coverage. All eight category descriptive deltas were positive. The direction
+therefore did not appear to depend on one judge, but the weaker three-valid
+sensitivity and unanimity coverage loss remain important qualifications.
+
+A direct DUAL_SWAP-versus-Multi-Judge comparison is **not defensible**.
+DUAL_SWAP uses canonical answer pair × judge units, whereas Multi-Judge uses
+canonical answer-pair units. Their retained populations, comparators, and
+estimands differ, so the +4.87 pp and +0.70 pp estimates must not be ranked or
+treated as head-to-head effects.
+
+## 7. Scientific Interpretation and Limitations
 
 - Human preference labels are reference labels, not ground truth.
 - RQ3 demonstrates position sensitivity under this frozen protocol; it does
@@ -116,12 +183,15 @@ improves reliability.
   association. Its stable-decisive coverage is 33.13%; AB/BA controls
   presentation position but not source/content-quality confounding, so it is
   not causal proof of self-bias.
-- RQ7 does not eliminate bias; its coverage cost is part of the result and the
-  matched retained-decision difference is non-causal.
+- RQ7 does not eliminate bias. DUAL_SWAP provides a within-judge
+  stability/retention control with a coverage trade-off; Multi-Judge Consensus
+  improves agreement on its retained cases relative to its own comparator while
+  also abstaining from uncovered pairs. Stability alone does not guarantee
+  alignment with human preference reference labels.
 - Provider failures, invalid outcomes, exclusions, and incomplete pairings are
   retained in accounting and applied through each metric's stated denominator.
 
-## 7. Final Technical Architecture
+## 8. Final Technical Architecture
 
 The backend is a FastAPI application with SQLAlchemy/PostgreSQL persistence,
 controlled planning/execution records, controlled-only analysis adapters, and
@@ -134,7 +204,7 @@ science. The Phase 11 evidence package is an immutable offline reproducibility
 snapshot containing indexed data exports, analysis artifacts, provenance,
 checksums, and a standard-library verifier.
 
-## 8. Final Frontend State
+## 9. Final Frontend State
 
 - `/` opens `/leaderboard`; the controlled synthesis remains available at `/synthesis`.
 - `/controlled-results` is the primary navigation tab and presents the complete
@@ -145,7 +215,7 @@ checksums, and a standard-library verifier.
 - Live Sandbox is demo-only and disabled by default; it is separated from
   final controlled evidence.
 
-## 9. Final Evidence and Reproducibility
+## 10. Final Evidence and Reproducibility
 
 The authoritative evidence package is
 [`evidence/final/phase11/`](evidence/final/phase11/). Its key identifiers are:
@@ -170,14 +240,32 @@ the deterministic AB/BA selection manifest is retained alongside a compact
 provenance record that identifies the Experiment, manifest hash, run ledger,
 and canonical completed AnalysisRun.
 
-The additive current release is
-[`evidence/final/research_release_v2/`](evidence/final/research_release_v2/).
-It pins the corrected RQ2/RQ3/RQ4/RQ5/RQ7 analyses, the counterbalanced RQ6
-analysis, a physical PostgreSQL custom-format snapshot, `pg_restore --list`, a
-disposable-database restore/read test, checksums, and an offline verifier. It
-does not modify or reseal Phase 11.
+[`evidence/final/research_release_v2/`](evidence/final/research_release_v2/)
+remains immutable. It pins the corrected RQ2/RQ3/RQ4/RQ5/RQ7 analyses, the
+counterbalanced RQ6 analysis, a PostgreSQL custom-format snapshot,
+`pg_restore --list`, a disposable restore/read test, checksums, and an offline
+verifier; it does not modify or reseal Phase 11.
 
-## 10. Important Historical Repairs
+The Multi-Judge package is
+[`evidence/final/multijudge_consensus_v1/`](evidence/final/multijudge_consensus_v1/).
+It identifies protocol `multi-judge-consensus-v1`, analysis
+`multi-judge-consensus-analysis-v1`, AnalysisRun
+`fc40faf1-b886-42f8-8faf-a616f61f3107`, and package root digest
+`126470152305268908e5685df9ff52ad5a2b6f9266e828201a1c69faac710da1`.
+The package captures the frozen protocol, deterministic manifest, exact AB/BA
+schedule, PostgreSQL durable execution ledger, retry/idempotency protections,
+cost ledger, provider-free analysis, and offline verifier.
+
+[`evidence/final/research_release_v3/`](evidence/final/research_release_v3/)
+is the current additive release. Its PostgreSQL custom-format snapshot contains
+14 AnalysisRuns and has release root digest
+`8d24123e28e5df2ca0401fd4f57944c7d0dd8844e798f2f0ed8b6b2280bae710`.
+It was successfully validated through a disposable restore and controlled API
+reconciliation. Release v3 is additive: Phase 11 and release v2 remain
+immutable. The Phase 11, release-v2, Multi-Judge-package, and release-v3
+verifiers are retained as independent provider-free checks.
+
+## 11. Important Historical Repairs
 
 The final evidence is accompanied by concise provenance for the repairs that
 materially affected scientific validity:
@@ -193,19 +281,20 @@ materially affected scientific validity:
 - Final reconciliation accounted for all units and pass slots before the
   evidence package was frozen.
 
-## 11. Final Validation State
+## 12. Final Validation State
 
 Final cleanup and release validation used no provider calls. The recorded
 provider-free backend safety, methodology, analysis, integration, recovery,
 health-sanitization, no-data contract, and evidence tests passed; frontend
-tests and the production typecheck/build passed. The Phase 11 verifier passed
-and its root digest remained unchanged.
+tests and the production typecheck/build passed. The Phase 11, release-v2,
+Multi-Judge-package, and release-v3 verifiers passed; the Phase 11 root digest
+remained unchanged.
 
 The final release workflow maintains a clean working tree before each release
-tag. The immutable package, its verifier, separate RQ6 addendum, and the
-canonical Phase 11 database snapshot are preserved.
+tag. The immutable Phase 11 package, release-v2 snapshot, separate RQ6
+addendum, Multi-Judge package, and additive release-v3 snapshot are preserved.
 
-## 12. Current Final Project Status
+## 13. Current Final Project Status
 
 | Area | Status |
 | --- | --- |

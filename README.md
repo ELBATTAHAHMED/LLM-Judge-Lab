@@ -2,8 +2,9 @@
 
 This repository contains the final controlled study and a reproducible dashboard
 for auditing pairwise LLM judgments. Phase 11 remains immutable historical
-evidence; the additive `research_release_v2` package pins corrected
-provider-free analyses and the separately executed counterbalanced RQ6 lineage.
+evidence; `research_release_v2` preserves the corrected provider-free analyses
+and counterbalanced RQ6 lineage, while additive `research_release_v3` records
+the promoted Multi-Judge Consensus secondary RQ7 mitigation.
 
 ## Final controlled evidence
 
@@ -19,8 +20,8 @@ accounts for 480 / 480 units and 960 / 960 pass slots.
 | RQ3 — Position Sensitivity | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Reconciled decisive flips: Claude 52.25%, GPT-4o-mini 5.17%, Llama 7.79%, DeepSeek 9.15%. |
 | RQ4 — Controlled Redundant-Length Effect | 0.44% redundant-variant win rate; N=685. This is a narrow redundant-text control, not a general claim about verbosity. |
 | RQ5 — Controlled Presentation-Format Effect | 1.11% format-variant win rate; N=719. This applies to the implemented controlled transformation only. |
-| RQ6 — Counterbalanced Matched Source-Family Preference | 50.94% stable same-family preference (95% CI 42.77–58.49%; N=159 stable decisive). No clear uniform overall preference; results vary strongly by judge. |
-| RQ7 — Mitigation Trade-off | Matched retained-decision agreement: 67.66% → 68.37% (**+0.70 pp**, 95% CI 0.00–1.58; N=569); descriptive coverage: 95.63% → 72.88% (-22.75 pp). This matched comparison is not a causal treatment effect. |
+| RQ6 — Counterbalanced Matched Source-Family Preference | 50.94% stable same-family association (95% CI 42.77–58.49%; N=159 stable decisive; coverage 33.13%). No clear uniform overall preference; results vary strongly by judge. |
+| RQ7 — Mitigation Trade-off | **Primary DUAL_SWAP:** 67.66% → 68.37% (**+0.70 pp**, 95% CI 0.00–1.58; N=569), with descriptive coverage 95.63% → 72.88% (-22.75 pp). **Secondary Multi-Judge Consensus:** 795/1,125 = 70.67% agreement versus a 65.80% equal-weight individual-judge comparator (**+4.87 pp**, 95% CI +4.02 to +5.73 pp), with 69.83% planned-pair coverage. |
 
 Human preferences are reference labels, not ground truth. The results do not
 claim a universally best judge, universal causal bias, or universal mitigation
@@ -32,6 +33,15 @@ analyzed: presentation order is controlled, but source/content-quality
 confounding remains. Its 33.13% stable-decisive coverage limits conclusions to
 those retained units; it is a matched source-family preference association, not
 causal proof of self-bias.
+
+RQ7 evaluates two complementary mitigation families: DUAL_SWAP is a
+within-judge presentation-consistency filter with a coverage trade-off;
+Multi-Judge Consensus is cross-judge aggregation under a strict four-judge
+protocol. The strategies use different units, retained populations,
+comparators, and estimands, so a direct DUAL_SWAP-versus-Multi-Judge ranking is
+**not defensible**. Multi-Judge's primary analysis uses 1,611 eligible canonical
+human-reference pairs, retains 1,125 consensus-covered pairs (69.83%), and is
+available in the frozen `multijudge-consensus-v1` package.
 
 ## Reproducing the final dashboard
 
@@ -55,7 +65,7 @@ Set `DATABASE_URL` in `.env` for a local PostgreSQL database. Restore the
 canonical snapshot with your matching PostgreSQL client and database name:
 
 ```powershell
-& 'C:\Program Files\PostgreSQL\17\bin\pg_restore.exe' --clean --if-exists --no-owner --dbname judgelab evidence/final/research_release_v2/database/judgelab-final-research-release-v2.dump
+& 'C:\Program Files\PostgreSQL\17\bin\pg_restore.exe' --clean --if-exists --no-owner --dbname judgelab evidence/final/research_release_v3/database/judgelab-research-release-v3.dump
 ```
 
 Then use two terminals:
@@ -83,10 +93,21 @@ python evidence/final/phase11/VERIFY_PACKAGE.py
 python evidence/final/research_release_v2/VERIFY_RELEASE.py
 ```
 
+```powershell
+python evidence/final/multijudge_consensus_v1/VERIFY_PACKAGE.py
+python evidence/final/research_release_v3/VERIFY_RELEASE.py
+```
+
 Expected Phase 11 root digest:
 
 ```text
 f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13
+```
+
+Multi-Judge package root digest:
+
+```text
+126470152305268908e5685df9ff52ad5a2b6f9266e828201a1c69faac710da1
 ```
 
 ## Dataset provenance
@@ -126,6 +147,18 @@ runtime. License/attribution metadata requires external verification.
   provenance addendum. It contains the deterministic selection manifest and
   references to the executed manifest, run ledger, and canonical AnalysisRun;
   it does not amend or reseal Phase 11.
+- `evidence/final/multijudge_consensus_v1/` is an immutable additive package
+  for the official secondary RQ7 Multi-Judge Consensus analysis
+  (`multi-judge-consensus-v1`; AnalysisRun
+  `fc40faf1-b886-42f8-8faf-a616f61f3107`). It records the frozen protocol,
+  deterministic AB/BA manifest, durable execution ledger, provider-free
+  analysis, and package verifier.
+- `evidence/final/research_release_v3/` is the current additive PostgreSQL
+  custom-format snapshot (14 AnalysisRuns), validated through a disposable
+  restore and API reconciliation. Its release root digest is
+  `8d24123e28e5df2ca0401fd4f57944c7d0dd8844e798f2f0ed8b6b2280bae710`.
+  It preserves immutable
+  `research_release_v2` and Phase 11 rather than modifying either package.
 - Live Evaluation remains visible as a manual demo workflow. Backend
   live-provider endpoints are disabled by default and are not part of the
   controlled study.
