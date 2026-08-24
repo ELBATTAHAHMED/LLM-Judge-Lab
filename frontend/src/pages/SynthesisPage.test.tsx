@@ -35,6 +35,7 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     controlledState.value = { data: response, loading: false, error: null };
     render(<MemoryRouter><SynthesisPage /></MemoryRouter>);
     expect(screen.getByText('2 complementary strategies')).toBeInTheDocument();
+    expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
     expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveTextContent('Primary');
     expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveTextContent('Secondary');
     expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
