@@ -1,0 +1,36 @@
+{
+  "analysis_runs": {
+    "dualswap_primary_id": "fa24666d-b4c9-4b1d-a767-cfc59c4380ac",
+    "multijudge_secondary_id": "fc40faf1-b886-42f8-8faf-a616f61f3107",
+    "pre_multijudge_release_v2_count": 13,
+    "release_v3_count": 14
+  },
+  "created_at": "2026-08-24T12:13:01.122318+00:00",
+  "database_snapshot": {
+    "path": "database/judgelab-research-release-v3.dump",
+    "pg_restore_list": "database/pg_restore_list.txt",
+    "restore_validation": {
+      "analysis_runs": 14,
+      "attempts": 6543,
+      "multijudge_analysis_runs": 1,
+      "slots": 6444,
+      "status": "PASSED"
+    },
+    "sha256": "25f9f246caf10db8d4f440e42a816eb112c5928c6ca1082c85a6a1af17fd853c",
+    "size_bytes": 33195865
+  },
+  "multijudge_package": {
+    "package_root_digest": "126470152305268908e5685df9ff52ad5a2b6f9266e828201a1c69faac710da1",
+    "path": "evidence/final/multijudge_consensus_v1"
+  },
+  "provider_calls": 0,
+  "release": "research_release_v3",
+  "source_commit": "a6d80501147312d9d2d799d7994a39312e473fec",
+  "statements": {
+    "api_unchanged": true,
+    "dualswap_remains_primary_rq7": true,
+    "multijudge_is_secondary_rq7": true,
+    "phase11_immutable": true,
+    "research_release_v2_immutable": true
+  }
+}

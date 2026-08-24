@@ -1,0 +1,3 @@
+25f9f246caf10db8d4f440e42a816eb112c5928c6ca1082c85a6a1af17fd853c  database/judgelab-research-release-v3.dump
+9bf003665b798a19a2ca1c2fa5e9ebedabc58bdd2a49bb452351d814fe95a1e1  database/pg_restore_list.txt
+e061549ff6e30e2dd2a92b76d0b54429bfc7b34540e66aa64042a9ebde2eedab  RELEASE_MANIFEST.json
