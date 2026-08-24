@@ -1,0 +1,187 @@
+{
+  "artifact_id": "multi-judge-fair-baseline-comparison-v1",
+  "bootstrap": {
+    "confidence_level": 0.95,
+    "method": "nonparametric_percentile",
+    "metric": "matched_consensus_minus_individual_delta",
+    "resamples": 10000,
+    "seed": 20260823,
+    "unit": "canonical_answer_pair"
+  },
+  "category_verification": {
+    "descriptive_only": true,
+    "results": {
+      "coding": {
+        "consensus_agreement": 0.7,
+        "consensus_covered_n": 150,
+        "consensus_minus_individual_delta": 0.05833333333333324,
+        "coverage": 0.7537688442211056,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.6416666666666667,
+        "four_valid_n": 186,
+        "planned_n": 199
+      },
+      "extraction": {
+        "consensus_agreement": 0.8195488721804511,
+        "consensus_covered_n": 133,
+        "consensus_minus_individual_delta": 0.06954887218045114,
+        "coverage": 0.6616915422885572,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.75,
+        "four_valid_n": 179,
+        "planned_n": 201
+      },
+      "humanities": {
+        "consensus_agreement": 0.7769230769230769,
+        "consensus_covered_n": 130,
+        "consensus_minus_individual_delta": 0.0692307692307692,
+        "coverage": 0.6701030927835051,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.7076923076923077,
+        "four_valid_n": 180,
+        "planned_n": 194
+      },
+      "math": {
+        "consensus_agreement": 0.6089743589743589,
+        "consensus_covered_n": 156,
+        "consensus_minus_individual_delta": 0.022435897435897356,
+        "coverage": 0.8082901554404145,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.5865384615384616,
+        "four_valid_n": 184,
+        "planned_n": 193
+      },
+      "reasoning": {
+        "consensus_agreement": 0.5072463768115942,
+        "consensus_covered_n": 138,
+        "consensus_minus_individual_delta": 0.016304347826086973,
+        "coverage": 0.6764705882352942,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.49094202898550726,
+        "four_valid_n": 183,
+        "planned_n": 204
+      },
+      "roleplay": {
+        "consensus_agreement": 0.7535211267605634,
+        "consensus_covered_n": 142,
+        "consensus_minus_individual_delta": 0.03169014084507038,
+        "coverage": 0.6543778801843319,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.721830985915493,
+        "four_valid_n": 194,
+        "planned_n": 217
+      },
+      "stem": {
+        "consensus_agreement": 0.7792207792207793,
+        "consensus_covered_n": 154,
+        "consensus_minus_individual_delta": 0.06818181818181823,
+        "coverage": 0.719626168224299,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.711038961038961,
+        "four_valid_n": 190,
+        "planned_n": 214
+      },
+      "writing": {
+        "consensus_agreement": 0.7213114754098361,
+        "consensus_covered_n": 122,
+        "consensus_minus_individual_delta": 0.05737704918032793,
+        "coverage": 0.6455026455026455,
+        "descriptive_only": true,
+        "equal_weight_individual_agreement": 0.6639344262295082,
+        "four_valid_n": 177,
+        "planned_n": 189
+      }
+    },
+    "status": "PASS"
+  },
+  "constraints": {
+    "human_reference_is_reference_not_ground_truth": true,
+    "individual_baseline_has_no_separate_comparable_coverage_delta": true,
+    "matched_comparison_is_conditional_on_consensus_covered_pairs": true,
+    "no_dual_swap_comparison": true,
+    "no_new_primary_estimand": true,
+    "no_rq7_promotion": true
+  },
+  "independent_recomputation": {
+    "consensus": {
+      "agreement": 0.7066666666666667,
+      "correct": 795,
+      "n": 1125
+    },
+    "equal_weight_individual_agreement": 0.658,
+    "individual_judges": {
+      "anthropic/claude-3-haiku": {
+        "agreement": 0.5751111111111111,
+        "correct": 647,
+        "n": 1125
+      },
+      "deepseek/deepseek-chat": {
+        "agreement": 0.6995555555555556,
+        "correct": 787,
+        "n": 1125
+      },
+      "gpt-4o-mini": {
+        "agreement": 0.6533333333333333,
+        "correct": 735,
+        "n": 1125
+      },
+      "meta-llama/llama-3.3-70b-instruct": {
+        "agreement": 0.704,
+        "correct": 792,
+        "n": 1125
+      }
+    },
+    "matched_consensus_minus_individual_delta": {
+      "ci_95": {
+        "high": 0.05733333333333333,
+        "low": 0.04022222222222222
+      },
+      "estimate": 0.048666666666666664
+    }
+  },
+  "lineage": {
+    "manifest_sha256": "6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351",
+    "phase8_artifact_path": "evidence/multijudge_consensus/primary_analysis_v1.json",
+    "phase8_artifact_sha256": "c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693",
+    "protocol_sha256": "819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce"
+  },
+  "pair_level_gain_loss_descriptive": {
+    "all_four_individuals_correct": 474,
+    "all_four_individuals_incorrect": 228,
+    "consensus_correct_individual_mean_below_one": 321,
+    "consensus_incorrect_at_least_one_individual_correct": 102,
+    "negative_effective_correctness_change": 102,
+    "no_effective_correctness_change": 702,
+    "positive_effective_correctness_change": 321
+  },
+  "per_judge_consensus_minus_judge_agreement": {
+    "anthropic/claude-3-haiku": 0.13155555555555554,
+    "deepseek/deepseek-chat": 0.007111111111111068,
+    "gpt-4o-mini": 0.053333333333333344,
+    "meta-llama/llama-3.3-70b-instruct": 0.002666666666666706
+  },
+  "phase": "PHASE_9_FAIR_BASELINE_COMPARISON_VALIDATION",
+  "phase8_reconciliation": {
+    "checks": 71,
+    "mismatches": [],
+    "status": "PASS"
+  },
+  "provider_activity": {
+    "provider_calls": 0,
+    "spend_usd": "0"
+  },
+  "retained_pair_set": {
+    "n": 1125,
+    "ordering": "ascending canonical_pair_id Unicode code-point order; UTF-8 newline-delimited",
+    "sha256": "cc57edbe145039135532582e4acc86d6a3d1f7bb914d6470e9e3b723a45d2f0e"
+  },
+  "retention_funnel": {
+    "consensus_coverage": 0.6983240223463687,
+    "consensus_covered_pairs": 1125,
+    "four_valid_pairs": 1473,
+    "four_valid_rate": 0.9143389199255121,
+    "operational_incomplete_pairs": 138,
+    "planned_pairs": 1611,
+    "split_no_consensus_pairs": 348
+  }
+}
