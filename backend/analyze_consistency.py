@@ -148,8 +148,7 @@ def compute_position_consistency(df: pd.DataFrame) -> dict:
        across cross-prompt distributions.
 
     2. Strict Same-Prompt Invariance (Dual A/B Swap Calibration):
-       In contrast, Dual A/B Swap calibration (executed via `run_batch_calibration.py` and
-       `call_calibrated_judge`) evaluates the EXACT SAME prompt and candidate answers in both
+       In contrast, Dual A/B Swap calibration evaluates the EXACT SAME prompt and candidate answers in both
        orderings (Pass 1: A vs B, Pass 2: B vs A) under identical context to measure strict
        prompt-level position invariance.
     """

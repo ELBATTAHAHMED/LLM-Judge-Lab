@@ -10,7 +10,7 @@ knows how to:
   3. Call the OpenAI Chat Completions API.
   4. Parse the structured verdict out of the response.
 
-All database interactions live in run_evaluation.py.
+Database persistence is handled by the application and controlled-execution layers.
 
 Methodology (G-EVAL — Single Turn)
 -----------------------------------
