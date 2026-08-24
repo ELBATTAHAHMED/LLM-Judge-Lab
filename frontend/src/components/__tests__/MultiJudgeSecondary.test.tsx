@@ -30,8 +30,8 @@ describe('RQ7 Multi-Judge secondary presentation', () => {
   it('renders the API-backed secondary without ranking it against primary DUAL_SWAP', () => {
     render(<ControlledEvidencePanel loading={false} error={null} data={response({ multi_judge_consensus: multiJudge })} />);
     fireEvent.click(screen.getByRole('button', { name: 'RQ7' }));
-    expect(screen.getByText('Two complementary mitigation strategies evaluated under different frozen comparators.')).toBeInTheDocument();
-    expect(screen.getByText(/DUAL_SWAP uses within-judge presentation-consistency filtering/i)).toBeInTheDocument();
+    expect(screen.getByText('Two complementary approaches to improving judge reliability.')).toBeInTheDocument();
+    expect(screen.getByText(/DUAL_SWAP filters presentation-sensitive decisions/i)).toBeInTheDocument();
     expect(screen.queryByText('Overall controlled result')).not.toBeInTheDocument();
     const dualSwap = screen.getByLabelText('DUAL_SWAP primary mitigation');
     const multiJudgePanel = screen.getByLabelText('Multi-Judge Consensus secondary mitigation');
