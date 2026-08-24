@@ -26,7 +26,7 @@ const multiJudge: MultiJudgeConsensusSecondary = {
 const response: ControlledResultsResponse = {
   status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
   accounting: null, analysis_runs: {}, secondary_mitigations: { multi_judge_consensus: multiJudge },
-  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'baseline_agreement', 0.6), metric('RQ7', 'dual_swap_agreement', 0.7), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'dual_swap_coverage', 0.7)],
+  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'baseline_agreement', 0.6), metric('RQ7', 'dual_swap_agreement', 0.7), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'dual_swap_coverage', 0.7), metric('RQ7', 'dual_swap_dual_pass_stability', 0.8)],
   message: 'frozen',
 };
 
@@ -35,7 +35,14 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     controlledState.value = { data: response, loading: false, error: null };
     render(<MemoryRouter><SynthesisPage /></MemoryRouter>);
     expect(screen.getByText('2 complementary strategies')).toBeInTheDocument();
+    expect(screen.getByText('Reliability')).toBeInTheDocument();
+    expect(screen.getByText('Controlled Effects')).toBeInTheDocument();
+    const pairedGrid = screen.getByLabelText('Paired RQ1–RQ6 findings');
+    expect(pairedGrid).toHaveClass('md:grid-cols-2');
+    expect([...pairedGrid.children].map((child) => child.getAttribute('data-testid'))).toEqual(['finding-rq1', 'finding-rq4', 'finding-rq2', 'finding-rq5', 'finding-rq3', 'finding-rq6']);
+    expect(screen.getByRole('heading', { name: 'Mitigation' })).toBeInTheDocument();
     expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
+    expect(pairedGrid).not.toContainElement(screen.getByLabelText('RQ7 Mitigation Strategies'));
     expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveTextContent('Primary');
     expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveTextContent('Secondary');
     expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
