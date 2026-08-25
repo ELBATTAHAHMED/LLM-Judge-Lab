@@ -213,32 +213,33 @@ def build_logical_view(session: Session) -> tuple[list[LogicalPass], dict[str, A
     return list(logical.values()), accounting, {"manifest": manifest, "recovery_manifest": recovery_manifest}
 
 
-def _by_rq(rows: Iterable[LogicalPass], rq: str) -> list[LogicalPass]:
+def _by_rq(rows: Iterable[LogicalPass], rq: str, *, include_reusable: bool = False) -> list[LogicalPass]:
     """Select the frozen corrected-remediation population for a primary RQ.
 
     The fixed denominators in the protocol are the replacement cohort itself
     (for example 229 RQ1 observations and 243 RQ7 triplets), not every
     historical controlled run that the broad reuse ledger happens to cover.
-    Reusable observations are reintroduced only for the explicitly full-population
-    Multi-Judge secondary analysis below.
+    ``include_reusable`` is reserved for the superseding full-population
+    analysis.  Keeping the original default preserves this provisional
+    artifact's historical provenance exactly.
     """
     manifest_rq = "RQ7" if rq.startswith("RQ7") else rq
     expected_manifest = CANONICAL_FINAL_MANIFESTS[manifest_rq]
     return [
         row for row in rows
-        if row.rq_code == rq and row.source != "SOURCE_CORRECT_REUSABLE"
+        if row.rq_code == rq and (include_reusable or row.source != "SOURCE_CORRECT_REUSABLE")
         and row.unit is not None and str(row.unit.manifest_id) == expected_manifest
     ]
 
 
-def _rq1(rows: list[LogicalPass]) -> dict[str, Any]:
+def _rq1(rows: list[LogicalPass], *, seed: int = SEED, iterations: int = ITERATIONS) -> dict[str, Any]:
     units = [RQ1Unit("CONTROLLED", row.historical_identity, "RQ1", row.judge_id, row.condition_code,
                      row.unit.human_label if row.unit else None, _presented_to_canonical(row.outcome, row.presentation),
                      row.unit.prompt_category if row.unit else "UNKNOWN") for row in rows]
-    return {key: value.serialize() for key, value in analyze_rq1(units, seed=SEED, iterations=ITERATIONS).items()}
+    return {key: value.serialize() for key, value in analyze_rq1(units, seed=seed, iterations=iterations).items()}
 
 
-def _rq2(rows: list[LogicalPass]) -> dict[str, Any]:
+def _rq2(rows: list[LogicalPass], *, seed: int = SEED, iterations: int = ITERATIONS) -> dict[str, Any]:
     values = []
     for row in rows:
         unit = row.unit
@@ -250,10 +251,10 @@ def _rq2(rows: list[LogicalPass]) -> dict[str, Any]:
                                     0, _presented_to_canonical(row.outcome, row.presentation), unit.provider, unit.provider_model,
                                     unit.prompt_template_version, float(unit.top_p) if unit.top_p is not None else None,
                                     "provider-recorded", row.judge_id, row.route if hasattr(row, "route") else None, None, "controlled-routing-v1", "source-corrected"))
-    return {key: value.serialize() for key, value in analyze_rq2(values, seed=SEED, iterations=ITERATIONS, primary_estimand="strict", include_sensitivity=True, include_by_judge=True).items()}
+    return {key: value.serialize() for key, value in analyze_rq2(values, seed=seed, iterations=iterations, primary_estimand="strict", include_sensitivity=True, include_by_judge=True).items()}
 
 
-def _rq3(rows: list[LogicalPass]) -> dict[str, Any]:
+def _rq3(rows: list[LogicalPass], *, seed: int = SEED, iterations: int = ITERATIONS) -> dict[str, Any]:
     grouped: dict[str, list[LogicalPass]] = defaultdict(list)
     for row in rows:
         grouped[str(row.unit.id)].append(row)
@@ -262,10 +263,10 @@ def _rq3(rows: list[LogicalPass]) -> dict[str, Any]:
         unit = values_for_unit[0].unit
         passes = {row.presentation: _presented_to_canonical(row.outcome, row.presentation) for row in values_for_unit}
         values.append(RQ3Pair("CONTROLLED", key, "RQ3", unit.judge_model, unit.condition_code, passes.get("AB"), passes.get("BA")))
-    return {key: value.serialize() for key, value in analyze_rq3(values, seed=SEED, iterations=ITERATIONS, include_by_judge=True).items()}
+    return {key: value.serialize() for key, value in analyze_rq3(values, seed=seed, iterations=iterations, include_by_judge=True).items()}
 
 
-def _variant(rows: list[LogicalPass], rq: str) -> dict[str, Any]:
+def _variant(rows: list[LogicalPass], rq: str, *, seed: int = SEED, iterations: int = ITERATIONS) -> dict[str, Any]:
     grouped: dict[str, list[LogicalPass]] = defaultdict(list)
     for row in rows:
         grouped[str(row.unit.id)].append(row)
@@ -278,10 +279,13 @@ def _variant(rows: list[LogicalPass], rq: str) -> dict[str, Any]:
         values.append(VariantPair("CONTROLLED", key, rq, unit.judge_model, unit.condition_code, complete, mapped[0] if complete else None,
                                   unit.presentation_order, bool(unit.counterfactual_variant_id), reason))
     method = analyze_rq4 if rq == "RQ4" else analyze_rq5
-    return {key: value.serialize() for key, value in method(values, seed=SEED, iterations=ITERATIONS, include_exclusion_breakdown=True).items()}
+    return {key: value.serialize() for key, value in method(values, seed=seed, iterations=iterations, include_exclusion_breakdown=True).items()}
 
 
-def _rq7_primary(rows: list[LogicalPass]) -> dict[str, Any]:
+def _rq7_primary(
+    rows: list[LogicalPass], *, seed: int = SEED, iterations: int = ITERATIONS,
+    expected_complete_case_count: int = 242,
+) -> dict[str, Any]:
     grouped: dict[tuple[str, str], list[LogicalPass]] = defaultdict(list)
     for row in rows:
         grouped[(row.unit.pairing_key or str(row.unit.id), row.judge_id)].append(row)
@@ -302,18 +306,20 @@ def _rq7_primary(rows: list[LogicalPass]) -> dict[str, Any]:
                                             _presented_to_canonical(baseline[0].outcome, baseline[0].presentation),
                                             _presented_to_canonical(dual["AB"].outcome, "AB"),
                                             _presented_to_canonical(dual["BA"].outcome, "BA")))
-    if len(observations) != 242:
-        raise CompleteCaseAnalysisError(f"RQ7 primary complete-case count expected 242, found {len(observations)}")
-    return {key: value.serialize() for key, value in analyze_rq7_matched(observations, seed=SEED, iterations=ITERATIONS).items()}
+    if len(observations) != expected_complete_case_count:
+        raise CompleteCaseAnalysisError(
+            f"RQ7 primary complete-case count expected {expected_complete_case_count}, found {len(observations)}"
+        )
+    return {key: value.serialize() for key, value in analyze_rq7_matched(observations, seed=seed, iterations=iterations).items()}
 
 
-def complete_case_populations(logical: list[LogicalPass]) -> dict[str, dict[str, int]]:
-    rq1 = _by_rq(logical, "RQ1")
-    rq2 = _by_rq(logical, "RQ2")
-    rq3 = _by_rq(logical, "RQ3")
-    rq4 = _by_rq(logical, "RQ4")
-    rq5 = _by_rq(logical, "RQ5")
-    rq7 = _by_rq(logical, "RQ7_PRIMARY")
+def complete_case_populations(logical: list[LogicalPass], *, include_reusable: bool = False) -> dict[str, dict[str, int]]:
+    rq1 = _by_rq(logical, "RQ1", include_reusable=include_reusable)
+    rq2 = _by_rq(logical, "RQ2", include_reusable=include_reusable)
+    rq3 = _by_rq(logical, "RQ3", include_reusable=include_reusable)
+    rq4 = _by_rq(logical, "RQ4", include_reusable=include_reusable)
+    rq5 = _by_rq(logical, "RQ5", include_reusable=include_reusable)
+    rq7 = _by_rq(logical, "RQ7_PRIMARY", include_reusable=include_reusable)
     def groups(rows: list[LogicalPass], key):
         value: dict[Any, list[LogicalPass]] = defaultdict(list)
         for row in rows: value[key(row)].append(row)
@@ -333,7 +339,9 @@ def complete_case_populations(logical: list[LogicalPass]) -> dict[str, dict[str,
     }
 
 
-def _rq7_secondary(session: Session, manifest: dict[str, Any]) -> dict[str, Any]:
+def _rq7_secondary(
+    session: Session, manifest: dict[str, Any], *, seed: int = SEED, iterations: int = ITERATIONS,
+) -> dict[str, Any]:
     historical_manifest = _read_json(MULTIJUDGE_MANIFEST_PATH)
     pair_rows = {row["canonical_pair_id"]: row for row in historical_manifest["pairs"]}
     batch = session.scalar(select(MultiJudgeExecutionBatch).where(MultiJudgeExecutionBatch.manifest_sha256 == MULTIJUDGE_MANIFEST_SHA256))
@@ -384,12 +392,12 @@ def _rq7_secondary(session: Session, manifest: dict[str, Any]) -> dict[str, Any]
         raise CompleteCaseAnalysisError(f"RQ7 secondary remediation complete-slot count expected 493, found {remediation_complete}")
     if len(structural) < 1 or len(structural) > len(pair_rows):
         raise CompleteCaseAnalysisError("RQ7 secondary four-vote accounting invalid")
-    coverage = bootstrap_percentile([float(any(record["pair_id"] == pair_id for record in retained)) for pair_id in pair_rows], seed=SEED, resamples=ITERATIONS)
+    coverage = bootstrap_percentile([float(any(record["pair_id"] == pair_id for record in retained)) for pair_id in pair_rows], seed=seed, resamples=iterations)
     correct = sum(record["consensus_label"] == record["human_reference"] for record in retained)
-    agreement = bootstrap_percentile([float(record["consensus_label"] == record["human_reference"]) for record in retained], seed=SEED, resamples=ITERATIONS)
+    agreement = bootstrap_percentile([float(record["consensus_label"] == record["human_reference"]) for record in retained], seed=seed, resamples=iterations)
     individual = [mean(record["votes"][judge] == record["human_reference"] for judge in MULTIJUDGE_JUDGES) for record in retained]
     deltas = [pair_delta(record["consensus_label"], record["human_reference"], record["votes"].values()) for record in retained]
-    delta = bootstrap_percentile(deltas, seed=SEED, resamples=ITERATIONS)
+    delta = bootstrap_percentile(deltas, seed=seed, resamples=iterations)
     per_judge = {judge: sum(record["votes"][judge] == record["human_reference"] for record in retained) / len(retained) for judge in MULTIJUDGE_JUDGES}
     return {
         "planned_n": len(pair_rows), "four_valid_n": len(structural), "consensus_covered_n": len(retained),
