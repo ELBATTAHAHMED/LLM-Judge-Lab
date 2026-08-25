@@ -17,7 +17,7 @@ from time import monotonic, sleep
 from typing import Any, Callable
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -132,14 +132,22 @@ class SourceCorrectedStore:
             if slot.lease_expires_at and as_utc(slot.lease_expires_at) > now: continue
             attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.slot_id == slot.id).order_by(SourceCorrectedExecutionAttempt.attempt_index.desc()))
             if slot.state == "RESERVED":
-                slot.state, slot.execution_owner, slot.lease_expires_at = "PENDING", None, None
-                if attempt: attempt.state, attempt.retry_decision, attempt.completed_at = "ABORTED_BEFORE_TRANSPORT", "RETRY", now
+                slot.state, slot.execution_owner, slot.lease_expires_at, slot.reserved_usd = "PENDING", None, None, Decimal("0")
+                if attempt:
+                    # A reservation that never crossed the transport boundary
+                    # cannot consume budget and is safe to re-claim.
+                    attempt.state, attempt.retry_decision, attempt.reserved_usd, attempt.completed_at = "ABORTED_BEFORE_TRANSPORT", "RETRY", Decimal("0"), now
             else:
                 slot.state, slot.final_outcome, slot.error_category, slot.execution_owner, slot.lease_expires_at, slot.completed_at = "AMBIGUOUS", "AMBIGUOUS", "CRASH_AFTER_SEND", None, None, now
                 if attempt: attempt.state, attempt.failure_category, attempt.retry_decision, attempt.completed_at = "AMBIGUOUS", "CRASH_AFTER_SEND", "TERMINAL", now
 
     def claim(self, session: Session, batch: SourceCorrectedExecutionBatch, *, owner: str) -> tuple[SourceCorrectedExecutionSlot, SourceCorrectedExecutionAttempt] | None:
-        slot = session.scalar(select(SourceCorrectedExecutionSlot).where(SourceCorrectedExecutionSlot.batch_id == batch.id, SourceCorrectedExecutionSlot.state == "PENDING").order_by(SourceCorrectedExecutionSlot.planned_pass_id).with_for_update(skip_locked=True))
+        now = utc_now()
+        slot = session.scalar(select(SourceCorrectedExecutionSlot).where(
+            SourceCorrectedExecutionSlot.batch_id == batch.id,
+            SourceCorrectedExecutionSlot.state == "PENDING",
+            or_(SourceCorrectedExecutionSlot.next_eligible_at.is_(None), SourceCorrectedExecutionSlot.next_eligible_at <= now),
+        ).order_by(SourceCorrectedExecutionSlot.planned_pass_id).with_for_update(skip_locked=True))
         if slot is None: return None
         forecast = Decimal(slot.estimated_input_tokens) * price_for_model(slot.judge_id).input_per_token + Decimal(slot.estimated_output_tokens) * price_for_model(slot.judge_id).output_per_token
         caps = {key: Decimal(value) for key, value in batch.provider_hard_caps_json.items()}
@@ -147,7 +155,7 @@ class SourceCorrectedStore:
             now=utc_now(); attempt=SourceCorrectedExecutionAttempt(slot_id=slot.id,attempt_id=stable_sha({"slot":slot.planned_pass_id,"attempt":slot.attempt_count,"budget":True}),attempt_index=slot.attempt_count,state="BLOCKED_BUDGET",failure_category="BUDGET_EXCEEDED",retry_decision="TERMINAL",reserved_usd=Decimal("0"),completed_at=now,details_json={"blocked_before_transport":True,"provider":slot.provider})
             slot.state, slot.attempt_count, slot.final_outcome, slot.error_category, slot.completed_at = "FAILED", slot.attempt_count+1, "MISSING_PASS", "BUDGET_EXCEEDED", now; session.add(attempt); session.flush(); return None
         attempt = SourceCorrectedExecutionAttempt(slot_id=slot.id, attempt_id=stable_sha({"slot": slot.planned_pass_id, "attempt": slot.attempt_count}), attempt_index=slot.attempt_count, state="RESERVED", reserved_usd=forecast, details_json={"owner": owner, "payload_sha256": slot.payload_sha256})
-        now = utc_now(); slot.state, slot.attempt_count, slot.execution_owner, slot.lease_expires_at, slot.reserved_usd, slot.started_at = "RESERVED", slot.attempt_count + 1, owner, now + timedelta(seconds=LEASE_SECONDS), forecast, slot.started_at or now; batch.status = "RUNNING"; session.add(attempt); session.flush(); return slot, attempt
+        slot.state, slot.attempt_count, slot.execution_owner, slot.lease_expires_at, slot.next_eligible_at, slot.reserved_usd, slot.started_at = "RESERVED", slot.attempt_count + 1, owner, now + timedelta(seconds=LEASE_SECONDS), None, forecast, slot.started_at or now; batch.status = "RUNNING"; session.add(attempt); session.flush(); return slot, attempt
 
     def mark_sent(self, session: Session, slot_id: Any, attempt_id: str, *, owner: str) -> SourceCorrectedExecutionSlot:
         slot = session.scalar(select(SourceCorrectedExecutionSlot).where(SourceCorrectedExecutionSlot.id == slot_id).with_for_update()); attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.attempt_id == attempt_id).with_for_update())
@@ -161,7 +169,8 @@ class SourceCorrectedStore:
         attempt.state,attempt.failure_category,attempt.retry_decision,attempt.completed_at="FAILED","SOURCE_ASSERTION","TERMINAL",now
         attempt.details_json={**(attempt.details_json or {}),"safe_reason":reason[:160]}; session.flush()
 
-    def persist(self, session: Session, slot_id: Any, attempt_id: str, result: NormalizedEvaluationResult, *, owner: str) -> str:
+    def persist(self, session: Session, slot_id: Any, attempt_id: str, result: NormalizedEvaluationResult, *, owner: str,
+                retry_policy: Callable[[str], Any] = retry_rule, retry_delay_seconds: int | None = None) -> str:
         slot = session.scalar(select(SourceCorrectedExecutionSlot).where(SourceCorrectedExecutionSlot.id == slot_id).with_for_update()); attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.attempt_id == attempt_id).with_for_update())
         if slot is None or attempt is None or slot.state != "SENT" or slot.execution_owner != owner: raise SourceCorrectedPreflightError("response does not match a sent slot")
         actual = _actual_cost(slot.judge_id, result); now = utc_now(); attempt.input_tokens, attempt.output_tokens, attempt.actual_usd, attempt.provider_response_id = result.input_tokens, result.output_tokens, actual, result.provider_response_id
@@ -170,13 +179,22 @@ class SourceCorrectedStore:
         if result.outcome in {Outcome.ANSWER_A, Outcome.ANSWER_B, Outcome.TIE, Outcome.UNKNOWN}:
             slot.state, attempt.state, attempt.retry_decision, slot.completed_at = "COMPLETED", "SUCCEEDED", "FINAL", now
         else:
-            rule = retry_rule(result.error_code or "PROVIDER_ERROR")
+            rule = retry_policy(result.error_code or "PROVIDER_ERROR")
             if rule.retryable and attempt.attempt_index < rule.max_retries:
                 slot.state, attempt.state, attempt.retry_decision = "PENDING", "FAILED_RETRYABLE", "RETRY"
+                if retry_delay_seconds:
+                    slot.next_eligible_at = now + timedelta(seconds=retry_delay_seconds)
             else:
                 slot.state, attempt.state, attempt.retry_decision, slot.completed_at = "FAILED", "FAILED", "TERMINAL", now
             attempt.failure_category = result.error_code or "PROVIDER_ERROR"
         attempt.details_json = {**(attempt.details_json or {}), "result": metadata}; attempt.completed_at, slot.execution_owner, slot.lease_expires_at = now, None, None; session.flush(); return slot.state
+
+    def next_eligible_at(self, session: Session, batch: SourceCorrectedExecutionBatch) -> datetime | None:
+        return session.scalar(select(func.min(SourceCorrectedExecutionSlot.next_eligible_at)).where(
+            SourceCorrectedExecutionSlot.batch_id == batch.id,
+            SourceCorrectedExecutionSlot.state == "PENDING",
+            SourceCorrectedExecutionSlot.next_eligible_at.is_not(None),
+        ))
 
     def status(self, session: Session, batch: SourceCorrectedExecutionBatch) -> dict[str, Any]:
         slots = list(session.scalars(select(SourceCorrectedExecutionSlot).where(SourceCorrectedExecutionSlot.batch_id == batch.id)))
@@ -190,7 +208,8 @@ class SourceCorrectedStore:
             actual = sum((Decimal(a.actual_usd or 0) for a, _ in chosen), Decimal("0"))
             reserved = sum((Decimal(a.reserved_usd) for a, _ in chosen if a.actual_usd is None), Decimal("0"))
             return {"actual": str(actual), "reserved": str(reserved), "total": str(actual + reserved)}
-        return {"planned": len(slots), "completed": states["COMPLETED"], "pending": states["PENDING"], "in_progress": states["RESERVED"] + states["SENT"], "failed": states["FAILED"], "ambiguous": states["AMBIGUOUS"], "attempts": len(attempts), "retries": sum(a.attempt_index > 0 for a in attempts), "per_rq": dict(by_rq), "per_judge": dict(by_judge), "spend": {"OPENAI": used("OPENAI"), "OPENROUTER": used("OPENROUTER"), "GLOBAL": used()}, "batch_status": batch.status, "last_event": _last_event(slots, attempts)}
+        next_ready = min((as_utc(slot.next_eligible_at) for slot in slots if slot.state == "PENDING" and slot.next_eligible_at), default=None)
+        return {"planned": len(slots), "completed": states["COMPLETED"], "pending": states["PENDING"], "in_progress": states["RESERVED"] + states["SENT"], "failed": states["FAILED"], "ambiguous": states["AMBIGUOUS"], "attempts": len(attempts), "retries": sum(a.attempt_index > 0 for a in attempts), "per_rq": dict(by_rq), "per_judge": dict(by_judge), "spend": {"OPENAI": used("OPENAI"), "OPENROUTER": used("OPENROUTER"), "GLOBAL": used()}, "batch_status": batch.status, "last_event": _last_event(slots, attempts), "next_eligible_at": next_ready.isoformat() if next_ready else None}
 
     def finalize_if_exhausted(self, session: Session, batch: SourceCorrectedExecutionBatch) -> None:
         report = self.status(session, batch)
@@ -272,7 +291,15 @@ class SourceCorrectedRunner:
             while max_slots is None or processed < max_slots:
                 with self.session_factory() as session:
                     batch = self.batch(session); claimed = self.store.claim(session,batch,owner=owner); session.commit()
-                    if claimed is None: self.store.finalize_if_exhausted(session,batch); report=self.store.status(session,batch); session.commit(); break
+                    if claimed is None:
+                        next_ready = self.store.next_eligible_at(session, batch)
+                        if next_ready is not None:
+                            wait = max(0.0, (as_utc(next_ready) - utc_now()).total_seconds())
+                            session.commit()
+                            if wait:
+                                sleep(wait)
+                            continue
+                        self.store.finalize_if_exhausted(session,batch); report=self.store.status(session,batch); session.commit(); break
                     slot, attempt = claimed; slot_id, attempt_id, attempt_index = slot.id, attempt.attempt_id, attempt.attempt_index
                 try:
                     with self.session_factory() as session:
