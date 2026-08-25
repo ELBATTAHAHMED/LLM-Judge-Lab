@@ -92,6 +92,10 @@ Canonical inputs are:
   `data/canonical/source_corrected_study_v1.json`;
 - data-layout/provenance note: `data/metadata/CANONICAL_SOURCE_DATA.md`.
 
+The canonical study covers **80 distinct MT-Bench questions** (preserved
+upstream question IDs 81–160), represented by **160 turn-level prompt
+records**: one record for each of the two MT-Bench turns per question.
+
 ### Historical correction and audit material
 
 Historical databases, remediation/recovery ledgers, Phase 11, releases v2/v3,

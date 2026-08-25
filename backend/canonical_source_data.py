@@ -227,6 +227,10 @@ def build_fresh_dataset(session: Session, payload: dict[str, Any] | None = None)
     if existing is not None:
         raise CanonicalSourceError("AMBIGUOUS_SOURCE_IDENTITY", "fresh build requires an empty prompts table")
     records = sorted(payload["records"], key=lambda row: (int(row["question_id"]), int(row["turn"]), row["canonical_logical_identity"]))
+    prompt_keys = sorted({(int(row["question_id"]), int(row["turn"])) for row in records})
+    question_ids = sorted({question_id for question_id, _ in prompt_keys})
+    turn_1_prompt_records = sum(turn == 1 for _, turn in prompt_keys)
+    turn_2_prompt_records = sum(turn == 2 for _, turn in prompt_keys)
     dataset = DatasetVersion(
         source_name=SOURCE_NAME,
         version=CANONICAL_IDENTITY,
@@ -235,14 +239,14 @@ def build_fresh_dataset(session: Session, payload: dict[str, Any] | None = None)
         source_checksum=payload["canonical_dataset_sha256"],
         checksum_algorithm="SHA-256",
         import_status="SUCCEEDED",
-        imported_prompt_count=len({(row["question_id"], row["turn"]) for row in records}),
+        imported_prompt_count=len(prompt_keys),
         imported_annotation_count=len(records),
         notes="Built from canonical source-text identities; no historical database ordering was used.",
     )
     session.add(dataset)
     prompt_ids: dict[tuple[int, int], int] = {}
     answer_ids: dict[tuple[int, int, str], int] = {}
-    for qid, turn in sorted({(int(row["question_id"]), int(row["turn"])) for row in records}):
+    for qid, turn in prompt_keys:
         prompt = Prompt(text=source.prompts[(qid, turn)], category=source.categories[qid])
         session.add(prompt); session.flush()
         prompt_ids[(qid, turn)] = prompt.id
@@ -271,7 +275,12 @@ def build_fresh_dataset(session: Session, payload: dict[str, Any] | None = None)
         "source_exact": 1070,
         "source_correction_required": 498,
         "unresolved": 0,
-        "prompts": len(prompt_ids),
+        "distinct_mt_bench_questions": len(question_ids),
+        "question_id_min": question_ids[0],
+        "question_id_max": question_ids[-1],
+        "turn_1_prompt_records": turn_1_prompt_records,
+        "turn_2_prompt_records": turn_2_prompt_records,
+        "turn_level_prompt_records": len(prompt_ids),
         "answers": len(answer_ids),
     }
 

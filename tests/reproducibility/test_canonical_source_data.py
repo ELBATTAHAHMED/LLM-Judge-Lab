@@ -49,6 +49,13 @@ def test_empty_database_build_is_source_keyed_and_reconciles_all_records():
     assert report["controlled_records"] == 1568
     assert report["source_exact"] == 1070
     assert report["source_correction_required"] == 498
+    assert report["distinct_mt_bench_questions"] == 80
+    assert report["question_id_min"] == 81
+    assert report["question_id_max"] == 160
+    assert report["turn_1_prompt_records"] == 80
+    assert report["turn_2_prompt_records"] == 80
+    assert report["turn_level_prompt_records"] == 160
+    assert "prompts" not in report
     assert verification == {
         "source_hash_matches": 1568,
         "source_hash_mismatches": 0,

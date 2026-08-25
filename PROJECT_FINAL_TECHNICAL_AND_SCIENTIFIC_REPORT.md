@@ -97,5 +97,10 @@ validates question/turn/model/text hashes before inserting data and fails closed
 on a missing record, ambiguous identity, or hash mismatch. It never consults a
 historical working database, legacy answer IDs, or insertion order.
 
+The source-corrected study covers 80 distinct MT-Bench questions (preserved
+upstream question IDs 81–160). Because MT-Bench has two turns per question,
+the fresh build contains 160 turn-level prompt records; this is not a count of
+160 distinct MT-Bench questions.
+
 The separately documented historical/remediation tools and all frozen packages
 remain available for audit, but are not prerequisites for this clean workflow.
