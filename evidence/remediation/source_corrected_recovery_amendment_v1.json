@@ -1,0 +1,169 @@
+{
+  "amendment_identity": "source-corrected-recovery-amendment-v1",
+  "amendment_sha256": "22a60b7ca5075eb5d53864274205756ba3bdd31d9b3887ae79a17fba690683eb",
+  "budget": {
+    "bounded_retry_hard_cap_total_usd": "0.15679201",
+    "bounded_retry_hard_cap_usd": {
+      "OPENAI": "0.00075555",
+      "OPENROUTER": "0.15603646"
+    },
+    "expected_total_usd": "0.0522640002",
+    "expected_usd": {
+      "OPENAI": "0.00025185",
+      "OPENROUTER": "0.0520121502"
+    },
+    "p90_method": "per-provider 90th-percentile frozen slot estimate multiplied by recovery-slot count",
+    "p90_plus_15_percent_total_usd": "0.08286308",
+    "p90_plus_15_percent_usd": {
+      "OPENAI": "0.00028963",
+      "OPENROUTER": "0.08257345"
+    },
+    "p90_total_usd": "0.07205485",
+    "p90_usd": {
+      "OPENAI": "0.00025185",
+      "OPENROUTER": "0.07180300"
+    },
+    "pricing_basis": "original frozen per-slot estimates; no provider query",
+    "projected_cumulative_actual_plus_expected_recovery_usd": "1.5894795302",
+    "recovery_hard_cap_within_remaining_headroom": true,
+    "remaining_original_global_headroom_usd": "1.76216443"
+  },
+  "eligibility": {
+    "ambiguous_slot_policy": "ONE_NEW_OPERATIONAL_REPLACEMENT_FOR_AMBIGUOUS; original send remains non-replayable and its receipt remains unknown",
+    "completed_slot_overlap": 0,
+    "completed_slots_replayed": false,
+    "failed_slots_receive_fresh_recovery_identity": true,
+    "required_frozen_identity_fields": [
+      "corrected_dataset_version",
+      "corrected_record_key",
+      "rendered_payload_sha256",
+      "source_corrected_payload",
+      "prompt_id",
+      "prompt_sha256",
+      "prompt_template_version",
+      "prompt_template_sha256",
+      "judge_id",
+      "provider",
+      "provider_model",
+      "route",
+      "routing_policy_version",
+      "routing_fingerprint",
+      "temperature",
+      "top_p",
+      "seed",
+      "rq_code",
+      "condition_code",
+      "presentation",
+      "repetition_index",
+      "transform"
+    ]
+  },
+  "execution_plan": {
+    "architecture": "extend the existing resumable source-corrected executor with a separate recovery batch/slot namespace; do not mutate the parent batch",
+    "command_blocker": "an additive recovery executor must be implemented and separately preflighted against this manifest before a safe paid command exists",
+    "execution_status": "NOT_IMPLEMENTED_BY_DESIGN_ONLY_AMENDMENT",
+    "paid_command": null,
+    "provider_execution_authorized": false
+  },
+  "generated_from_terminal_execution_at": "2026-08-25T06:03:30.492640+01:00",
+  "historical_evidence_unchanged": [
+    "phase11",
+    "research_release_v2",
+    "research_release_v3",
+    "multijudge_consensus"
+  ],
+  "operational_not_estimand_amendment": true,
+  "operational_retry_policy": {
+    "backoff_seconds": {
+      "CONNECTION": [
+        60,
+        180
+      ],
+      "INVALID_RESPONSE": [
+        30
+      ],
+      "NETWORK_CONNECTION": [
+        60,
+        180
+      ],
+      "RATE_LIMIT": [
+        120,
+        300
+      ],
+      "TEMPORARY_5XX": [
+        60,
+        180
+      ],
+      "TIMEOUT": [
+        60
+      ]
+    },
+    "global_concurrency": 1,
+    "identity": "source-corrected-recovery-retry-v1",
+    "invalid_response_policy": "a malformed historical response is never repaired; one new recovery call with identical scientific input may supply the missing usable observation",
+    "max_additional_recovery_retries": {
+      "CONNECTION": 2,
+      "INVALID_RESPONSE": 1,
+      "NETWORK_CONNECTION": 2,
+      "RATE_LIMIT": 2,
+      "TEMPORARY_5XX": 2,
+      "TIMEOUT": 1
+    },
+    "minimum_seconds_between_new_requests": {
+      "OPENAI": 5,
+      "OPENROUTER": 10,
+      "deepseek/deepseek-chat": 30
+    },
+    "provider_concurrency": {
+      "OPENAI": 1,
+      "OPENROUTER": 1
+    },
+    "recovery_attempts_are_not_historical_retries": true,
+    "retryable_categories": [
+      "RATE_LIMIT",
+      "TEMPORARY_5XX",
+      "NETWORK_CONNECTION",
+      "CONNECTION",
+      "TIMEOUT",
+      "INVALID_RESPONSE"
+    ],
+    "stop_conditions": [
+      "recovery hard-cap reached",
+      "frozen payload/model/route invariant failure",
+      "database persistence integrity failure",
+      "provider credential/configuration failure"
+    ]
+  },
+  "original_protocol_unchanged": true,
+  "parent_corrected_manifest": {
+    "identity": "controlled-source-text-corrected-execution-manifest-v1",
+    "path": "evidence/remediation/controlled_source_text_corrected_execution_manifest_v1.json",
+    "sha256": "331d4498d5fe1b86d544366a3579e8f35344e518894350c0b8d339c55f16d742"
+  },
+  "provider_calls": 0,
+  "recovery_manifest": {
+    "identity": "source-corrected-recovery-manifest-v1",
+    "path": "evidence/remediation/source_corrected_recovery_manifest_v1.json",
+    "sha256": "2fd7b64246cfba8421dc3d714fc272cef65214ecef1286c96318d0e65adc663d"
+  },
+  "schema_version": 1,
+  "scientific_interpretation": {
+    "estimands_changed": false,
+    "rq1": "independent missing observations may be replaced without changing the alignment estimand",
+    "rq2": "one fresh valid draw replaces each operationally lost planned repetition; no historical ambiguous/failed output is counted",
+    "rq3": "replacement restores the originally planned AB/BA pair",
+    "rq4": "replacement restores the originally planned original/transformed pair",
+    "rq5": "no recovery; already complete",
+    "rq6": "no recovery; already complete",
+    "rq7_primary": "replacement restores the planned baseline plus DUAL_SWAP matched triplet",
+    "rq7_secondary": "replacement restores the missing member of a strict four-judge vote set"
+  },
+  "terminal_execution": {
+    "ambiguous": 1,
+    "batch_status": "COMPLETED",
+    "completed": 6330,
+    "failed": 118,
+    "historical_actual_usd": "1.53721553",
+    "historical_held_reserved_usd": "0.17442051"
+  }
+}
