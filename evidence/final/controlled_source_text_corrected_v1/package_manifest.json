@@ -1,0 +1,64 @@
+{
+  "authoritative_analysis": {
+    "artifact_sha256": "ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97",
+    "identity": "source-corrected-complete-case-full-population-analysis-v2"
+  },
+  "authoritative_analysis_runs": {
+    "RQ1": "115de122-6298-4aab-a255-dd5aedf9b3cc",
+    "RQ2": "32f93918-f127-4cde-a0cd-6a73659daca7",
+    "RQ3": "63995b48-a3a6-4386-b9b2-5f8bea3adfdb",
+    "RQ4": "d8eac555-6c46-49e7-ac19-8c271e719849",
+    "RQ5": "067b3b9a-c739-41d9-8e2a-6d44478e6299",
+    "RQ6": "416edb12-b0ba-4851-9aad-6e7ad4a01529",
+    "RQ7": "c7057075-722a-4559-ac9b-d24e068d3769",
+    "RQ7_SECONDARY": "feef94e7-ca66-4fdf-8cf1-a46edd6094b4"
+  },
+  "file_inventory": [
+    {
+      "path": "authoritative_analysis_runs.json",
+      "sha256": "ade09b2eb4760cd9bd2470aafc2521c46ee0d584e0b6444e0a5ce1f0514fd1f7"
+    },
+    {
+      "path": "correction_transparency.json",
+      "sha256": "2a5918181eb6e9bcdaa14182d1a8c76db693f4b109b78f5577b9826cb08b453a"
+    },
+    {
+      "path": "dataset_provenance.json",
+      "sha256": "d600c58593acbcca390ae4b25e64ecac2971c53f0a8175a83b61b47109b5e7ef"
+    },
+    {
+      "path": "source/controlled_source_text_corrected_execution_manifest_v1.json",
+      "sha256": "4d943942931a82ecd029101993df09722345ec4b9ac39877772f557a9d1fa861"
+    },
+    {
+      "path": "source/controlled_source_text_corrected_preflight_v1.json",
+      "sha256": "b37e95b6096efcbcd0bfa88589d0c47ca0ec123e6305ab5268f01a7ae6b94c04"
+    },
+    {
+      "path": "source/source_corrected_complete_case_full_population_analysis_v2.json",
+      "sha256": "85b36f2320a91fc590014566ded1c6203a17948ccfcd3a4b8558de479cb3b49b"
+    },
+    {
+      "path": "source/source_corrected_recovery_amendment_v1.json",
+      "sha256": "1e5f6939803c42cdcd9cd419d1158ad368cd3e272e22015ca5466edf4770ce6f"
+    },
+    {
+      "path": "source/source_corrected_recovery_manifest_v1.json",
+      "sha256": "e536675c902da67533d324b297ff1d29b670e46798f07b2d525e4729ac3597b5"
+    },
+    {
+      "path": "source/source_text_reconciliation_v1.json",
+      "sha256": "186b191fe63ac8b9583431c3821b157612d6e7335674079b1c22d7d79092d467"
+    },
+    {
+      "path": "VERIFY_PACKAGE.py",
+      "sha256": "4da838d3cc708c3cd964173ca7ecc73bdb927f3f418f4fdf5c5edbaacda21175"
+    }
+  ],
+  "immutable_additive_package": true,
+  "package_id": "controlled-source-text-corrected-v1",
+  "package_root_digest": "ce6354ab2c101cf505123754c17f99ad3aa5068d161bd2f9f863a9252538ce79",
+  "provider_calls": 0,
+  "root_digest_algorithm": "SHA-256 of sorted UTF-8 SHA256<two spaces>relative_posix_path lines; manifest excluded to avoid self-reference",
+  "version": 1
+}

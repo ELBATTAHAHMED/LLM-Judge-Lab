@@ -1,0 +1,18 @@
+{
+  "citation": "Zheng et al. (2023), Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena, arXiv:2306.05685",
+  "controlled_source_reconciliation": {
+    "SOURCE_CORRECTION_REQUIRED": 498,
+    "SOURCE_EXACT": 1070,
+    "UNRESOLVED": 0,
+    "resolved": 1568,
+    "total": 1568
+  },
+  "dataset_identifier": "lmsys/mt_bench_human_judgments",
+  "dataset_license": "CC BY 4.0",
+  "dataset_name": "LMSYS MT-Bench Human Judgments",
+  "fastchat_code_license": "Apache-2.0",
+  "raw_human_rows_local_upstream_matched": {
+    "matched": 3355,
+    "total": 3355
+  }
+}

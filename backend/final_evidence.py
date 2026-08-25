@@ -10,14 +10,22 @@ from typing import Any, Iterable
 
 
 CANONICAL_FINAL_ANALYSIS_RUNS: dict[str, str] = {
-    "RQ1": "63cd1939-05f4-42cf-a933-4094ac652eea",
-    "RQ2": "4013c629-44bf-4021-860b-5c5caba6a8d2",
-    "RQ3": "28e45929-c042-4578-be2f-d8f30082b693",
-    "RQ4": "057a5a79-0b44-4ba3-9dbb-2d9d01590728",
-    "RQ5": "a729804a-5539-400f-998f-83b8c6ada30a",
-    "RQ6": "ca2bd7a4-88dc-4be5-883d-cd8f849aa5fa",
-    "RQ7": "fa24666d-b4c9-4b1d-a767-cfc59c4380ac",
+    "RQ1": "115de122-6298-4aab-a255-dd5aedf9b3cc",
+    "RQ2": "32f93918-f127-4cde-a0cd-6a73659daca7",
+    "RQ3": "63995b48-a3a6-4386-b9b2-5f8bea3adfdb",
+    "RQ4": "d8eac555-6c46-49e7-ac19-8c271e719849",
+    "RQ5": "067b3b9a-c739-41d9-8e2a-6d44478e6299",
+    "RQ6": "416edb12-b0ba-4851-9aad-6e7ad4a01529",
+    "RQ7": "c7057075-722a-4559-ac9b-d24e068d3769",
 }
+
+# The current final science is the verified full-population, source-text
+# corrected analysis.  The pinned IDs deliberately replace neither Phase 11
+# nor the historical/provisional remediation AnalysisRuns.
+CORRECTED_ANALYSIS_VERSION = "source-corrected-complete-case-full-population-analysis-v2"
+CORRECTED_ARTIFACT_IDENTITY = CORRECTED_ANALYSIS_VERSION
+CORRECTED_ARTIFACT_SHA256 = "ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97"
+CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN = "feef94e7-ca66-4fdf-8cf1-a46edd6094b4"
 
 CANONICAL_FINAL_MANIFESTS: dict[str, str] = {
     "RQ1": "550e0ec5-e531-45fa-a1ea-422cc9710001",
@@ -73,7 +81,18 @@ def canonical_final_analysis_runs(rows: Iterable[Any]) -> tuple[dict[str, Any] |
         row = by_id[run_id]
         if row.rq_code != rq_code or str(row.manifest_id) != CANONICAL_FINAL_MANIFESTS[rq_code]:
             return None, "Canonical final AnalysisRun provenance does not match its RQ/manifest."
-        if row.status != "COMPLETED" or (row.result_json or {}).get("evidence_class") != "CONTROLLED":
+        payload = row.result_json or {}
+        expected_key = "RQ7_PRIMARY" if rq_code == "RQ7" else rq_code
+        if (
+            row.status != "COMPLETED"
+            or row.analysis_version != CORRECTED_ANALYSIS_VERSION
+            or payload.get("evidence_class") != "CONTROLLED"
+            or payload.get("analysis_scope") != "FULL_POPULATION_SOURCE_PRECEDENCE"
+            or payload.get("analysis_artifact_identity") != CORRECTED_ARTIFACT_IDENTITY
+            or payload.get("artifact_sha256") != CORRECTED_ARTIFACT_SHA256
+            or payload.get("rq_key") != expected_key
+            or not isinstance(payload.get("metrics"), dict)
+        ):
             return None, "Canonical final AnalysisRun is not completed CONTROLLED evidence."
         selected[rq_code] = row
     return selected, None

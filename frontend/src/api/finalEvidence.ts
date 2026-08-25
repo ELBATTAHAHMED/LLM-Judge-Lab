@@ -96,9 +96,10 @@ export const formatMetricCi = (metric: ControlledMetricResult): string => {
 
 export const rqInterpretation = (rq: string): string | null => ({
   RQ1: 'Agreement is measured against human preference reference labels; it is not an accuracy claim.',
-  RQ2: 'Primary: strict complete-repetition consistency; conditional returned-judgment consistency is reported as a sensitivity analysis. No final temperature comparison is estimable under the frozen single-temperature protocol.',
-  RQ4: 'This is a controlled redundant-length result and is not a broad verbosity-bias claim.',
-  RQ5: 'Metrics exclude all 226 SUPERSEDED_CONTROLLED pre-fix runs.',
-  RQ6: 'Presentation order is counterbalanced. Overall stable same-family preference is approximately balanced, with strong judge-level heterogeneity; source/content-quality confounding remains.',
-  RQ7: 'Agreement is compared only on matched retained decisions; DUAL_SWAP reduced valid coverage descriptively on all planned units. This is not a causal treatment-effect claim.',
+  RQ2: 'Primary: fixed-temperature strict complete-repetition consistency. Conditional returned-judgment consistency is a sensitivity analysis, not a temperature-effect estimate.',
+  RQ3: 'Position sensitivity is measured after canonical answer-identity remapping under answer-order swaps.',
+  RQ4: 'Narrow frozen estimator: stable controlled redundant-text variant wins among valid controlled pairs; this is not a broad verbosity-bias claim.',
+  RQ5: 'Narrow frozen estimator: stable controlled presentation/list-prefix variant wins among valid controlled pairs; this is not a general formatting-effect claim.',
+  RQ6: 'Counterbalanced matched source-family association only. Strong judge-level heterogeneity remains; source/content-quality confounding prevents a causal self-bias claim.',
+  RQ7: 'DUAL_SWAP has a small matched point difference with a confidence interval crossing zero and substantial coverage loss. Multi-Judge is positive only against its own equal-weight comparator on retained consensus-covered pairs; they are not directly comparable.',
 }[rq] ?? null);

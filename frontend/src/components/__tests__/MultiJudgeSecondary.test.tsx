@@ -13,9 +13,9 @@ const metric = (metric_key: string, value: number): ControlledMetricResult => ({
 
 const multiJudge: MultiJudgeConsensusSecondary = {
   analysis_run_id: 'fc40faf1-b886-42f8-8faf-a616f61f3107', role: 'SECONDARY', method_family: 'cross_judge_aggregation',
-  planned_n: 1611, retained_n: 1125, agreement: 0.7067, coverage: 0.6983,
-  comparator: 'equal_weight_individual_judge_baseline_same_retained_pairs', comparator_agreement: 0.658,
-  matched_delta: 0.0487, ci_95: { low: 0.0402, high: 0.0573 }, protocol_id: 'protocol', package_id: 'package',
+  planned_n: 1611, retained_n: 1125, agreement: 0.7182222222, coverage: 0.6983240223,
+  comparator: 'equal_weight_individual_judge_baseline_same_retained_pairs', comparator_agreement: 0.668,
+  matched_delta: 0.0502222222, ci_95: { low: 0.0415555556, high: 0.0588888889 }, protocol_id: 'protocol', package_id: 'package',
   direct_dualswap_comparison: 'NOT_DEFENSIBLE', comparison_reason: 'different frozen units and estimands', coverage_unit: 'canonical_answer_pairs',
 };
 
@@ -42,8 +42,8 @@ describe('RQ7 Multi-Judge secondary presentation', () => {
     expect([...screen.getByTestId('controlled-dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Matched N']);
     expect([...screen.getByTestId('controlled-multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Retained / planned']);
     expect(screen.getByTestId('controlled-dual-swap-footer')).toHaveTextContent(/Dual-pass stability/i);
-    expect(screen.getByTestId('controlled-multi-judge-footer')).toHaveTextContent(/Comparator: equal-weight individual-judge baseline/i);
-    expect(screen.getByText(/equal-weight individual-judge baseline on the same retained pairs/i)).toBeInTheDocument();
+    expect(screen.getByTestId('controlled-multi-judge-footer')).toHaveTextContent(/Positive only against the equal-weight individual-judge comparator/i);
+    expect(screen.getByText(/equal-weight individual-judge comparator on the same retained consensus-covered pairs/i)).toBeInTheDocument();
     expect(screen.getAllByText(/not a direct head-to-head effect/i)).toHaveLength(1);
     expect(screen.queryByText(/DUAL_SWAP − Multi-Judge/i)).not.toBeInTheDocument();
     expect(screen.queryByText('→')).not.toBeInTheDocument();

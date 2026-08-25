@@ -41,7 +41,14 @@ from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E4
 import models  # noqa: E402
 from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
 from evidence_contract import EvidenceClass  # noqa: E402
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, canonical_final_analysis_runs  # noqa: E402
+from final_evidence import (  # noqa: E402
+    CANONICAL_FINAL_ANALYSIS_RUNS,
+    CANONICAL_FINAL_MANIFESTS,
+    CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN,
+    CORRECTED_ARTIFACT_SHA256,
+    CORRECTED_ANALYSIS_VERSION,
+    canonical_final_analysis_runs,
+)
 from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
 from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
@@ -285,11 +292,79 @@ def serialize_multi_judge_secondary(rows: list[AnalysisRun]) -> tuple[dict[str, 
         return None, "Promoted secondary mitigation analysis is unavailable or ambiguous."
     run = rows[0]
     payload = run.result_json or {}
-    metrics = payload.get("metrics") if run.rq_code == "RQ7" and payload.get("rq_code") == "RQ7" and payload.get("mitigation_role") == "SECONDARY" else None
-    required = {"planned_n", "retained_n", "agreement", "coverage", "equal_weight_individual_baseline", "matched_delta", "ci_low", "ci_high"}
-    if not isinstance(metrics, dict) or not required.issubset(metrics) or not payload.get("package_id") or not payload.get("protocol_id"):
+    metrics = payload.get("metrics") if (
+        run.rq_code == "RQ7"
+        and run.analysis_version == CORRECTED_ANALYSIS_VERSION
+        and payload.get("rq_key") == "RQ7_SECONDARY"
+    ) else None
+    required = {
+        "planned_n", "consensus_covered_n", "agreement", "coverage",
+        "equal_weight_individual_comparator", "matched_delta", "matched_delta_ci_95",
+    }
+    ci = metrics.get("matched_delta_ci_95") if isinstance(metrics, dict) else None
+    if (
+        not isinstance(metrics, dict)
+        or not required.issubset(metrics)
+        or not isinstance(ci, dict)
+        or not all(isinstance(ci.get(key), (int, float)) for key in ("low", "high"))
+        or payload.get("analysis_artifact_identity") != CORRECTED_ANALYSIS_VERSION
+        or payload.get("artifact_sha256") != CORRECTED_ARTIFACT_SHA256
+    ):
         return None, "Promoted secondary mitigation analysis has an invalid provenance contract."
-    return {"multi_judge_consensus": {"analysis_run_id": str(run.id), "role": "SECONDARY", "method_family": "cross_judge_aggregation", "planned_n": metrics["planned_n"], "retained_n": metrics["retained_n"], "agreement": metrics["agreement"], "coverage": metrics["coverage"], "comparator": "equal_weight_individual_judge_baseline_same_retained_pairs", "comparator_agreement": metrics["equal_weight_individual_baseline"], "matched_delta": metrics["matched_delta"], "ci_95": {"low": metrics["ci_low"], "high": metrics["ci_high"]}, "protocol_id": payload["protocol_id"], "package_id": payload["package_id"], "direct_dualswap_comparison": "NOT_DEFENSIBLE", "comparison_reason": "different frozen units and estimands", "coverage_unit": "canonical_answer_pairs"}}, None
+    return {"multi_judge_consensus": {"analysis_run_id": str(run.id), "role": "SECONDARY", "method_family": "cross_judge_aggregation", "planned_n": metrics["planned_n"], "retained_n": metrics["consensus_covered_n"], "agreement": metrics["agreement"], "coverage": metrics["coverage"], "comparator": "equal_weight_individual_judge_baseline_same_retained_pairs", "comparator_agreement": metrics["equal_weight_individual_comparator"], "matched_delta": metrics["matched_delta"], "ci_95": {"low": ci["low"], "high": ci["high"]}, "protocol_id": payload["analysis_artifact_identity"], "package_id": payload["artifact_sha256"], "direct_dualswap_comparison": "NOT_DEFENSIBLE", "comparison_reason": "different frozen units and estimands", "coverage_unit": "canonical_answer_pairs"}}, None
+
+
+def serialize_corrected_metric_rows(published_by_rq: dict[str, AnalysisRun]) -> tuple[list[dict[str, Any]] | None, str | None]:
+    """Adapt canonical AnalysisRun metric maps to the public metric contract.
+
+    The controller never contains scientific values: it only exposes the
+    already-pinned metrics from the authoritative source-corrected AnalysisRuns.
+    """
+    rows: list[dict[str, Any]] = []
+    required = {
+        "metric_name", "value", "numerator", "denominator", "eligible_n",
+        "analyzed_n", "tie_count", "unknown_count", "failure_count",
+        "excluded_count", "ci_low", "ci_high", "status", "metric_version",
+    }
+    for rq, run in sorted(published_by_rq.items()):
+        metrics = (run.result_json or {}).get("metrics")
+        if not isinstance(metrics, dict):
+            return None, "Published controlled analysis has an invalid metric contract."
+        for metric_key, serialized in metrics.items():
+            if not isinstance(serialized, dict) or not required.issubset(serialized):
+                return None, "Published controlled analysis has an invalid metric contract."
+            judge = serialized.get("judge")
+            if metric_key.startswith("judge:"):
+                _, judge, _ = metric_key.split(":", 2)
+            row = {
+                "rq": rq,
+                "metric_key": metric_key,
+                "judge": judge,
+                "condition": serialized.get("condition"),
+                "metric": serialized["metric_name"],
+                "value": serialized["value"],
+                "numerator": serialized["numerator"],
+                "denominator": serialized["denominator"],
+                "eligible_n": serialized["eligible_n"],
+                "analyzed_n": serialized["analyzed_n"],
+                "ties": serialized["tie_count"],
+                "unknowns": serialized["unknown_count"],
+                "failures": serialized["failure_count"],
+                "excluded": serialized["excluded_count"],
+                "ci_low": serialized["ci_low"],
+                "ci_high": serialized["ci_high"],
+                "status": serialized["status"],
+                "analysis_version": serialized["metric_version"],
+                "evidence_class": EvidenceClass.CONTROLLED.value,
+            }
+            if metric_key.startswith("baseline_"):
+                row["condition"] = "BASELINE SINGLE-PASS"
+            elif metric_key.startswith("dual_swap_"):
+                row["condition"] = "DUAL_SWAP"
+            elif metric_key.endswith("_delta"):
+                row["condition"] = "DUAL_SWAP − BASELINE SINGLE-PASS"
+            rows.append(row)
+    return rows or None, None if rows else "Published controlled analysis has no metrics."
 
 
 # ── GET / & GET /health (Health Check) ───────────────────────────────────────
@@ -415,35 +490,14 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
     published_by_rq, canonical_error = canonical_final_analysis_runs(canonical_rows)
     if published_by_rq is None:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message=canonical_error or "Canonical final controlled analysis is unavailable.")
-    secondary_runs = db.query(AnalysisRun).filter(AnalysisRun.analysis_version == "multi-judge-consensus-analysis-v1").all()
+    secondary_runs = db.query(AnalysisRun).filter(AnalysisRun.id == uuid.UUID(CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN)).all()
     if len(secondary_runs) != 1:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Promoted secondary mitigation analysis is unavailable or ambiguous.")
     secondary_mitigations, secondary_error = serialize_multi_judge_secondary(secondary_runs)
     if secondary_mitigations is None:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message=secondary_error or "Promoted secondary mitigation analysis is invalid.")
-    rows: list[dict[str, Any]] = []
-    for rq in sorted(published_by_rq):
-        payload = published_by_rq[rq].result_json or {}
-        result_rows = payload.get("results", payload if isinstance(payload, list) else [])
-        if not isinstance(result_rows, list):
-            return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Published controlled analysis has an invalid result contract.")
-        for result in result_rows:
-            # Provenance remains intact in the pinned AnalysisRun and Phase 11 package.
-            # The UI needs metric summaries, not thousands of UUIDs per row; omitting
-            # this unused field avoids a multi-megabyte response and slow render.
-            row = {key: value for key, value in dict(result).items() if key != "source_unit_ids"}
-            metric_key = str(row.get("metric_key", ""))
-            if metric_key.startswith("judge:"):
-                _, judge, _ = metric_key.split(":", 2)
-                row["judge"] = judge
-            if metric_key.startswith("baseline_"):
-                row["condition"] = "BASELINE SINGLE-PASS"
-            elif metric_key.startswith("dual_swap_"):
-                row["condition"] = "DUAL_SWAP"
-            elif metric_key.endswith("_delta"):
-                row["condition"] = "DUAL_SWAP − BASELINE SINGLE-PASS"
-            rows.append(row)
-    if not rows:
+    rows, rows_error = serialize_corrected_metric_rows(published_by_rq)
+    if rows is None:
         return ControlledResultsResponse(status="CONTROLLED_RESULTS_PENDING_ANALYSIS", evidence_class="CONTROLLED", executed_runs=len(controlled_runs), executed_passes=len(controlled_passes), accounting=accounting, results=[], message="Published controlled analysis has an invalid result contract.")
     return ControlledResultsResponse(
         status="CONTROLLED_RESULTS_AVAILABLE",
@@ -454,7 +508,7 @@ def controlled_results(db: Session = Depends(get_db)) -> ControlledResultsRespon
         analysis_runs={rq: str(run.id) for rq, run in sorted(published_by_rq.items())},
         secondary_mitigations=secondary_mitigations,
         results=rows,
-        message="Authoritative controlled analysis selected by pinned AnalysisRun identity; Phase 11 remains immutable historical provenance.",
+        message="Authoritative source-corrected full-population analysis selected by pinned AnalysisRun identity; Phase 11 remains immutable historical provenance.",
     )
 
 
@@ -816,6 +870,46 @@ def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
         return []
 
 
+def compute_leaderboard_read_only(db_engine, judge_model: str) -> list[dict]:
+    """Build historical leaderboard telemetry in memory when its cache is absent.
+
+    The public endpoint must remain read-only: this deliberately does not
+    recreate the retired CSV artifacts or alter the database.  It preserves the
+    historical/exploratory view from existing decision rows only.
+    """
+    judge_model = normalize_model_id(judge_model)
+    try:
+        from calculate_latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
+        from calculate_neutralized_scores import fetch_decisions_with_lengths, run_length_bias_regression, compute_neutralized_scores
+
+        pairwise = fetch_pairwise_results(db_engine, judge_model_name=judge_model)
+        if pairwise.empty:
+            return []
+        models = sorted(set(pairwise["model_i"]) | set(pairwise["model_j"]))
+        raw_win_rates = compute_raw_win_rates(pairwise, models)
+        theta, _ = fit_bradley_terry(pairwise, models)
+        bt_results = pd.DataFrame({
+            "model": models,
+            "raw_win_rate": [raw_win_rates[model] for model in models],
+            "bt_score": theta,
+        })
+        bt_results["quality_tier"] = bt_results["bt_score"].map(
+            lambda score: "Top Tier" if score >= 0.5 else "Competitive" if score >= 0.0 else "Below Average" if score >= -1.0 else "Weak"
+        )
+        neutralized_input = fetch_decisions_with_lengths(db_engine, judge_model_name=judge_model)
+        if neutralized_input.empty:
+            neutralized = pd.DataFrame({"model": models, "neutralized_score": 0.0})
+        else:
+            _, _, _, _, residuals, _, _ = run_length_bias_regression(neutralized_input)
+            neutralized = compute_neutralized_scores(neutralized_input, residuals)[["model", "neutralized_score"]]
+        result = bt_results.merge(neutralized, on="model", how="left")
+        result["neutralized_score"] = result["neutralized_score"].fillna(0.0)
+        return _df_to_records(result[["model", "raw_win_rate", "bt_score", "quality_tier", "neutralized_score"]].sort_values("bt_score", ascending=False))
+    except Exception:
+        logger.exception("Read-only historical leaderboard calculation failed for '%s'.", judge_model)
+        return []
+
+
 @app.get("/api/leaderboard", response_model=list[LeaderboardItem])
 def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     """
@@ -829,7 +923,7 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     neutralized_csv_path = csv_dir / f"neutralized_scores_{sanitized}.csv"
 
     if not bt_csv_path.exists() or not neutralized_csv_path.exists():
-        return []
+        return compute_leaderboard_read_only(engine, judge_model)
 
     try:
         bt_df   = pd.read_csv(bt_csv_path)

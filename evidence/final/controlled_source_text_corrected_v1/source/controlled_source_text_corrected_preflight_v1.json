@@ -1,0 +1,14 @@
+{
+  "batch_id": "677f8b9d-417e-43be-822e-e2212bcf1929",
+  "dry_run": {
+    "execution_authorized": false,
+    "mock_transport_calls": 6449,
+    "network": "DISABLED",
+    "provider_calls": 0,
+    "status": "PASS"
+  },
+  "execution_authorized": false,
+  "manifest_sha256": "331d4498d5fe1b86d544366a3579e8f35344e518894350c0b8d339c55f16d742",
+  "preflight_identity": "controlled-source-text-corrected-preflight-v1",
+  "provider_calls": 0
+}

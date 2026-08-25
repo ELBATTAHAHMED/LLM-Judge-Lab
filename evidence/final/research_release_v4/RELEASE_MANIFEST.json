@@ -1,0 +1,42 @@
+{
+  "analysis_runs_in_snapshot": 38,
+  "authoritative_corrected_analysis": {
+    "analysis_runs": {
+      "RQ1": "115de122-6298-4aab-a255-dd5aedf9b3cc",
+      "RQ2": "32f93918-f127-4cde-a0cd-6a73659daca7",
+      "RQ3": "63995b48-a3a6-4386-b9b2-5f8bea3adfdb",
+      "RQ4": "d8eac555-6c46-49e7-ac19-8c271e719849",
+      "RQ5": "067b3b9a-c739-41d9-8e2a-6d44478e6299",
+      "RQ6": "416edb12-b0ba-4851-9aad-6e7ad4a01529",
+      "RQ7": "c7057075-722a-4559-ac9b-d24e068d3769",
+      "RQ7_SECONDARY": "feef94e7-ca66-4fdf-8cf1-a46edd6094b4"
+    },
+    "analysis_version": "source-corrected-complete-case-full-population-analysis-v2",
+    "artifact_sha256": "ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97"
+  },
+  "corrected_evidence_package": {
+    "package_root_digest": "ce6354ab2c101cf505123754c17f99ad3aa5068d161bd2f9f863a9252538ce79",
+    "path": "evidence/final/controlled_source_text_corrected_v1"
+  },
+  "created_at": "2026-08-25T14:33:24.236386+00:00",
+  "database_snapshot": {
+    "path": "database/judgelab-research-release-v4.dump",
+    "pg_restore_list": "database/pg_restore_list.txt",
+    "restore_validation": {
+      "analysis_runs": 38,
+      "authoritative_analysis_runs": 8,
+      "status": "PASSED"
+    },
+    "sha256": "db138478cda7ebb1b560595378dad3b3e49f32ae99f4a2ff02c09cb359f4e254",
+    "size_bytes": 42299847
+  },
+  "historical_evidence_preserved": {
+    "multijudge_consensus_v1": true,
+    "phase11": true,
+    "research_release_v2": true,
+    "research_release_v3": true
+  },
+  "provider_calls": 0,
+  "release": "research_release_v4",
+  "source_commit": "53dd9637d494912f652290235aa1212da8351268"
+}

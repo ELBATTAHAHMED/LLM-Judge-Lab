@@ -1,170 +1,79 @@
 # LLM-as-a-Judge Reliability Lab
 
-This repository contains the final controlled study and a reproducible dashboard
-for auditing pairwise LLM judgments. Phase 11 remains immutable historical
-evidence; `research_release_v2` preserves the corrected provider-free analyses
-and counterbalanced RQ6 lineage, while additive `research_release_v3` records
-the promoted Multi-Judge Consensus secondary RQ7 mitigation.
+This repository contains a controlled, provenance-preserving study of pairwise
+LLM judgments. The final scientific pages are `/synthesis` and
+`/controlled-results`; `/` opens the historical exploratory Leaderboard.
+Live Evaluation is a separate manual sandbox and remains behind its explicit
+server-side provider-execution gate.
 
-## Final controlled evidence
+## Current corrected controlled science
 
-The frozen Phase 11 execution accounts for **13,400 / 13,400 controlled units**
-and **16,600 / 16,600 pass slots**, with 0 pending units and 7 / 7 original
-canonical `AnalysisRun` records completed. The separate final RQ6 lineage
-accounts for 480 / 480 units and 960 / 960 pass slots.
+The current authority is the verified source-corrected full-population analysis
+[`evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json`](evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json)
+(SHA-256 `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97).
+The API selects only its pinned completed AnalysisRuns and fails closed if any
+is absent or incompatible. Phase 11, `research_release_v2`,
+`research_release_v3`, and historical/provisional remediation evidence remain
+immutable audit records.
 
-| RQ | Final controlled result |
+| RQ | Current authoritative result |
 | --- | --- |
-| RQ1 — Human Alignment | 58.44% agreement with human preference reference labels; Cohen's kappa 0.3121; N=770. |
-| RQ2 — Stochastic Consistency | **Primary strict** complete-repetition consistency: 96.74% (95% CI 96.22–97.23%; N=1,428). Conditional returned-judgment sensitivity: 96.56% (N=1,474). No temperature comparison is estimable. |
-| RQ3 — Position Sensitivity | 16.70% paired decisive flip rate; 24.87% all-paired disagreement. Reconciled decisive flips: Claude 52.25%, GPT-4o-mini 5.17%, Llama 7.79%, DeepSeek 9.15%. |
-| RQ4 — Controlled Redundant-Length Effect | 0.44% redundant-variant win rate; N=685. This is a narrow redundant-text control, not a general claim about verbosity. |
-| RQ5 — Controlled Presentation-Format Effect | 1.11% format-variant win rate; N=719. This applies to the implemented controlled transformation only. |
-| RQ6 — Counterbalanced Matched Source-Family Preference | 50.94% stable same-family association (95% CI 42.77–58.49%; N=159 stable decisive; coverage 33.13%). No clear uniform overall preference; results vary strongly by judge. |
-| RQ7 — Mitigation Trade-off | **Primary DUAL_SWAP:** 67.66% → 68.37% (**+0.70 pp**, 95% CI 0.00–1.58; N=569), with descriptive coverage 95.63% → 72.88% (-22.75 pp). **Secondary Multi-Judge Consensus:** 795/1,125 = 70.67% agreement versus a 65.80% equal-weight individual-judge comparator (**+4.87 pp**, 95% CI +4.02 to +5.73 pp), with 69.83% planned-pair coverage. |
+| RQ1 — Human Alignment | 457/772 = **59.20%** agreement with human preference reference labels (95% CI 55.70–62.69%); Cohen's kappa **0.3230** (95% CI 0.2698–0.3758). |
+| RQ2 — Stochastic Consistency | Fixed-temperature strict complete-repetition consistency: 7,119/7,375 = **96.53%** across 1,475 strict-valid cells (1,599/1,600 physical complete cells). Conditional sensitivity: **96.31%**, N=1,585. |
+| RQ3 — Position Sensitivity | **17.49%** decisive flip rate (96/549) after canonical answer-identity remapping; all-paired disagreement 193/759 = 25.43%. |
+| RQ4 — Controlled Redundant-Length Effect | **0/682 = 0.00%** stable controlled redundant-text variant wins. This is the narrow frozen estimator `variant_outcome == "VARIANT"` after valid/stable pair requirements, not a broad verbosity claim. |
+| RQ5 — Controlled Presentation-Format Effect | **0/716 = 0.00%** stable controlled presentation/list-prefix variant wins under the same narrow estimator, not a general formatting claim. |
+| RQ6 — Counterbalanced Matched Source-Family Preference | 81/159 = **50.94%** (95% CI 42.77–58.49%; coverage 33.13%); the association has substantial judge-level heterogeneity and is not causal self-bias evidence. |
+| RQ7 — Mitigation Trade-off | **PRIMARY DUAL_SWAP:** 405/597 = 67.84% to 409/597 = 68.51%, **+0.67 pp** (95% CI −0.17 to +1.68 pp), with coverage 96.87% to 75.84% (−21.03 pp): a small uncertain change plus substantial coverage loss. **SECONDARY Multi-Judge:** 808/1,125 = 71.82% vs 66.80% equal-weight comparator, **+5.02 pp** (95% CI +4.16 to +5.89 pp), 69.83% coverage of 1,611 planned pairs. |
 
-Human preferences are reference labels, not ground truth. The results do not
-claim a universally best judge, universal causal bias, or universal mitigation
-improvement.
+DUAL_SWAP and Multi-Judge have different frozen units, comparators, and
+estimands; direct superiority comparison is **not defensible**. Human
+preference labels are reference labels, not ground truth.
 
-The original frozen RQ6 design was not estimable due to unbalanced
-presentation. A separate counterbalanced RQ6 experiment was later executed and
-analyzed: presentation order is controlled, but source/content-quality
-confounding remains. Its 33.13% stable-decisive coverage limits conclusions to
-those retained units; it is a matched source-family preference association, not
-causal proof of self-bias.
+## Dataset provenance and correction
 
-RQ7 evaluates two complementary mitigation families: DUAL_SWAP is a
-within-judge presentation-consistency filter with a coverage trade-off;
-Multi-Judge Consensus is cross-judge aggregation under a strict four-judge
-protocol. The strategies use different units, retained populations,
-comparators, and estimands, so a direct DUAL_SWAP-versus-Multi-Judge ranking is
-**not defensible**. Multi-Judge's primary analysis uses 1,611 eligible canonical
-human-reference pairs, retains 1,125 consensus-covered pairs (69.83%), and is
-available in the frozen `multijudge-consensus-v1` package.
+The upstream dataset is **LMSYS MT-Bench Human Judgments**
+(`lmsys/mt_bench_human_judgments`), associated with Zheng et al. (2023),
+*Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*
+([arXiv:2306.05685](https://arxiv.org/abs/2306.05685)). The dataset license is
+**CC BY 4.0**; this is distinct from the FastChat code license, **Apache-2.0**.
 
-## Reproducing the final dashboard
+All 3,355/3,355 local raw human rows matched upstream. Source-text
+reconciliation resolved 1,568/1,568 controlled records: 1,070
+`SOURCE_EXACT`, 498 `SOURCE_CORRECTION_REQUIRED`, and 0 unresolved. Historical
+DB ingestion had selected answers by insertion order, causing source-text
+mismatches for those 498 controlled reference records; the upstream human
+judgment dataset was not corrupted. Exact source responses were reconciled
+deterministically, affected evaluations were rerun additively, and historical
+evidence was retained unchanged.
 
-Normal application startup is read-only: it does not run schema maintenance,
-experiments, or provider calls. Provider credentials are not required to
-inspect the final dashboard or verify the frozen package.
+Fourteen terminal Claude observations remained unavailable after bounded
+recovery. Provider response identifiers were retained, but raw rejected
+response bodies were not persisted, preventing scientifically defensible
+offline re-parsing. The missing observations are judge-specific and
+concentrated in a small subset of questions, turns, and categories. Analyses
+therefore use explicitly reported complete-case populations, without claiming
+MCAR or MAR.
 
-```powershell
-git clone https://github.com/ELBATTAHAHMED/LLM-Judge-Lab.git
-cd LLM-Judge-Lab
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-cd frontend
-npm install
-cd ..
-Copy-Item .env.example .env
-```
+## Reproduce and verify
 
-Set `DATABASE_URL` in `.env` for a local PostgreSQL database. Restore the
-canonical snapshot with your matching PostgreSQL client and database name:
+Use PostgreSQL and restore the current additive `research_release_v4` snapshot.
+The normal dashboard path does not make provider calls.
 
 ```powershell
-& 'C:\Program Files\PostgreSQL\17\bin\pg_restore.exe' --clean --if-exists --no-owner --dbname judgelab evidence/final/research_release_v3/database/judgelab-research-release-v3.dump
+.\.venv\Scripts\python.exe evidence/final/phase11/VERIFY_PACKAGE.py
+.\.venv\Scripts\python.exe evidence/final/research_release_v2/VERIFY_RELEASE.py
+.\.venv\Scripts\python.exe evidence/final/multijudge_consensus_v1/VERIFY_PACKAGE.py
+.\.venv\Scripts\python.exe evidence/final/research_release_v3/VERIFY_RELEASE.py
+.\.venv\Scripts\python.exe evidence/final/controlled_source_text_corrected_v1/VERIFY_PACKAGE.py
+.\.venv\Scripts\python.exe evidence/final/research_release_v4/VERIFY_RELEASE.py
 ```
 
-Then use two terminals:
-
-```powershell
-uvicorn backend.main:app --reload --port 8000
-```
-
-```powershell
-cd frontend
-npm run dev
-```
-
-Open `http://localhost:5173/` (Leaderboard is the default; Controlled Experiments
-is the primary navigation tab). The final scientific pages
-(`/controlled-results` and `/synthesis`) use only `/api/controlled/results`,
-which fail-closes to the pinned canonical AnalysisRuns rather than falling back
-to legacy data. Verify the offline evidence package independently:
-
-```powershell
-python evidence/final/phase11/VERIFY_PACKAGE.py
-```
-
-```powershell
-python evidence/final/research_release_v2/VERIFY_RELEASE.py
-```
-
-```powershell
-python evidence/final/multijudge_consensus_v1/VERIFY_PACKAGE.py
-python evidence/final/research_release_v3/VERIFY_RELEASE.py
-```
-
-Expected Phase 11 root digest:
+The immutable Phase 11 root digest remains:
 
 ```text
 f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13
 ```
 
-Multi-Judge package root digest:
-
-```text
-126470152305268908e5685df9ff52ad5a2b6f9266e828201a1c69faac710da1
-```
-
-## Dataset provenance
-
-The frozen final dataset identity is recorded in
-`evidence/final/phase11/dataset/`:
-
-- DatasetVersion: `2f8c7bba-08b1-4d8b-8b0e-b564e8a61886`
-- Version/name: `controlled-final-plan-v1`
-- Source name: `judgelab-canonical-human-reference`
-- SHA-256: `b2fff1524b199fb2d302b7c4ebd752a9a47d32bab68a232ab06b7b1e07fa1510`
-- Human preference reference-label policy: `unordered-pair-consensus-v1`
-- Legacy whole-database import metadata: 1,615 human-reference pairs, 107
-  prompts, and 2,139 answers.
-
-Those legacy metadata counts are **not** the final controlled source subset.
-All canonical controlled units use exactly the 80 raw prompts with IDs 81–160;
-their raw-file hashes and reconciliation are recorded in
-`evidence/final/research_release_v2/dataset/canonical_controlled_source_manifest.json`.
-The checked-in source metadata does not verify an upstream license or
-attribution, so no license claim is made here.
-
-The checked-in raw/source files are `data/question.jsonl`,
-`data/human_judgment.jsonl`, and model-answer JSONL files for Alpaca, Claude,
-GPT-3.5, GPT-4, Llama, and Vicuna. The frozen lineage canonicalizes human
-judgments as unordered consensus pairs, records the import filters and identity
-in the DatasetVersion evidence, then materializes checksum-linked controlled
-variants for RQ4 and RQ5. Final inclusion/exclusion, unit, pass, attempt, and
-analysis lineage are preserved in the Phase 11 package rather than recreated at
-runtime. License/attribution metadata requires external verification.
-
-## Evidence boundaries
-
-- `evidence/final/phase11/` is immutable and includes the offline verifier,
-  manifests, database snapshot, provenance, analysis tables, and checksums.
-- `evidence/final/rq6_counterbalanced/` is a separate, post-Phase-11 RQ6
-  provenance addendum. It contains the deterministic selection manifest and
-  references to the executed manifest, run ledger, and canonical AnalysisRun;
-  it does not amend or reseal Phase 11.
-- `evidence/final/multijudge_consensus_v1/` is an immutable additive package
-  for the official secondary RQ7 Multi-Judge Consensus analysis
-  (`multi-judge-consensus-v1`; AnalysisRun
-  `fc40faf1-b886-42f8-8faf-a616f61f3107`). It records the frozen protocol,
-  deterministic AB/BA manifest, durable execution ledger, provider-free
-  analysis, and package verifier.
-- `evidence/final/research_release_v3/` is the current additive PostgreSQL
-  custom-format snapshot (14 AnalysisRuns), validated through a disposable
-  restore and API reconciliation. Its release root digest is
-  `8d24123e28e5df2ca0401fd4f57944c7d0dd8844e798f2f0ed8b6b2280bae710`.
-  It preserves immutable
-  `research_release_v2` and Phase 11 rather than modifying either package.
-- Live Evaluation remains visible as a manual demo workflow. Backend
-  live-provider endpoints are disabled by default and are not part of the
-  controlled study.
-- The leaderboard and diagnostics are retained only as labeled historical,
-  exploratory views. The retired macro benchmark and leaderboard-recalculation
-  routes are not exposed by the final application.
-
-For a concise technical and scientific record, see
+For the technical/scientific record, see
 [`PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md).

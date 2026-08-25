@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import main
 import pytest
 from fastapi import HTTPException
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, canonical_final_analysis_runs
+from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256, canonical_final_analysis_runs
 
 
 def _run(rq_code: str):
@@ -17,7 +17,15 @@ def _run(rq_code: str):
         rq_code=rq_code,
         manifest_id=CANONICAL_FINAL_MANIFESTS[rq_code],
         status="COMPLETED",
-        result_json={"evidence_class": "CONTROLLED"},
+        analysis_version=CORRECTED_ANALYSIS_VERSION,
+        result_json={
+            "evidence_class": "CONTROLLED",
+            "analysis_scope": "FULL_POPULATION_SOURCE_PRECEDENCE",
+            "analysis_artifact_identity": CORRECTED_ANALYSIS_VERSION,
+            "artifact_sha256": CORRECTED_ARTIFACT_SHA256,
+            "rq_key": "RQ7_PRIMARY" if rq_code == "RQ7" else rq_code,
+            "metrics": {},
+        },
     )
 
 
@@ -54,7 +62,9 @@ def test_public_leaderboard_is_read_only_when_artifacts_are_absent(monkeypatch, 
     calls: list[str] = []
     monkeypatch.setattr(main, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(main, "compute_and_save_leaderboard", lambda *_: calls.append("write") or [])
-    assert main.get_leaderboard("gpt-4o-mini") == []
+    monkeypatch.setattr(main, "compute_leaderboard_read_only", lambda *_: [{"model": "historical-model"}])
+
+    assert main.get_leaderboard("gpt-4o-mini") == [{"model": "historical-model"}]
     assert calls == []
 
 

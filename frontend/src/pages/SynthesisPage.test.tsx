@@ -17,9 +17,9 @@ const metric = (rq: string, metric_key: string, value: number): ControlledMetric
 
 const multiJudge: MultiJudgeConsensusSecondary = {
   analysis_run_id: 'fc40faf1-b886-42f8-8faf-a616f61f3107', role: 'SECONDARY', method_family: 'cross_judge_aggregation',
-  planned_n: 1611, retained_n: 1125, agreement: 0.7067, coverage: 0.6983,
-  comparator: 'equal_weight_individual_judge_baseline_same_retained_pairs', comparator_agreement: 0.658,
-  matched_delta: 0.0487, ci_95: { low: 0.0402, high: 0.0573 }, protocol_id: 'protocol', package_id: 'package',
+  planned_n: 1611, retained_n: 1125, agreement: 0.7182222222, coverage: 0.6983240223,
+  comparator: 'equal_weight_individual_judge_baseline_same_retained_pairs', comparator_agreement: 0.668,
+  matched_delta: 0.0502222222, ci_95: { low: 0.0415555556, high: 0.0588888889 }, protocol_id: 'protocol', package_id: 'package',
   direct_dualswap_comparison: 'NOT_DEFENSIBLE', comparison_reason: 'different frozen units and estimands', coverage_unit: 'canonical_answer_pairs',
 };
 
@@ -50,7 +50,7 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     expect([...screen.getByTestId('dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
     expect([...screen.getByTestId('multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
     expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('70.00%');
-    expect(screen.getByTestId('multi-judge-matrix')).toHaveTextContent('70.67%');
+    expect(screen.getByTestId('multi-judge-matrix')).toHaveTextContent('71.82%');
     expect(screen.queryByText('Comparator')).not.toBeInTheDocument();
     expect(screen.queryByText('95% CI')).not.toBeInTheDocument();
     expect(screen.queryByText('Matched N')).not.toBeInTheDocument();

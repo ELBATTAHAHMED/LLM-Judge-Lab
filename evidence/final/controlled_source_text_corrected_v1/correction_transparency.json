@@ -1,0 +1,8 @@
+{
+  "analysis_policy": "Full-population source precedence with explicit complete-case populations; no imputation, model substitution, or parser relaxation.",
+  "historical_issue": "Historical DB ingestion selected answers by insertion order, causing source-text mismatch for 498 controlled reference records.",
+  "provider_calls_for_freeze": 0,
+  "remediation": "Deterministic source reconciliation identified exact source responses; affected evaluations were rerun additively; historical evidence remained immutable.",
+  "terminal_missingness": "Fourteen terminal Claude observations remained unavailable after bounded recovery. Provider response identifiers were retained, but raw rejected response bodies were not persisted, preventing scientifically defensible offline re-parsing. The missing observations are judge-specific and concentrated in a small subset of questions, turns, and categories. Analyses therefore use explicitly reported complete-case populations, without claiming MCAR or MAR.",
+  "upstream_human_judgment_dataset_corrupted": false
+}
