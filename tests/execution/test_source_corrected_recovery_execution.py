@@ -24,12 +24,12 @@ from source_corrected_recovery_execution import (AMENDMENT_SHA, CONFIRMATION, RE
                                                  recovery_retry_rule, render_recovery_dashboard)
 
 
-def _isolated_recovery_runner():
+def _isolated_recovery_runner(*, expire_on_commit: bool = False):
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     for table in (DatasetVersion.__table__, Prompt.__table__, SourceCorrectedExecutionBatch.__table__,
                   SourceCorrectedExecutionSlot.__table__, SourceCorrectedExecutionAttempt.__table__):
         table.create(engine)
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    factory = sessionmaker(bind=engine, expire_on_commit=expire_on_commit)
     manifest, _ = _read_verified_artifacts()
     manifest = deepcopy(manifest)
     sleeps: list[float] = []
@@ -105,6 +105,16 @@ def test_full_mock_recovery_uses_same_execution_path_and_resumes_without_duplica
     engine.dispose()
 
 
+def test_production_session_expiry_keeps_durable_ids_across_the_sent_boundary():
+    # SessionLocal uses SQLAlchemy's default expire_on_commit=True.  This
+    # regression test proves the runner captures IDs before session close.
+    engine, _factory, runner, _sleeps = _isolated_recovery_runner(expire_on_commit=True)
+    runner.preflight()
+    report = runner.execute(confirmation=CONFIRMATION, max_slots=1)
+    assert report["completed"] == 1 and report["in_progress"] == 0 and not report.get("stop_reason")
+    engine.dispose()
+
+
 def test_crash_after_send_is_ambiguous_and_never_auto_replayed():
     engine, factory, runner, _sleeps = _isolated_recovery_runner()
     runner.preflight()
@@ -122,6 +132,24 @@ def test_crash_after_send_is_ambiguous_and_never_auto_replayed():
             SourceCorrectedExecutionSlot.state == "AMBIGUOUS"))
         attempts = list(session.scalars(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.slot_id == slot.id)))
     assert report["ambiguous"] == 1 and len(attempts) == 1 and attempts[0].retry_decision == "TERMINAL"
+    engine.dispose()
+
+
+def test_proven_reserved_abort_releases_only_a_never_sent_reservation():
+    engine, factory, runner, _sleeps = _isolated_recovery_runner()
+    runner.preflight()
+    with factory() as session:
+        batch = runner.batch(session)
+        slot, attempt = SourceCorrectedStore().claim(session, batch, owner="diagnostic")
+        slot_id = slot.id
+        session.commit()
+    report = runner.abort_proven_pretransport_reservation(slot_id)
+    with factory() as session:
+        slot = session.get(SourceCorrectedExecutionSlot, slot_id)
+        attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(SourceCorrectedExecutionAttempt.slot_id == slot_id))
+    assert report["pending"] == 119 and report["in_progress"] == 0
+    assert slot.state == "PENDING" and slot.execution_owner is None and slot.reserved_usd == 0
+    assert attempt.state == "ABORTED_BEFORE_TRANSPORT" and attempt.reserved_usd == 0
     engine.dispose()
 
 

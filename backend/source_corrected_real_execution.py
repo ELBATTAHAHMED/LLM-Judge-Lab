@@ -141,6 +141,30 @@ class SourceCorrectedStore:
                 slot.state, slot.final_outcome, slot.error_category, slot.execution_owner, slot.lease_expires_at, slot.completed_at = "AMBIGUOUS", "AMBIGUOUS", "CRASH_AFTER_SEND", None, None, now
                 if attempt: attempt.state, attempt.failure_category, attempt.retry_decision, attempt.completed_at = "AMBIGUOUS", "CRASH_AFTER_SEND", "TERMINAL", now
 
+    def abort_reserved_before_transport(self, session: Session, batch: SourceCorrectedExecutionBatch, slot_id: Any, *, reason: str) -> None:
+        """Release one positively proven pre-transport reservation.
+
+        This deliberately refuses a SENT state or any provider-response/cost
+        evidence.  The aborted attempt remains a durable diagnostic record;
+        only an unused reservation is released.
+        """
+        slot = session.scalar(select(SourceCorrectedExecutionSlot).where(
+            SourceCorrectedExecutionSlot.id == slot_id,
+            SourceCorrectedExecutionSlot.batch_id == batch.id,
+        ).with_for_update())
+        if slot is None or slot.state != "RESERVED":
+            raise SourceCorrectedPreflightError("only a reserved source-corrected slot can be aborted before transport")
+        attempt = session.scalar(select(SourceCorrectedExecutionAttempt).where(
+            SourceCorrectedExecutionAttempt.slot_id == slot.id,
+        ).order_by(SourceCorrectedExecutionAttempt.attempt_index.desc()).with_for_update())
+        if attempt is None or attempt.state != "RESERVED" or attempt.provider_response_id is not None or attempt.actual_usd is not None:
+            raise SourceCorrectedPreflightError("pre-transport abort cannot prove absence of provider transport")
+        now = utc_now()
+        slot.state, slot.execution_owner, slot.lease_expires_at, slot.reserved_usd = "PENDING", None, None, Decimal("0")
+        attempt.state, attempt.retry_decision, attempt.reserved_usd, attempt.completed_at = "ABORTED_BEFORE_TRANSPORT", "RETRY", Decimal("0"), now
+        attempt.details_json = {**(attempt.details_json or {}), "safe_abort_reason": reason[:160]}
+        session.flush()
+
     def claim(self, session: Session, batch: SourceCorrectedExecutionBatch, *, owner: str) -> tuple[SourceCorrectedExecutionSlot, SourceCorrectedExecutionAttempt] | None:
         now = utc_now()
         slot = session.scalar(select(SourceCorrectedExecutionSlot).where(

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from collections import Counter
 from datetime import timedelta
 from decimal import Decimal
-from pathlib import Path
 from time import monotonic, sleep
 from types import SimpleNamespace
 from typing import Any, Callable
@@ -34,7 +34,7 @@ from source_corrected_execution import SourceCorrectedPreflightError, stable_sha
 from source_corrected_execution_models import (SourceCorrectedExecutionAttempt,
                                                SourceCorrectedExecutionBatch,
                                                SourceCorrectedExecutionSlot)
-from source_corrected_real_execution import (LEASE_SECONDS, MockTransport, SourceCorrectedStore,
+from source_corrected_real_execution import (MockTransport, SourceCorrectedStore,
                                              FrozenPayloadResolver, _actual_cost, as_utc,
                                              credentials_present, render_dashboard, utc_now)
 
@@ -44,7 +44,7 @@ CONFIRMATION = "I_CONFIRM_SOURCE_CORRECTED_RECOVERY_PAID_EXECUTION"
 AMENDMENT_SHA = "22a60b7ca5075eb5d53864274205756ba3bdd31d9b3887ae79a17fba690683eb"
 RECOVERY_MANIFEST_SHA = "2fd7b64246cfba8421dc3d714fc272cef65214ecef1286c96318d0e65adc663d"
 RECOVERY_POLICY_IDENTITY = "source-corrected-recovery-retry-v1"
-TERMINAL = {"COMPLETED", "FAILED", "AMBIGUOUS"}
+logger = logging.getLogger(__name__)
 
 
 def _read_verified_artifacts() -> tuple[dict[str, Any], dict[str, Any]]:
@@ -297,6 +297,13 @@ class SourceCorrectedRecoveryRunner:
             if len(slots) != TOTAL or any(slot.recovery_manifest_sha256 != RECOVERY_MANIFEST_SHA for slot in slots):
                 raise SourceCorrectedPreflightError("recovery materialization/integrity check failed")
             report = self.store.status(session, batch)
+            # A provider-free abort before any SENT transition restores the
+            # batch to its explicit pre-execution state, rather than leaving a
+            # misleading RUNNING label with no in-flight work.
+            if report["pending"] == TOTAL and report["in_progress"] == report["completed"] == report["failed"] == report["ambiguous"] == 0:
+                batch.status = "MATERIALIZED"
+                session.flush()
+                report = self.store.status(session, batch)
             batch_id = str(batch.id)
             session.commit()
         return {"status": "READY", "batch_id": batch_id, "slots": TOTAL, "overlap": 0,
@@ -312,6 +319,18 @@ class SourceCorrectedRecoveryRunner:
         with self.session_factory() as session:
             batch = self.batch(session)
             self.store.recover(session, batch)
+            self.store.finalize_if_exhausted(session, batch)
+            report = self.store.status(session, batch)
+            session.commit()
+            return report
+
+    def abort_proven_pretransport_reservation(self, slot_id: Any) -> dict[str, Any]:
+        """Operator-safe diagnostic recovery; never crosses a provider boundary."""
+        with self.session_factory() as session:
+            batch = self.batch(session)
+            self.store.abort_reserved_before_transport(
+                session, batch, slot_id, reason="DATABASE_PERSISTENCE_FAILURE_BEFORE_SENT",
+            )
             self.store.finalize_if_exhausted(session, batch)
             report = self.store.status(session, batch)
             session.commit()
@@ -337,6 +356,7 @@ class SourceCorrectedRecoveryRunner:
         if self.transport is None and not all(credentials_present().values()):
             raise SourceCorrectedPreflightError("provider credentials are missing")
         owner, started, processed = uuid4().hex, monotonic(), 0
+        stage = "startup_reconciliation"
         with self.session_factory() as session:
             batch = self.batch(session)
             self.store.recover(session, batch)
@@ -344,6 +364,7 @@ class SourceCorrectedRecoveryRunner:
         try:
             while max_slots is None or processed < max_slots:
                 with self.session_factory() as session:
+                    stage = "reserve_slot"
                     batch = self.batch(session)
                     claimed = self.store.claim(session, batch, owner=owner)
                     if claimed is None:
@@ -358,24 +379,34 @@ class SourceCorrectedRecoveryRunner:
                         if wait:
                             self.sleep_fn(wait)
                         continue
+                    # SessionLocal expires objects on commit.  Preserve the
+                    # durable identifiers while this transaction is live; the
+                    # next transaction must never dereference detached ORM
+                    # instances before it reaches the SENT boundary.
                     slot, attempt = claimed
+                    slot_id, attempt_id, attempt_index = slot.id, attempt.attempt_id, attempt.attempt_index
                     session.commit()
                 with self.session_factory() as session:
+                    stage = "frozen_payload_resolution"
                     batch = self.batch(session)
-                    slot = session.get(SourceCorrectedExecutionSlot, slot.id)
+                    slot = session.get(SourceCorrectedExecutionSlot, slot_id)
                     try:
                         row, request = self.resolver.payload(session, slot)
                     except SourceCorrectedPreflightError as exc:
-                        self.store.fail_before_send(session, slot.id, attempt.attempt_id, owner=owner, reason=str(exc))
+                        self.store.fail_before_send(session, slot_id, attempt_id, owner=owner, reason=str(exc))
                         session.commit()
                         raise
+                    stage = "deepseek_pacing"
                     self._pace_deepseek(session, batch, slot)
-                    self.store.mark_sent(session, slot.id, attempt.attempt_id, owner=owner)
+                    stage = "sent_transition"
+                    self.store.mark_sent(session, slot_id, attempt_id, owner=owner)
                     session.commit()
+                stage = "provider_transport"
                 result = self._evaluate(row, request)
                 with self.session_factory() as session:
-                    delay = recovery_backoff_seconds(result.error_code or "PROVIDER_ERROR", attempt.attempt_index)
-                    self.store.persist(session, slot.id, attempt.attempt_id, result, owner=owner,
+                    stage = "response_persistence"
+                    delay = recovery_backoff_seconds(result.error_code or "PROVIDER_ERROR", attempt_index)
+                    self.store.persist(session, slot_id, attempt_id, result, owner=owner,
                                        retry_policy=recovery_retry_rule, retry_delay_seconds=delay)
                     session.commit()
                 processed += 1
@@ -392,6 +423,8 @@ class SourceCorrectedRecoveryRunner:
             return report
         except Exception as exc:
             report, caps = self.status()
+            if isinstance(exc, SQLAlchemyError):
+                logger.exception("RECOVERY_DATABASE_PERSISTENCE_ERROR stage=%s", stage)
             report["stop_reason"] = (f"SOURCE_INVARIANT: {str(exc)[:160]}" if isinstance(exc, SourceCorrectedPreflightError)
                                      else "DATABASE_PERSISTENCE_ERROR" if isinstance(exc, SQLAlchemyError)
                                      else f"UNEXPECTED_EXECUTOR_ERROR: {type(exc).__name__}")
