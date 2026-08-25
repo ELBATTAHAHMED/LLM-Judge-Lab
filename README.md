@@ -57,8 +57,52 @@ MCAR or MAR.
 
 ## Reproduce and verify
 
-Use PostgreSQL and restore the current additive `research_release_v4` snapshot.
-The normal dashboard path does not make provider calls.
+### Normal reproducibility workflow
+
+This workflow starts from an empty PostgreSQL database and never relies on the
+historical working database or answer insertion order.
+
+1. Create a virtual environment and install `requirements.txt`.
+2. Set a local PostgreSQL `DATABASE_URL` in an ignored `.env` file.
+3. Apply the checked-in schema migrations.
+4. Build the canonical source-correct dataset from committed raw and canonical
+   data.
+5. Create a provider-free controlled evaluation plan, or use the separately
+   authorized execution workflow when collecting new evidence.
+6. Verify frozen corrected analysis outputs.
+7. Run the complete reproducibility verifier, including a disposable empty-DB
+   reconstruction when PostgreSQL is available.
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe scripts\build_dataset.py
+.\.venv\Scripts\python.exe scripts\run_evaluation.py --limit 80
+.\.venv\Scripts\python.exe scripts\run_analysis.py
+.\.venv\Scripts\python.exe scripts\verify_reproducibility.py --fresh-empty-db
+```
+
+`scripts/run_evaluation.py` is deliberately planning-only and makes zero
+provider calls. Real evaluation remains separately authorized and guarded; it
+is not required to verify the frozen final science.
+
+Canonical inputs are:
+
+- raw snapshot: `data/human_judgment.jsonl` (3,355 verified rows);
+- canonical study manifest:
+  `data/canonical/source_corrected_study_v1.json`;
+- data-layout/provenance note: `data/metadata/CANONICAL_SOURCE_DATA.md`.
+
+### Historical correction and audit material
+
+Historical databases, remediation/recovery ledgers, Phase 11, releases v2/v3,
+and pre-correction analyses remain preserved for audit. They are not inputs to
+the normal workflow above. Historical-only reconstruction helpers live under
+`tools/historical/`; package verifiers remain alongside their frozen packages.
+
+### Frozen-release verification
+
+Restore the additive `research_release_v4` snapshot when verifying the full
+frozen database release. The normal dashboard path does not make provider calls.
 
 ```powershell
 .\.venv\Scripts\python.exe evidence/final/phase11/VERIFY_PACKAGE.py

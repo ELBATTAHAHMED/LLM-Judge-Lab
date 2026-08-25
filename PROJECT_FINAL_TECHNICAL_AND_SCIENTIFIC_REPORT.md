@@ -86,3 +86,16 @@ AnalysisRun-backed, accepts controlled evidence only, and does not substitute
 historical, exploratory, or live-sandbox metrics. The Leaderboard, Diagnostics,
 and Qualitative Explorer remain historical/exploratory views, while Live
 Evaluation is a manual sandbox guarded by the server-side provider gate.
+
+## Clean fresh-start reproducibility boundary
+
+The normal fresh-start workflow uses the committed raw LMSYS snapshot
+`data/human_judgment.jsonl` and the source-text-keyed canonical manifest
+`data/canonical/source_corrected_study_v1.json`. It applies migrations to an
+empty PostgreSQL database, then runs `scripts/build_dataset.py`. That builder
+validates question/turn/model/text hashes before inserting data and fails closed
+on a missing record, ambiguous identity, or hash mismatch. It never consults a
+historical working database, legacy answer IDs, or insertion order.
+
+The separately documented historical/remediation tools and all frozen packages
+remain available for audit, but are not prerequisites for this clean workflow.

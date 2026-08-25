@@ -1,0 +1,9 @@
+{
+  "dataset": "lmsys/mt_bench_human_judgments",
+  "immutable_raw_path": "data/human_judgment.jsonl",
+  "license": "CC BY 4.0",
+  "row_count": 3355,
+  "sha256": "48f627d9a5ebb529869d5d12953e4b309dd81f9bfab034a92a0ed902d84fa5a4",
+  "upstream_reference": "Zheng et al. (2023), Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena",
+  "note": "This raw snapshot is separate from derived canonical study inputs and must not be silently rewritten."
+}
