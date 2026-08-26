@@ -18,7 +18,7 @@ sys.path.insert(0, str(BACKEND))
 from backend.core.controlled_models import AnalysisRun, ControlledRun, CounterfactualVariant, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, RunPass
 from backend.evaluation.persistence import ControlledPersistence, Outcome, PassObservation
 from backend.core.models import Answer, Prompt
-from backend.core.schema_fingerprint import fingerprint
+from backend.core.database import fingerprint
 
 
 @pytest.fixture()
