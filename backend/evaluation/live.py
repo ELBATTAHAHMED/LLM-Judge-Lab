@@ -1,0 +1,869 @@
+"""
+judge_engine.py
+===============
+Pure-function evaluation engine for the LLM-as-a-Judge Reliability Lab.
+
+This module is intentionally decoupled from the database layer.  It only
+knows how to:
+  1. Build a G-EVAL style judge prompt (single-turn).
+  2. Build a context-aware multi-turn judge prompt (injecting prior turn context).
+  3. Call the OpenAI Chat Completions API.
+  4. Parse the structured verdict out of the response.
+
+Database persistence is handled by the application and controlled-execution layers.
+
+Methodology (G-EVAL — Single Turn)
+-----------------------------------
+The judge is instructed to:
+  a) Read the question and both candidate answers carefully.
+  b) Reason step-by-step about factual accuracy, coherence, helpfulness,
+     and conciseness.
+  c) Conclude with a single structured line: "WINNER: A", "WINNER: B",
+     or "WINNER: TIE".
+
+Methodology (Multi-Turn Consistency Extension)
+-----------------------------------------------
+For multi-turn evaluations, the judge receives:
+  a) Turn 1's original question, both answers, and the judge's own Turn 1 verdict.
+  b) Turn 2's follow-up question and both answers.
+This allows post-hoc computation of a Logical Consistency Score: measuring
+whether the judge preserves a coherent relative quality ordering across turns.
+
+The explicit reasoning is stored verbatim in JudgeDecision.reasoning so that
+every decision is fully auditable and reproducible for your thesis.
+"""
+
+import os
+import logging
+import re
+import time
+from dataclasses import dataclass
+from typing import Literal, Any
+
+log = logging.getLogger(__name__)
+
+# ── Types ─────────────────────────────────────────────────────────────────────
+
+Verdict = Literal["A", "B", "TIE", "UNKNOWN"]
+
+
+@dataclass(frozen=True)
+class JudgeResult:
+    """Structured output from one judge call."""
+    verdict: Verdict          # "A", "B", "TIE", or "UNKNOWN" on parse failure
+    reasoning: str            # Full raw response text from the model
+    model_name: str           # Exact model identifier used (e.g. "gpt-4o")
+    input_tokens: int         # Prompt token usage
+    output_tokens: int        # Completion token usage
+
+
+@dataclass(frozen=True)
+class CalibratedJudgeResult:
+    """Structured output from a real-time Dual A/B Swap calibrated evaluation."""
+    original_order_winner: str     # Candidate winner from Pass 1 ("A", "B", "TIE", "UNKNOWN")
+    swapped_order_winner: str      # Candidate winner from Pass 2 mapped back to original IDs
+    final_calibrated_winner: str   # Final debiased consensus winner ("A", "B", "TIE", "UNKNOWN")
+    position_bias_detected: bool   # True if Pass 1 and Pass 2 verdicts diverged
+    reasoning_original: str        # Raw text from Pass 1
+    reasoning_swapped: str         # Raw text from Pass 2
+    detailed_reasoning: str        # Combined auditable reasoning narrative
+    model_name: str                # Evaluator model identifier
+    total_input_tokens: int        # Aggregate prompt tokens used
+    total_output_tokens: int       # Aggregate completion tokens used
+
+
+@dataclass(frozen=True)
+class MultiJudgeEnsembleResult:
+    """Structured output from a multi-judge ensemble voting evaluation."""
+    consensus_verdict: str                  # Final majority vote: "A", "B", "TIE", or "UNKNOWN"
+    vote_counts: dict[str, int]             # {"A": 2, "B": 1, "TIE": 0, "UNKNOWN": 0}
+    individual_results: list[dict[str, Any]]# Detailed list of individual model verdicts & reasoning
+    total_models: int                       # Total models requested
+    successful_models: int                  # Count of successful model evaluations
+    total_input_tokens: int                 # Combined prompt tokens across judges
+    total_output_tokens: int                # Combined completion tokens across judges
+
+
+# ── Prompt Template ───────────────────────────────────────────────────────────
+
+_SYSTEM_PROMPT = """\
+You are an expert, impartial AI evaluator participating in a rigorous academic \
+research study on the reliability of LLM-as-a-Judge systems.
+
+Your task is to evaluate two candidate answers to a given question. You must:
+1. Carefully read the question and both answers.
+2. Reason step-by-step about the following four criteria:
+   - **Factual Accuracy**: Is the information correct and well-grounded?
+   - **Coherence**: Is the answer logically structured and easy to follow?
+   - **Helpfulness**: Does the answer fully address what was asked?
+   - **Conciseness**: Is the answer appropriately brief without omitting key details?
+3. After your analysis, conclude your response with EXACTLY one of these three \
+verdict lines on its own line:
+   WINNER: A
+   WINNER: B
+   WINNER: TIE
+
+The verdict line MUST appear at the very end of your response. Do not add any \
+text after it. Do not use markdown formatting for the verdict line itself.
+"""
+
+_LENGTH_CALIBRATED_SYSTEM_PROMPT = """You are an expert, impartial evaluation judge. Your task is to compare two candidate answers (Answer A and Answer B) to a user question and determine which response is strictly superior.
+
+CRITICAL CALIBRATION MANDATE ON VERBOSITY:
+Evaluate responses based strictly on Information Density (Substantive Content per Word). Strictly penalize artificially padded, repetitive, fluff-filled, or excessively verbose answers that add no substantive value over concise, accurate alternatives. Do NOT reward word count.
+
+Evaluation Rubric:
+1. **Factual Accuracy**: Is the information correct and well-grounded?
+2. **Information Density & Conciseness**: Does the response deliver maximum factual substance per word, avoiding fluff, repetition, or unhelpful preamble?
+3. **Coherence & Structure**: Is the answer logically structured and clear?
+
+After your step-by-step analysis, conclude your response with EXACTLY one of these three verdict lines on its own line:
+   WINNER: A
+   WINNER: B
+   WINNER: TIE
+
+The verdict line MUST appear at the very end of your response. Do not add any text after it."""
+
+
+def build_judge_prompt(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+) -> list[dict[str, str]]:
+    """
+    Build the OpenAI messages list for a single judge evaluation.
+    """
+    user_content = (
+        f"## Question\n{question}\n\n"
+        f"## Answer A\n{answer_a}\n\n"
+        f"## Answer B\n{answer_b}\n\n"
+        "Please evaluate both answers according to the four criteria and provide "
+        "your step-by-step reasoning, then state your verdict."
+    )
+    return [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {"role": "user",   "content": user_content},
+    ]
+
+
+def build_length_calibrated_prompt(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+) -> list[dict[str, str]]:
+    """
+    Build the OpenAI messages list for verbosity-penalized evaluation.
+    """
+    user_content = (
+        f"## Question\n{question}\n\n"
+        f"## Answer A\n{answer_a}\n\n"
+        f"## Answer B\n{answer_b}\n\n"
+        "Evaluate both answers according to Information Density and Factual Accuracy. "
+        "Strictly penalize verbosity padding. Provide step-by-step reasoning and conclude with your verdict."
+    )
+    return [
+        {"role": "system", "content": _LENGTH_CALIBRATED_SYSTEM_PROMPT},
+        {"role": "user",   "content": user_content},
+    ]
+
+
+# ── Response Parser ───────────────────────────────────────────────────────────
+
+# Matches "WINNER: A", "WINNER: B", "WINNER: TIE", "WINNER: Candidate A", "WINNER: Answer A",
+# "VERDICT: A", etc. (case-insensitive, optional surrounding whitespace & markdown formatting).
+_VERDICT_PATTERN = re.compile(
+    r"(?:WINNER|VERDICT)\s*:\s*(?:\*\*)?\s*(?:CANDIDATE|ANSWER)?\s*(A|B|TIE)\b",
+    re.IGNORECASE,
+)
+
+
+def parse_winner(response_text: str) -> Verdict:
+    """
+    Extract the structured verdict from the model's raw response text.
+
+    Searches for the LAST occurrence of the verdict pattern so that if the
+    model mentions "WINNER: A" in its reasoning body, only the final
+    conclusion line is used. Supports markdown formatting and Candidate A/B text.
+
+    Returns "UNKNOWN" if no parseable verdict is found.
+    """
+    if not response_text:
+        return "UNKNOWN"
+
+    matches = _VERDICT_PATTERN.findall(response_text)
+    if matches:
+        return matches[-1].upper()  # last match, normalised to uppercase
+
+    # Secondary regex fallbacks for common local model output variations
+    fallback = re.search(r"\bWINNER\s*:\s*\**\s*(A|B|TIE)\b", response_text, re.IGNORECASE)
+    if fallback:
+        return fallback.group(1).upper()
+
+    fallback_choice = re.search(
+        r"(?:prefer|choose|select|winner is)\s+(?:candidate|answer)?\s*\**\s*(A|B|TIE)\b",
+        response_text,
+        re.IGNORECASE,
+    )
+    if fallback_choice:
+        return fallback_choice.group(1).upper()
+
+    log.warning("No WINNER verdict found in response. Marking as UNKNOWN.")
+    return "UNKNOWN"
+
+
+# ── Multi-Turn Context-Aware Prompt ──────────────────────────────────────────
+
+_MULTITURN_SYSTEM_PROMPT = """\
+You are an expert, impartial AI evaluator participating in a rigorous academic \
+research study on the reliability of LLM-as-a-Judge systems.
+
+You are evaluating a TWO-TURN conversation. You have already evaluated Turn 1 \
+and reached a verdict. Now you must evaluate Turn 2 while staying LOGICALLY \
+CONSISTENT with your Turn 1 judgment.
+
+Your task:
+1. Review the Turn 1 context and your prior verdict shown to you.
+2. Carefully read the Turn 2 follow-up question and both candidate answers.
+3. Reason step-by-step about:
+   - **Factual Accuracy**: Is the Turn 2 answer correct and grounded?
+   - **Coherence**: Does Turn 2 logically build on Turn 1?
+   - **Helpfulness**: Does Turn 2 fully address the follow-up question?
+   - **Conciseness**: Is the answer appropriately concise?
+   - **Consistency**: Does your verdict align with the relative quality \
+difference you observed in Turn 1?
+4. After your analysis, conclude with EXACTLY one verdict line:
+   WINNER: A
+   WINNER: B
+   WINNER: TIE
+
+The verdict line MUST appear at the very end of your response.
+"""
+
+
+def build_multiturn_judge_prompt(
+    turn1_question: str,
+    turn1_verdict: str,
+    turn2_question: str,
+    answer_a: str,
+    answer_b: str,
+) -> list[dict[str, str]]:
+    """
+    Build a context-aware multi-turn judge prompt.
+
+    Injects the Turn 1 question and the judge's own prior Turn 1 verdict into
+    the Turn 2 evaluation, enabling measurement of logical consistency.
+    """
+    user_content = (
+        f"## TURN 1 CONTEXT (Prior Evaluation)\n"
+        f"**Turn 1 Question:** {turn1_question}\n"
+        f"**Your Turn 1 Verdict:** WINNER: {turn1_verdict}\n\n"
+        f"---\n"
+        f"## TURN 2 EVALUATION (Current Task)\n"
+        f"**Turn 2 Follow-up Question:** {turn2_question}\n\n"
+        f"## Answer A\n{answer_a}\n\n"
+        f"## Answer B\n{answer_b}\n\n"
+        "Please evaluate Turn 2 using step-by-step reasoning across all criteria, "
+        "then state your final verdict."
+    )
+    return [
+        {"role": "system", "content": _MULTITURN_SYSTEM_PROMPT},
+        {"role": "user",   "content": user_content},
+    ]
+
+
+def call_judge_multiturn(
+    client,
+    turn1_question: str,
+    turn1_verdict: str,
+    turn2_question: str,
+    answer_a: str,
+    answer_b: str,
+    model_name: str = "gpt-4o",
+    temperature: float = 0.0,
+    max_retries: int = 5,
+    initial_backoff: float = 2.0,
+) -> "JudgeResult":
+    """
+    Call the OpenAI API for a context-aware multi-turn evaluation.
+    """
+    messages = build_multiturn_judge_prompt(
+        turn1_question, turn1_verdict, turn2_question, answer_a, answer_b
+    )
+    backoff = initial_backoff
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+            )
+            raw_text: str = response.choices[0].message.content or ""
+            verdict = parse_winner(raw_text)
+
+            return JudgeResult(
+                verdict=verdict,
+                reasoning=raw_text,
+                model_name=model_name,
+                input_tokens=response.usage.prompt_tokens if response.usage else 0,
+                output_tokens=response.usage.completion_tokens if response.usage else 0,
+            )
+
+        except Exception as exc:
+            exc_str = str(exc)
+            is_rate_limit   = "429" in exc_str or "rate_limit" in exc_str.lower()
+            is_server_error = any(
+                code in exc_str for code in ("500", "502", "503", "504")
+            )
+            if (is_rate_limit or is_server_error) and attempt < max_retries:
+                wait = backoff * (2 ** (attempt - 1))
+                log.warning(
+                    "Retriable API error (attempt %d/%d): %s. Retrying in %.1fs ...",
+                    attempt, max_retries, exc_str[:120], wait,
+                )
+                time.sleep(wait)
+                continue
+            raise
+
+
+# ── Client & Local Model Resolver ──────────────────────────────────────────────
+
+def is_openrouter_model(model_name: str) -> bool:
+    """
+    Detect whether model_name refers to an OpenRouter model tag (e.g. 'deepseek/deepseek-chat').
+    Local models labeled with '(Local / Ollama)' are excluded.
+    """
+    if not model_name:
+        return False
+    m = model_name.lower().strip()
+    return ("/" in m) and not any(k in m for k in ("ollama", "local"))
+
+
+def is_local_model(model_name: str) -> bool:
+    """
+    Detect whether model_name indicates a local Ollama model instance.
+    """
+    if not model_name:
+        return False
+    m = model_name.lower().strip()
+    if any(k in m for k in ("ollama", "local")):
+        return True
+    if "/" in m:
+        return False
+    return any(k in m for k in ("llama", "vicuna", "mistral", "qwen", "gemma", "phi"))
+
+
+def get_evaluator_client(model_name: str, client=None) -> tuple[Any, str]:
+    """
+    Resolve and return an appropriate OpenAI-compatible client instance and target model name.
+
+    Routing branches:
+      1. Explicit client passed in parameter -> returned directly.
+      2. OpenRouter model -> OpenRouter API endpoint client.
+      3. Local model (Ollama) -> Local Ollama client.
+      4. Native OpenAI model -> Standard OpenAI API client.
+    """
+    import openai
+
+    # OpenRouter API Routing (Always takes precedence for OpenRouter models)
+    if is_openrouter_model(model_name):
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        if not openrouter_key or openrouter_key.startswith("your_"):
+            raise ValueError("OPENROUTER_API_KEY environment variable is not properly configured in .env.")
+        openrouter_client = openai.OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=openrouter_key,
+            timeout=120.0,
+            default_headers={
+                "HTTP-Referer": "https://judgelab.research",
+                "X-Title": "JudgeLab Research Bench",
+            },
+        )
+        return openrouter_client, model_name
+
+    if client is not None:
+        return client, model_name
+
+    # Local Ollama Routing
+    if is_local_model(model_name):
+        target_model = model_name.strip()
+        if not target_model or target_model.lower() in ("local", "ollama") or "local / ollama" in target_model.lower():
+            raise ValueError(
+                "An explicit Ollama model identifier is required; the evaluator will not "
+                "silently substitute the generic 'llama3' model."
+            )
+
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+        local_client = openai.OpenAI(
+            base_url=base_url,
+            api_key="ollama",
+            timeout=240.0,  # 4 minutes timeout for local Ollama model inference
+        )
+        return local_client, target_model
+
+    # Native OpenAI Routing
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or api_key.startswith("your_"):
+        raise ValueError("OPENAI_API_KEY environment variable is not properly configured in .env.")
+
+    return openai.OpenAI(api_key=api_key, timeout=120.0), model_name
+
+
+# ── API Caller ────────────────────────────────────────────────────────────────
+
+def call_judge(
+    client=None,       # openai.OpenAI instance or None (auto-resolved if None)
+    question: str = "",
+    answer_a: str = "",
+    answer_b: str = "",
+    model_name: str = "gpt-4o-mini",
+    temperature: float = 0.0,
+    max_retries: int = 5,
+    initial_backoff: float = 2.0,
+    prompt_messages: list[dict[str, str]] | None = None,
+) -> JudgeResult:
+    """
+    Call the OpenAI or local Ollama API and return a structured JudgeResult.
+    """
+    if is_local_model(model_name):
+        # Cap retries and backoff for local Ollama models to prevent hanging wait cascades
+        max_retries = min(max_retries, 2)
+        initial_backoff = min(initial_backoff, 0.5)
+
+    resolved_client, effective_model = get_evaluator_client(model_name, client)
+    messages = prompt_messages if prompt_messages is not None else build_judge_prompt(question, answer_a, answer_b)
+    backoff = initial_backoff
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            create_kwargs: dict[str, Any] = {
+                "model": effective_model,
+                "messages": messages,
+                "temperature": temperature,
+            }
+            if is_local_model(model_name):
+                create_kwargs["extra_body"] = {"options": {"num_ctx": 8192}}
+
+            response = resolved_client.chat.completions.create(**create_kwargs)
+            raw_text: str = response.choices[0].message.content or ""
+            verdict = parse_winner(raw_text)
+
+            input_toks = response.usage.prompt_tokens if response.usage else 0
+            output_toks = response.usage.completion_tokens if response.usage else 0
+
+            return JudgeResult(
+                verdict=verdict,
+                reasoning=raw_text,
+                model_name=model_name,
+                input_tokens=input_toks,
+                output_tokens=output_toks,
+            )
+
+        except Exception as exc:
+            exc_str = str(exc)
+            if is_local_model(model_name) and any(err in exc_str.lower() for err in ("connection", "connect", "11434", "refused", "unreachable")):
+                raise RuntimeError(
+                    "Local Ollama server is offline or unreachable at http://localhost:11434. "
+                    "Please run 'ollama serve' and ensure the model 'llama3' is pulled."
+                ) from exc
+
+            is_rate_limit   = "429" in exc_str or "rate_limit" in exc_str.lower()
+            is_server_error = any(
+                code in exc_str for code in ("500", "502", "503", "504")
+            )
+
+            if (is_rate_limit or is_server_error) and attempt < max_retries:
+                wait = backoff * (2 ** (attempt - 1))
+                log.warning(
+                    "Retriable API error (attempt %d/%d): %s. Retrying in %.1fs …",
+                    attempt, max_retries, exc_str[:120], wait,
+                )
+                time.sleep(wait)
+                continue
+
+            raise
+
+
+# ── Active Calibrated API Caller (Dual A/B Swap & Length Mitigation) ─────────
+
+def call_calibrated_judge(
+    client=None,
+    question: str = "",
+    answer_a: str = "",
+    answer_b: str = "",
+    model_name: str = "gpt-4o-mini",
+    temperature: float = 0.0,
+    mitigation_strategy: str = "dual_ab",
+    max_retries: int = 5,
+    initial_backoff: float = 2.0,
+) -> CalibratedJudgeResult:
+    """
+    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
+    Supports both OpenAI Cloud and Local Ollama models natively.
+    """
+    resolved_client, effective_model = get_evaluator_client(model_name, client)
+
+    # 1. Verbosity Penalized Strategy (Information Density Prompting)
+    if mitigation_strategy == "verbosity_penalized":
+        messages = build_length_calibrated_prompt(question, answer_a, answer_b)
+        res = call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_a,
+            answer_b=answer_b,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+            prompt_messages=messages,
+        )
+        detailed_reasoning = (
+            f"=== ACTIVE VERBOSITY PENALIZATION TRIAL ===\n"
+            f"Mitigation Strategy: Information Density Prompting (Length-Calibrated System Instructions)\n"
+            f"Raw Verdict: WINNER: {res.verdict}\n\n"
+            f"Step-by-Step Calibrated Reasoning:\n{res.reasoning}\n\n"
+            f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
+            f"Position Order Bias Detected: False (Single-pass Length Penalization)\n"
+            f"Final Calibrated Verdict: WINNER: {res.verdict}"
+        )
+        return CalibratedJudgeResult(
+            original_order_winner=res.verdict,
+            swapped_order_winner=res.verdict,
+            final_calibrated_winner=res.verdict,
+            position_bias_detected=False,
+            reasoning_original=res.reasoning,
+            reasoning_swapped=res.reasoning,
+            detailed_reasoning=detailed_reasoning,
+            model_name=model_name,
+            total_input_tokens=res.input_tokens,
+            total_output_tokens=res.output_tokens,
+        )
+
+    # 2. None / Baseline Strategy (Uncalibrated Single-Pass)
+    if mitigation_strategy == "none":
+        res = call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_a,
+            answer_b=answer_b,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+        )
+        detailed_reasoning = (
+            f"=== UNCALIBRATED BASELINE TRIAL (No Active Mitigation) ===\n"
+            f"Raw Verdict: WINNER: {res.verdict}\n\n"
+            f"Step-by-Step Reasoning:\n{res.reasoning}\n\n"
+            f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
+            f"Position Order Bias Detected: False (Uncalibrated Baseline)\n"
+            f"Final Calibrated Verdict: WINNER: {res.verdict}"
+        )
+        return CalibratedJudgeResult(
+            original_order_winner=res.verdict,
+            swapped_order_winner=res.verdict,
+            final_calibrated_winner=res.verdict,
+            position_bias_detected=False,
+            reasoning_original=res.reasoning,
+            reasoning_swapped=res.reasoning,
+            detailed_reasoning=detailed_reasoning,
+            model_name=model_name,
+            total_input_tokens=res.input_tokens,
+            total_output_tokens=res.output_tokens,
+        )
+
+    # 3. Dual A/B Swap Strategy (Position Bias Mitigation)
+    import concurrent.futures
+
+    def _eval_pass_1():
+        return call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_a,
+            answer_b=answer_b,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+        )
+
+    def _eval_pass_2():
+        return call_judge(
+            client=resolved_client,
+            question=question,
+            answer_a=answer_b,
+            answer_b=answer_a,
+            model_name=effective_model,
+            temperature=temperature,
+            max_retries=max_retries,
+            initial_backoff=initial_backoff,
+        )
+
+    # Dispatch Pass 1 and Pass 2 concurrently in parallel threads
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        f1 = executor.submit(_eval_pass_1)
+        f2 = executor.submit(_eval_pass_2)
+        res1 = f1.result()
+        res2 = f2.result()
+
+    cand_winner_1 = res1.verdict  # "A", "B", "TIE", "UNKNOWN"
+    verdict2 = res2.verdict
+
+    # Map Pass 2 verdict back to original Candidate A/B IDs
+    if verdict2 == "A":
+        cand_winner_2 = "B"
+    elif verdict2 == "B":
+        cand_winner_2 = "A"
+    elif verdict2 == "TIE":
+        cand_winner_2 = "TIE"
+    else:
+        cand_winner_2 = "UNKNOWN"
+
+    # Consensus & Mitigation Logic
+    if cand_winner_1 == cand_winner_2:
+        position_bias_detected = False
+        final_calibrated_winner = cand_winner_1
+    else:
+        position_bias_detected = True
+        final_calibrated_winner = "TIE"
+
+    log.info(
+        "Dual A/B Swap Evaluation completed: Pass 1 Winner=%s | Pass 2 Mapped Winner=%s | Bias Detected=%s | Final Winner=%s",
+        cand_winner_1, cand_winner_2, position_bias_detected, final_calibrated_winner
+    )
+
+    detailed_reasoning = (
+        f"=== PASS 1 EVALUATION (Original Order: A vs B) ===\n"
+        f"Position A: Candidate A | Position B: Candidate B\n"
+        f"Raw Verdict: WINNER: {res1.verdict}\n"
+        f"Step-by-Step Reasoning:\n{res1.reasoning}\n\n"
+        f"=== PASS 2 EVALUATION (Swapped Order: B vs A) ===\n"
+        f"Position A: Candidate B | Position B: Candidate A\n"
+        f"Raw Verdict: WINNER: {res2.verdict} (Mapped Candidate ID: {cand_winner_2})\n"
+        f"Step-by-Step Reasoning:\n{res2.reasoning}\n\n"
+        f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
+        f"Position Order Bias Detected: {position_bias_detected}\n"
+        f"Pass 1 Choice: Candidate {cand_winner_1}\n"
+        f"Pass 2 Choice: Candidate {cand_winner_2}\n"
+        f"Final Calibrated Verdict: WINNER: {final_calibrated_winner}"
+    )
+
+    return CalibratedJudgeResult(
+        original_order_winner=cand_winner_1,
+        swapped_order_winner=cand_winner_2,
+        final_calibrated_winner=final_calibrated_winner,
+        position_bias_detected=position_bias_detected,
+        reasoning_original=res1.reasoning,
+        reasoning_swapped=res2.reasoning,
+        detailed_reasoning=detailed_reasoning,
+        model_name=model_name,
+        total_input_tokens=res1.input_tokens + res2.input_tokens,
+        total_output_tokens=res1.output_tokens + res2.output_tokens,
+    )
+
+
+# ── Ollama Local Model Caller ──────────────────────────────────────────────────
+
+def call_ollama_judge(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+    model_name: str = "llama3",
+    ollama_url: str = "http://localhost:11434/api/generate",
+    temperature: float = 0.0,
+) -> JudgeResult:
+    """
+    Call a local Ollama model instance (e.g. Llama-3) for pairwise evaluation.
+    """
+    import json
+    import urllib.request
+
+    messages = build_judge_prompt(question, answer_a, answer_b)
+    system_prompt = messages[0]["content"]
+    user_prompt = messages[1]["content"]
+
+    payload = {
+        "model": model_name,
+        "prompt": f"{system_prompt}\n\n{user_prompt}",
+        "stream": False,
+        "options": {
+            "temperature": temperature,
+        }
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        ollama_url,
+        data=data,
+        headers={"Content-Type": "application/json"}
+    )
+
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        response_json = json.loads(resp.read().decode("utf-8"))
+        raw_text = response_json.get("response", "")
+        verdict = parse_winner(raw_text)
+
+        return JudgeResult(
+            verdict=verdict,
+            reasoning=raw_text,
+            model_name=f"ollama/{model_name}",
+            input_tokens=response_json.get("prompt_eval_count", 0),
+            output_tokens=response_json.get("eval_count", 0),
+        )
+
+
+# ── Multi-Judge Ensemble Voting Engine ─────────────────────────────────────────
+
+def call_multi_judge_ensemble(
+    question: str,
+    answer_a: str,
+    answer_b: str,
+    model_names: list[str],
+    temperature: float = 0.0,
+    mitigation_strategy: str = "dual_ab",
+    max_workers: int = 4,
+) -> MultiJudgeEnsembleResult:
+    """
+    Executes concurrent pairwise evaluations across multiple LLM judge models and
+    aggregates their individual verdicts into a majority-voting ensemble consensus.
+
+    Robust against individual model failures or API timeouts: any failing judge
+    is recorded with status "failed" while consensus is computed on all remaining
+    successful judge model responses.
+    """
+    import concurrent.futures
+
+    def _eval_single_model(model_name: str) -> dict[str, Any]:
+        try:
+            if mitigation_strategy == "dual_ab":
+                res = call_calibrated_judge(
+                    question=question,
+                    answer_a=answer_a,
+                    answer_b=answer_b,
+                    model_name=model_name,
+                    temperature=temperature,
+                    mitigation_strategy="dual_ab",
+                )
+                return {
+                    "model_name": model_name,
+                    "status": "success",
+                    "verdict": res.final_calibrated_winner,
+                    "position_bias_detected": res.position_bias_detected,
+                    "reasoning": res.detailed_reasoning,
+                    "input_tokens": res.total_input_tokens,
+                    "output_tokens": res.total_output_tokens,
+                }
+            else:
+                res = call_judge(
+                    question=question,
+                    answer_a=answer_a,
+                    answer_b=answer_b,
+                    model_name=model_name,
+                    temperature=temperature,
+                )
+                return {
+                    "model_name": model_name,
+                    "status": "success",
+                    "verdict": res.verdict,
+                    "position_bias_detected": False,
+                    "reasoning": res.reasoning,
+                    "input_tokens": res.input_tokens,
+                    "output_tokens": res.output_tokens,
+                }
+        except Exception as exc:
+            log.warning("Ensemble judge model '%s' failed evaluation: %s", model_name, exc)
+            return {
+                "model_name": model_name,
+                "status": "failed",
+                "verdict": "UNKNOWN",
+                "error": str(exc),
+                "position_bias_detected": False,
+                "reasoning": f"Evaluation error: {str(exc)}",
+                "input_tokens": 0,
+                "output_tokens": 0,
+            }
+
+    results: list[dict[str, Any]] = []
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(max_workers, max(1, len(model_names)))) as executor:
+            futures = {executor.submit(_eval_single_model, name): name for name in model_names}
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    results.append(future.result())
+                except Exception as fut_exc:
+                    name = futures[future]
+                    results.append({
+                        "model_name": name,
+                        "status": "failed",
+                        "verdict": "UNKNOWN",
+                        "error": str(fut_exc),
+                        "position_bias_detected": False,
+                        "reasoning": f"Future execution error: {str(fut_exc)}",
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                    })
+    except Exception as pool_exc:
+        log.error("ThreadPoolExecutor failure in call_multi_judge_ensemble: %s", pool_exc)
+        for name in model_names:
+            results.append({
+                "model_name": name,
+                "status": "failed",
+                "verdict": "UNKNOWN",
+                "error": str(pool_exc),
+                "position_bias_detected": False,
+                "reasoning": f"Thread pool error: {str(pool_exc)}",
+                "input_tokens": 0,
+                "output_tokens": 0,
+            })
+
+    # Sort results to preserve requested model order
+    order_map = {name: i for i, name in enumerate(model_names)}
+    results.sort(key=lambda r: order_map.get(r["model_name"], 999))
+
+    # A failed call is operational telemetry, not an UNKNOWN scientific vote.
+    # Likewise UNKNOWN is retained for traceability but never becomes a valid
+    # A/B/TIE preference in the consensus calculation below.
+    vote_counts = {"A": 0, "B": 0, "TIE": 0, "UNKNOWN": 0, "FAILED": 0}
+    total_input_tokens = 0
+    total_output_tokens = 0
+    successful_models = 0
+
+    for r in results:
+        if r.get("status") == "success":
+            successful_models += 1
+            v = r.get("verdict", "UNKNOWN")
+            if v in {"A", "B", "TIE", "UNKNOWN"}:
+                vote_counts[v] += 1
+            else:
+                vote_counts["UNKNOWN"] += 1
+        else:
+            vote_counts["FAILED"] += 1
+
+        total_input_tokens += r.get("input_tokens", 0)
+        total_output_tokens += r.get("output_tokens", 0)
+
+    # Determine majority consensus verdict
+    valid_votes = {k: vote_counts[k] for k in ("A", "B", "TIE")}
+    max_votes = max(valid_votes.values()) if valid_votes else 0
+
+    if max_votes == 0:
+        consensus_verdict = "UNKNOWN"
+    else:
+        top_candidates = [k for k, v in valid_votes.items() if v == max_votes]
+        if len(top_candidates) == 1:
+            consensus_verdict = top_candidates[0]
+        else:
+            # Tie between candidates -> TIE
+            consensus_verdict = "TIE"
+
+    return MultiJudgeEnsembleResult(
+        consensus_verdict=consensus_verdict,
+        vote_counts=vote_counts,
+        individual_results=results,
+        total_models=len(model_names),
+        successful_models=successful_models,
+        total_input_tokens=total_input_tokens,
+        total_output_tokens=total_output_tokens,
+    )
+
+

@@ -1,18 +1,18 @@
 import json
 from pathlib import Path
 import pytest
-from database import SessionLocal
-from controlled_models import (
+from backend.core.database import SessionLocal
+from backend.core.controlled_models import (
     AnalysisRun, ExperimentManifest, Experiment, ExperimentalUnit, ControlledRun
 )
-from controlled_analysis_adapter import (
+from backend.analysis.adapter import (
     rq1_from_run, rq2_from_run, rq3_from_run, rq4_from_run, rq5_from_run, rq6_from_run, rq7_observations
 )
-from controlled_analysis_metrics import (
+from backend.analysis.metrics import (
     analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7,
     ANALYSIS_VERSION
 )
-from final_evidence import PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS, PHASE11_HISTORICAL_FINAL_MANIFESTS
+from backend.core.final_evidence import PHASE11_HISTORICAL_FINAL_ANALYSIS_RUNS, PHASE11_HISTORICAL_FINAL_MANIFESTS
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 EXPORTS_DIR = ROOT_DIR / "exports" / "phase10"

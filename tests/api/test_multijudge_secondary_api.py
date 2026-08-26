@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from main import serialize_multi_judge_secondary
-from final_evidence import CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
+from backend.core.final_evidence import CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
 
 METRICS = {
     "planned_n": 1611, "consensus_covered_n": 1125, "agreement": .718222,

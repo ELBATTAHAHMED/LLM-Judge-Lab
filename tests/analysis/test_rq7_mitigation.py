@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_analysis_metrics import RQ7Observation, analyze_rq7
+from backend.analysis.metrics import RQ7Observation, analyze_rq7
 
 
 def row(key, human="ANSWER_A", baseline="ANSWER_A", ab="ANSWER_A", ba="ANSWER_A"):

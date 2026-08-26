@@ -26,8 +26,8 @@ class _Engine:
 
 
 def _records(monkeypatch, answers):
-    import database
     monkeypatch.setattr(main.pd, "read_csv", lambda _: pd.DataFrame([{"prompt_id": 81, "model_names": "gpt-3.5-turbo vs claude-v1", "reasoning_text": "r", "word_count_diff": 0, "human_winner": "A", "ai_winner": "A"}]))
+    import backend.core.database as database
     monkeypatch.setattr(database, "engine", _Engine([(81, "prompt")], answers))
     return main.get_qualitative_bucket("verbosity", judge_model="gpt-4o-mini")[0]
 

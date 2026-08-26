@@ -13,14 +13,14 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
-from controlled_freeze import FrozenPair, canonical_dataset_checksum, freeze_reference_pairs
-from controlled_models import Experiment
-from controlled_prompt import PROMPT_TEMPLATE_VERSION, build_messages, prompt_hash
-from controlled_providers import ProviderExecutionGate, adapter_for_judge
-from controlled_persistence import Outcome
-from controlled_analysis_metrics import RQ1Unit, analyze_rq1
-from mock_provider import DeterministicMockProvider, MockScenario
+from backend.evaluation.engine import ControlledEvaluationEngine, ControlledExecutionService
+from backend.evaluation.freeze import FrozenPair, canonical_dataset_checksum, freeze_reference_pairs
+from backend.core.controlled_models import Experiment
+from backend.evaluation.prompts import PROMPT_TEMPLATE_VERSION, build_messages, prompt_hash
+from backend.evaluation.providers import ProviderExecutionGate, adapter_for_judge
+from backend.evaluation.persistence import Outcome
+from backend.analysis.metrics import RQ1Unit, analyze_rq1
+from backend.evaluation.mock import DeterministicMockProvider, MockScenario
 from tests.integration.test_offline_integration import chain, request
 
 

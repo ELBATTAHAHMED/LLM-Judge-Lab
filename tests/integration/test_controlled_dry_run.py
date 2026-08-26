@@ -12,9 +12,9 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_models import ControlledRun, ExperimentalUnit, RunPass  # noqa: E402
-from controlled_runner import ControlledRunner, ExecutionProfile, MOCK_EVIDENCE_CLASS  # noqa: E402
-from experiment_planning import PairRecord  # noqa: E402
+from backend.core.controlled_models import ControlledRun, ExperimentalUnit, RunPass  # noqa: E402
+from backend.evaluation.runner import ControlledRunner, ExecutionProfile, MOCK_EVIDENCE_CLASS  # noqa: E402
+from backend.evaluation.planning import PairRecord  # noqa: E402
 
 
 @pytest.fixture()
@@ -75,8 +75,8 @@ def test_execution_gate_budget_guard_idempotency_and_status_are_safe(isolated_en
 
 def test_active_protocol_mock_rehearsal_reconciles_without_provider_calls(isolated_engine):
     """Uses production data read-only and persists only into pytest's SQLite DB."""
-    from database import SessionLocal
-    from experiment_planning import database_pairs
+    from backend.core.database import SessionLocal
+    from backend.evaluation.planning import database_pairs
 
     with SessionLocal() as source_session:
         pairs = database_pairs(source_session)

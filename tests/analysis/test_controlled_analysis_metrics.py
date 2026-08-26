@@ -8,7 +8,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_analysis_metrics import (  # noqa: E402
+from backend.analysis.metrics import (  # noqa: E402
     ANALYSIS_VERSION, ControlledEvidence, RQ1Unit, RQ2Repetition, RQ3Pair, RQ6Unit, RQ7Observation, RQ7Pair, VariantPair,
     analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7, analyze_rq7_matched,
 )

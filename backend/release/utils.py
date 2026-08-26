@@ -23,7 +23,7 @@ def sha256(path: Path) -> str:
 def postgres_connection(database_url: str | None = None) -> tuple[list[str], dict[str, str]]:
     """Build safe PostgreSQL CLI connection arguments from the configured URL."""
     if database_url is None:
-        from database import DATABASE_URL
+        from backend.core.database import DATABASE_URL
 
         database_url = DATABASE_URL
     parsed = urlsplit(database_url.replace("postgresql+psycopg2", "postgresql"))

@@ -12,10 +12,10 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_analysis_adapter import rq6_from_run
-from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
-from mock_provider import DeterministicMockProvider, MockScenario
-from controlled_analysis_metrics import analyze_rq6
+from backend.analysis.adapter import rq6_from_run
+from backend.evaluation.engine import ControlledEvaluationEngine, ControlledExecutionService
+from backend.evaluation.mock import DeterministicMockProvider, MockScenario
+from backend.analysis.metrics import analyze_rq6
 from tests.integration.test_offline_integration import chain, request
 
 

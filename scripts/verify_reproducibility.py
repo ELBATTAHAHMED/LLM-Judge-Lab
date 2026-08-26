@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 from backend.data.canonical import compare_canonical_to_frozen_reconciliation, validate_canonical_source  # noqa: E402
 from backend.release.utils import PG_BIN, postgres_connection, run  # noqa: E402
-from database import DATABASE_URL  # noqa: E402
+from backend.core.database import DATABASE_URL  # noqa: E402
 
 
 def temporary_url(name: str) -> str:

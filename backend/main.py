@@ -33,11 +33,11 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 # Import engine and Base for table creation, and get_db dependency
-from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
-import models  # noqa: E402
-from controlled_models import AnalysisRun, ControlledRun, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
-from controlled_persistence import EvidenceClass  # noqa: E402
-from final_evidence import (  # noqa: E402
+from backend.core.database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
+import backend.core.models  # noqa: E402
+from backend.core.controlled_models import AnalysisRun, ControlledRun, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
+from backend.evaluation.persistence import EvidenceClass  # noqa: E402
+from backend.core.final_evidence import (  # noqa: E402
     CANONICAL_FINAL_ANALYSIS_RUNS,
     CANONICAL_FINAL_MANIFESTS,
     CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN,
@@ -45,8 +45,8 @@ from final_evidence import (  # noqa: E402
     CORRECTED_ANALYSIS_VERSION,
     canonical_final_analysis_runs,
 )
-from analyze_consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
-from judge_engine import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
+from backend.analysis.consistency import compute_inter_judge_kappa, _adjust_pvalues_bh  # noqa: E402
+from backend.evaluation.live import call_judge, call_calibrated_judge, call_multi_judge_ensemble, is_local_model  # noqa: E402
 
 
 logger = logging.getLogger(__name__)
@@ -1022,7 +1022,7 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
     # Enrich with full prompt and candidate answer texts from database in a single batch query
     records = df.to_dict(orient="records")
     try:
-        from database import engine
+        from backend.core.database import engine
         from sqlalchemy import text as sa_text, bindparam
 
         def _parse_pid(val: Any) -> int | None:

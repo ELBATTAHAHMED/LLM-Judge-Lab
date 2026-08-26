@@ -8,15 +8,15 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from controlled_models import DatasetVersion
-from controlled_evaluation import ProviderCallError
-from database import SessionLocal
-from model_registry import MODEL_REGISTRY
-from models import Prompt
-from source_corrected_execution import DATASET_VERSION, RECONCILIATION_SHA256, mock_dry_run
-from source_corrected_execution_models import (SourceCorrectedExecutionAttempt, SourceCorrectedExecutionBatch,
+from backend.core.controlled_models import DatasetVersion
+from backend.evaluation.engine import ProviderCallError
+from backend.core.database import SessionLocal
+from backend.core.model_registry import MODEL_REGISTRY
+from backend.core.models import Prompt
+from backend.historical.source_corrected_plan import DATASET_VERSION, RECONCILIATION_SHA256, mock_dry_run
+from backend.historical.source_corrected_models import (SourceCorrectedExecutionAttempt, SourceCorrectedExecutionBatch,
                                                SourceCorrectedExecutionSlot)
-from source_corrected_real_execution import (MockTransport, SourceCorrectedRunner, SourceCorrectedStore,
+from backend.historical.source_corrected_execution import (MockTransport, SourceCorrectedRunner, SourceCorrectedStore,
                                              render_dashboard, utc_now)
 
 

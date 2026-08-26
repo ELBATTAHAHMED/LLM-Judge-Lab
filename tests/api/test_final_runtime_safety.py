@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import main
 import pytest
 from fastapi import HTTPException
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256, canonical_final_analysis_runs
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256, canonical_final_analysis_runs
 
 
 def _run(rq_code: str):

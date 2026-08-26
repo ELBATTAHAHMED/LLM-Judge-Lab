@@ -11,14 +11,14 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND = ROOT / 'backend'
 sys.path.insert(0, str(BACKEND))
 
-from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest
-from controlled_models import ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
-from controlled_persistence import ControlledPersistence, Outcome
-from controlled_providers import ControlledChatAdapter, ProviderExecutionGate
-from database import engine as live_postgres_engine
-from model_registry import Provider, get_model_spec
-from models import Answer, Prompt
-from routing_policy import extract_openrouter_routing_metadata, normalize_provider_slug, validate_router_response
+from backend.evaluation.engine import ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest
+from backend.core.controlled_models import ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
+from backend.evaluation.persistence import ControlledPersistence, Outcome
+from backend.evaluation.providers import ControlledChatAdapter, ProviderExecutionGate
+from backend.core.database import engine as live_postgres_engine
+from backend.core.model_registry import Provider, get_model_spec
+from backend.core.models import Answer, Prompt
+from backend.evaluation.routing import extract_openrouter_routing_metadata, normalize_provider_slug, validate_router_response
 
 def test_fixture_a_top_level_provider_string():
     resp = {'id': 'gen-a', 'model': 'anthropic/claude-3-haiku', 'provider': 'Amazon Bedrock'}

@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from analyze_multijudge_robustness import JUDGES, RobustnessError, boot, evaluate  # noqa: E402
+from backend.multijudge.robustness import JUDGES, RobustnessError, boot, evaluate  # noqa: E402
 
 
 def row(votes, human="ORIGINAL_ANSWER_1"):

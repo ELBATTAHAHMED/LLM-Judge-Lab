@@ -25,7 +25,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from main import app, _adjust_pvalues_bh
-from database import engine
+from backend.core.database import engine
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ def test_retired_macro_benchmark_endpoint_is_not_available(client):
 def test_call_calibrated_judge_unit_logic():
     """Verify call_calibrated_judge consensus and position bias detection logic using a mock client."""
     from unittest.mock import MagicMock
-    from judge_engine import call_calibrated_judge
+    from backend.evaluation.live import call_calibrated_judge
 
     mock_client = MagicMock()
     # Pass 1 response: WINNER: A
@@ -135,7 +135,7 @@ def test_calibrated_evaluation_endpoint_validation(client, monkeypatch):
 
 def test_local_ollama_model_routing_and_client_resolution(client):
     """Verify detection of local Ollama models and graceful client resolution."""
-    from judge_engine import is_local_model, get_evaluator_client
+    from backend.evaluation.live import is_local_model, get_evaluator_client
 
     assert is_local_model("Llama-3 8B (Local / Ollama)") is True
     assert is_local_model("ollama/llama3") is True
@@ -152,7 +152,7 @@ def test_self_preference_bias_calculation(monkeypatch):
     """Verify compute_self_preference_bias mathematical calculations using synthetic Pandas DataFrame."""
     import pandas as pd
     from unittest.mock import MagicMock
-    from analyze_consistency import compute_self_preference_bias
+    from backend.analysis.consistency import compute_self_preference_bias
 
     # 10 Self Matchups (gpt-4o-mini vs llama-3.3-70b-instruct): 8 wins for gpt-4o-mini (answer_a_id=1), 2 wins for llama (answer_b_id=2)
     self_rows = [
@@ -189,7 +189,7 @@ def test_self_preference_bias_empty_matchups(monkeypatch):
     """Verify compute_self_preference_bias returns None (not 0.5 / 1.0) when total_self_matchups is 0."""
     import pandas as pd
     from unittest.mock import MagicMock
-    from analyze_consistency import compute_self_preference_bias
+    from backend.analysis.consistency import compute_self_preference_bias
 
     # 10 Matchups between rival families only (no gpt candidate answers present)
     other_rows = [

@@ -7,11 +7,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from database import SessionLocal
-from controlled_models import DatasetVersion
-from source_corrected_execution import (CONFIRMATION, DATASET_VERSION, RECONCILIATION_SHA256, SourceCorrectedExecutionStore,
+from backend.core.database import SessionLocal
+from backend.core.controlled_models import DatasetVersion
+from backend.historical.source_corrected_plan import (CONFIRMATION, DATASET_VERSION, RECONCILIATION_SHA256, SourceCorrectedExecutionStore,
                                         SourceCorrectedPreflightError, build_plan, mock_dry_run)
-from source_corrected_execution_models import (SourceCorrectedExecutionAttempt, SourceCorrectedExecutionBatch,
+from backend.historical.source_corrected_models import (SourceCorrectedExecutionAttempt, SourceCorrectedExecutionBatch,
                                                SourceCorrectedExecutionSlot)
 
 

@@ -9,9 +9,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_evaluation import EvaluationRequest
-from controlled_providers import ProviderExecutionGate, adapter_for_judge
-from model_registry import Provider
+from backend.evaluation.engine import EvaluationRequest
+from backend.evaluation.providers import ProviderExecutionGate, adapter_for_judge
+from backend.core.model_registry import Provider
 
 
 def request():
@@ -23,7 +23,7 @@ def gate():
 
 
 def test_unverified_openrouter_route_fails_before_fixture_transport(monkeypatch):
-    import controlled_providers as providers
+    import backend.evaluation.providers as providers
     calls = []
     monkeypatch.setattr(providers, "openrouter_request_controls", lambda _judge: (_ for _ in ()).throw(ValueError("not officially verified")))
     adapter = adapter_for_judge("deepseek/deepseek-chat", gate=gate(), transport=lambda *args: calls.append(args) or {})
@@ -33,7 +33,7 @@ def test_unverified_openrouter_route_fails_before_fixture_transport(monkeypatch)
 
 
 def test_verified_route_controls_and_router_metadata_are_required(monkeypatch):
-    import controlled_providers as providers
+    import backend.evaluation.providers as providers
     captured = {}
     monkeypatch.setattr(providers, "openrouter_request_controls", lambda _judge: ({"X-OpenRouter-Metadata": "enabled"}, {"provider": {"order": ["fixture-upstream"], "only": ["fixture-upstream"], "allow_fallbacks": False, "require_parameters": True}}))
     monkeypatch.setattr(providers, "validate_router_response", lambda **kwargs: captured.setdefault("validated", kwargs))

@@ -3,14 +3,14 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from analyze_source_corrected_complete_case import (
+from backend.analysis.source_corrected_complete_case import (
     LogicalPass,
     _by_rq,
     _presented_to_canonical,
     _variant_outcome,
 )
-from analyze_source_corrected_full_population import CONTROLLED_SEED, MULTIJUDGE_SEED
-from final_evidence import CANONICAL_FINAL_MANIFESTS
+from backend.analysis.source_corrected_full_population import CONTROLLED_SEED, MULTIJUDGE_SEED
+from backend.core.final_evidence import CANONICAL_FINAL_MANIFESTS
 
 
 def test_position_mapping_restores_original_answer_identity() -> None:

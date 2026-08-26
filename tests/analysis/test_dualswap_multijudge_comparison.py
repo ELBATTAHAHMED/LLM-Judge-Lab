@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from compare_dualswap_multijudge import ComparisonError, bootstrap, key, multi_consensus, set_digest  # noqa: E402
+from backend.analysis.mitigation_comparison import ComparisonError, bootstrap, key, multi_consensus, set_digest  # noqa: E402
 
 
 def test_immutable_pair_key_is_order_invariant_for_answer_ids():

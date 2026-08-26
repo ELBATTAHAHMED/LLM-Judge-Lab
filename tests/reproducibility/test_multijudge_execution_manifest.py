@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
 
-from build_multijudge_execution_manifest import build_manifest, validate_manifest
+from backend.multijudge.manifest import build_manifest, validate_manifest
 
 
 ROOT = Path(__file__).resolve().parents[2]

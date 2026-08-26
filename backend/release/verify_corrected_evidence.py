@@ -29,8 +29,8 @@ assert hashlib.sha256(lines.encode()).hexdigest() == manifest["package_root_dige
 artifact = json.loads((PACKAGE / "source" / "source_corrected_complete_case_full_population_analysis_v2.json").read_text())
 assert artifact["artifact_sha256"] == manifest["authoritative_analysis"]["artifact_sha256"]
 sys.path.insert(0, str(ROOT / "backend"))
-from database import SessionLocal  # noqa: E402
-from controlled_models import AnalysisRun  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
+from backend.core.controlled_models import AnalysisRun  # noqa: E402
 
 with SessionLocal() as session:
     for _, row in json.loads((PACKAGE / "authoritative_analysis_runs.json").read_text()).items():

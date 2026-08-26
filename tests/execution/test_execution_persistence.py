@@ -19,17 +19,17 @@ ROOT = Path(__file__).resolve().parents[2]
 BACKEND = ROOT / 'backend'
 sys.path.insert(0, str(BACKEND))
 
-from controlled_evaluation import (
+from backend.evaluation.engine import (
     ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest,
     ProviderResponse,
 )
-from controlled_models import ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
-from controlled_persistence import ControlledPersistence, Outcome, PassObservation, to_json_safe
-from controlled_real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile
-from database import engine as live_postgres_engine
-from mock_provider import MockScenario
-from model_registry import Provider, get_model_spec
-from models import Answer, Prompt
+from backend.core.controlled_models import ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
+from backend.evaluation.persistence import ControlledPersistence, Outcome, PassObservation, to_json_safe
+from backend.evaluation.real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile
+from backend.core.database import engine as live_postgres_engine
+from backend.evaluation.mock import MockScenario
+from backend.core.model_registry import Provider, get_model_spec
+from backend.core.models import Answer, Prompt
 
 
 class SampleEnum(Enum):
@@ -61,10 +61,10 @@ class CustomFakeProvider:
         if scenario is MockScenario.TIMEOUT:
             raise TimeoutError('mock timeout')
         if scenario is MockScenario.REFUSAL:
-            from controlled_evaluation import ProviderCallError
+            from backend.evaluation.engine import ProviderCallError
             raise ProviderCallError('REFUSAL', 'mock refusal')
         if scenario is MockScenario.PROVIDER_ERROR:
-            from controlled_evaluation import ProviderCallError
+            from backend.evaluation.engine import ProviderCallError
             raise ProviderCallError('PROVIDER_ERROR', 'mock error')
         
         return ProviderResponse(

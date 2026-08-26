@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.data.canonical import build_fresh_dataset  # noqa: E402
-from database import SessionLocal  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
 
 
 def main() -> int:

@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy.orm import Session
 
-from models import Answer, HumanPreference, JudgeDecision, Prompt  # noqa: E402
+from backend.core.models import Answer, HumanPreference, JudgeDecision, Prompt  # noqa: E402
 
 
 class ReuseClass(str, Enum):

@@ -11,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from validate_multijudge_fair_baseline import (  # noqa: E402
+from backend.multijudge.fair_baseline import (  # noqa: E402
     FairBaselineValidationError,
     frozen_consensus,
     percentile_bootstrap,

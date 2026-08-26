@@ -23,7 +23,7 @@ SNAPSHOT = RELEASE / "database" / "judgelab-research-release-v4.dump"
 
 def restored_database_url(name: str) -> str:
     """Return the current PostgreSQL URL with only the database name replaced."""
-    from database import DATABASE_URL
+    from backend.core.database import DATABASE_URL
 
     parsed = urlsplit(DATABASE_URL.replace("postgresql+psycopg2", "postgresql"))
     if parsed.scheme != "postgresql" or not parsed.netloc:
@@ -34,11 +34,13 @@ def restored_database_url(name: str) -> str:
 def api_check(database_url: str) -> None:
     """Run the real route in a new process that can only see the restored DB."""
     code = r'''
+import sys
+sys.path.insert(0, "..")
 import uuid
 from fastapi.testclient import TestClient
-from controlled_models import AnalysisRun
-from database import SessionLocal
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN
+from backend.core.controlled_models import AnalysisRun
+from backend.core.database import SessionLocal
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN
 from main import app
 
 response = TestClient(app).get("/api/controlled/results")

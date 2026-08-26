@@ -11,9 +11,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from controlled_models import AnalysisRun, DatasetVersion, ExperimentalUnit
-from database import DATABASE_URL, SessionLocal
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS
+from backend.core.controlled_models import AnalysisRun, DatasetVersion, ExperimentalUnit
+from backend.core.database import DATABASE_URL, SessionLocal
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS
 from backend.release.utils import PG_BIN, postgres_connection, run, sha256
 
 

@@ -15,16 +15,16 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_analysis_adapter import pass_outcome, resume_state, rq1_from_run, rq2_from_run, rq3_from_run  # noqa: E402
-from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest  # noqa: E402
-from controlled_models import CounterfactualVariant, ControlledRun, ExperimentalUnit  # noqa: E402
-from controlled_persistence import ControlledPersistence  # noqa: E402
-from mock_provider import DeterministicMockProvider, MockScenario  # noqa: E402
-from model_registry import Provider  # noqa: E402
-from models import Answer, Prompt  # noqa: E402
-from experiment_planning import PairRecord, call_plan, generate_units, manifest  # noqa: E402
-from controlled_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant  # noqa: E402
-from controlled_analysis_metrics import RQ2Repetition, RQ6Unit, RQ7Pair, VariantPair, analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7  # noqa: E402
+from backend.analysis.adapter import pass_outcome, resume_state, rq1_from_run, rq2_from_run, rq3_from_run  # noqa: E402
+from backend.evaluation.engine import ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest  # noqa: E402
+from backend.core.controlled_models import CounterfactualVariant, ControlledRun, ExperimentalUnit  # noqa: E402
+from backend.evaluation.persistence import ControlledPersistence  # noqa: E402
+from backend.evaluation.mock import DeterministicMockProvider, MockScenario  # noqa: E402
+from backend.core.model_registry import Provider  # noqa: E402
+from backend.core.models import Answer, Prompt  # noqa: E402
+from backend.evaluation.planning import PairRecord, call_plan, generate_units, manifest  # noqa: E402
+from backend.evaluation.transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant  # noqa: E402
+from backend.analysis.metrics import RQ2Repetition, RQ6Unit, RQ7Pair, VariantPair, analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7  # noqa: E402
 
 
 @pytest.fixture()
@@ -108,7 +108,7 @@ def test_variant_source_family_mitigation_and_not_estimable_contracts(isolated_e
     rq4 = analyze_rq4([VariantPair("CONTROLLED", "v", "RQ4", "g", "c", True, "VARIANT", "AB_BA"), VariantPair("CONTROLLED", "bad", "RQ4", "g", "c", False, "VARIANT", "AB_BA")], seed=1, iterations=50)
     rq5 = analyze_rq5([VariantPair("CONTROLLED", "f", "RQ5", "g", "c", True, "ORIGINAL", "AB_BA")], seed=1, iterations=50)
     assert rq4["variant_win_rate"].denominator == 1 and rq4["excluded_pair_count"].numerator == 1 and rq5["original_win_rate"].value == 1
-    from controlled_analysis_metrics import RQ6Unit
+    from backend.analysis.metrics import RQ6Unit
     rq6 = analyze_rq6([RQ6Unit("CONTROLLED", "a", "RQ6", "g", "c", True, "SELF", "A"), RQ6Unit("CONTROLLED", "b", "RQ6", "g", "c", True, "OTHER", "B"), RQ6Unit("CONTROLLED", "m", "RQ6", "g", "c", False, None, None)], iterations=50)["self_family_preference"]
     assert rq6.value == .5 and rq6.denominator == 2
     outcomes = analyze_rq7([RQ7Pair("CONTROLLED", "p", "RQ7", "g", "BASELINE", "p", {"agreement": .8, "position": .6}, {"agreement": .6, "position": .2}), RQ7Pair("CONTROLLED", "q", "RQ7", "g", "BASELINE", "q", {"agreement": .8, "position": .6}, {"agreement": 1.0, "position": .2})])

@@ -11,7 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from analyze_multijudge_consensus import (  # noqa: E402
+from backend.multijudge.consensus import (  # noqa: E402
     JUDGES,
     MultiJudgeAnalysisError,
     _matched_comparator,

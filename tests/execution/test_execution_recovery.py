@@ -17,9 +17,9 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_evaluation import ControlledEvaluationEngine, ControlledExecutionService
-from controlled_models import PassAttempt
-from mock_provider import DeterministicMockProvider, MockScenario
+from backend.evaluation.engine import ControlledEvaluationEngine, ControlledExecutionService
+from backend.core.controlled_models import PassAttempt
+from backend.evaluation.mock import DeterministicMockProvider, MockScenario
 from tests.integration.test_offline_integration import chain, request
 
 

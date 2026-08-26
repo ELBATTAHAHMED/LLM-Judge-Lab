@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy import select
-from database import SessionLocal  # noqa: E402
-from controlled_models import AnalysisRun  # noqa: E402
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS  # noqa: E402
-from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionBatch, MultiJudgeExecutionSlot  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
+from backend.core.controlled_models import AnalysisRun  # noqa: E402
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS  # noqa: E402
+from backend.multijudge.models import MultiJudgeExecutionAttempt, MultiJudgeExecutionBatch, MultiJudgeExecutionSlot  # noqa: E402
 
 SRC=ROOT/'evidence'/'multijudge_consensus'; OUT=ROOT/'evidence'/'final'/'multijudge_consensus_v1'
 SHAS={'protocol_v1.json':'819f2e2dea8fb32e4c32000551d6048a16ecc8d28f1bb32d2cce4d02a15c40ce','execution_manifest_v1.json':'6c2fa4a926e458c598c73604daa1b69d766bc5b2d04853e73c3a35bf9017e351','postexecution_integrity_v1.json':'9e0273c0b51917ba2ea8358c1d29041f8ed3eacd93d33839b8ebafe6b7cf4ba3','primary_analysis_v1.json':'c881c75b37fc80e4f3ba1e922e1aeba6a28f7125176f6183a38bd48597237693','fair_baseline_comparison_v1.json':'c362dee20f9d59f9e92ca77f206604b99878c7eaac93247bb346b125ed654bc3','dualswap_comparison_v1.json':'52bdec7ac98f845bc5e2d93a55daa8cc505c1d2c576029ca85468cd57789c2c8','robustness_sensitivity_v1.json':'e11d258535e887a6ba929492a675d464e773fd927001746a42928aca6b1b8f81','promotion_decision_v1.json':'4682516428fe1206a072ad32efc0c638d7112d0b4396efe2e1ab86f5c0dba5f0'}

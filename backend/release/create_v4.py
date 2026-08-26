@@ -8,10 +8,10 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from controlled_models import AnalysisRun
+from backend.core.controlled_models import AnalysisRun
 from backend.release.utils import PG_BIN, postgres_connection, run, sha256
-from database import DATABASE_URL, SessionLocal
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
+from backend.core.database import DATABASE_URL, SessionLocal
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v4"

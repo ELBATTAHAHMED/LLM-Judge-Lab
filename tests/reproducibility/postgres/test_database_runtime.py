@@ -13,9 +13,9 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_models import ControlledRun, Experiment, ExperimentalUnit
-from controlled_persistence import ControlledPersistence
-from models import Answer, Prompt
+from backend.core.controlled_models import ControlledRun, Experiment, ExperimentalUnit
+from backend.evaluation.persistence import ControlledPersistence
+from backend.core.models import Answer, Prompt
 
 
 @pytest.fixture()

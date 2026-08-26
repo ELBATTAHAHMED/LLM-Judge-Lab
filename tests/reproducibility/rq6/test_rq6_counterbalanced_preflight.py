@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from experiment_planning import PairRecord
-from controlled_prompt import build_messages
-from rq6_counterbalanced_preflight import HUMAN_OTHER, HUMAN_SELF, materialize
+from backend.evaluation.planning import PairRecord
+from backend.evaluation.prompts import build_messages
+from backend.experiments.counterbalanced_preflight import HUMAN_OTHER, HUMAN_SELF, materialize
 
 
 def pair(index: int, answer_a_model: str, answer_b_model: str, label: str) -> PairRecord:

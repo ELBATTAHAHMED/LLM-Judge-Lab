@@ -11,14 +11,14 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from controlled_models import DatasetVersion
-from database import SessionLocal
-from models import Prompt
-from source_corrected_execution_models import (SourceCorrectedExecutionAttempt,
+from backend.core.controlled_models import DatasetVersion
+from backend.core.database import SessionLocal
+from backend.core.models import Prompt
+from backend.historical.source_corrected_models import (SourceCorrectedExecutionAttempt,
                                                SourceCorrectedExecutionBatch,
                                                SourceCorrectedExecutionSlot)
-from source_corrected_real_execution import MockTransport, SourceCorrectedStore, utc_now
-from source_corrected_recovery_execution import (AMENDMENT_SHA, CONFIRMATION, RECOVERY_MANIFEST_SHA,
+from backend.historical.source_corrected_execution import MockTransport, SourceCorrectedStore, utc_now
+from backend.historical.source_corrected_recovery import (AMENDMENT_SHA, CONFIRMATION, RECOVERY_MANIFEST_SHA,
                                                  RecoveryPayloadResolver, SourceCorrectedRecoveryRunner,
                                                  _read_verified_artifacts, recovery_backoff_seconds,
                                                  recovery_retry_rule, render_recovery_dashboard)
@@ -163,8 +163,8 @@ def test_invalid_response_retry_is_one_fresh_recovery_attempt_and_paid_gate_is_e
         batch = runner.batch(session)
         slot, attempt = store.claim(session, batch, owner="test")
         store.mark_sent(session, slot.id, attempt.attempt_id, owner="test")
-        from controlled_evaluation import NormalizedEvaluationResult
-        from controlled_persistence import Outcome
+        from backend.evaluation.engine import NormalizedEvaluationResult
+        from backend.evaluation.persistence import Outcome
         invalid = NormalizedEvaluationResult(Outcome.INVALID_RESPONSE, None, None, None, None, "mock", None, None,
                                              "mock", 0, "INVALID", "INVALID_RESPONSE", "malformed")
         assert store.persist(session, slot.id, attempt.attempt_id, invalid, owner="test",

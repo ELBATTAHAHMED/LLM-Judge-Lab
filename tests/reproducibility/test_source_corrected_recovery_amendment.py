@@ -1,8 +1,8 @@
 """Provider-free checks for the additive source-corrected recovery design."""
 from __future__ import annotations
 
-from build_source_corrected_recovery_amendment import build
-from source_corrected_execution import stable_sha
+from backend.historical.recovery_amendment import build
+from backend.historical.source_corrected_plan import stable_sha
 
 
 def test_recovery_amendment_targets_only_terminal_missing_logical_slots():

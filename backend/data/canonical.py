@@ -17,8 +17,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controlled_models import DatasetVersion
-from models import Answer, HumanPreference, Prompt
+from backend.core.controlled_models import DatasetVersion
+from backend.core.models import Answer, HumanPreference, Prompt
 
 
 ROOT = Path(__file__).resolve().parents[2]

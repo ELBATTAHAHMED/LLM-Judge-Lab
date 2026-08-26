@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from multijudge_execution import (
+from backend.multijudge.execution import (
     CrashPoint, DeterministicMockTransport, MockResponse, MockTransportFailure,
     MultiJudgeDryRunExecutor, RealProviderTransport, RealTransportForbidden, SimulatedCrash,
 )
@@ -143,7 +143,7 @@ def test_crash_recovery_never_replays_a_possibly_sent_scientific_pass(point, sta
 def test_real_transport_is_impossible_and_reference_outcomes_are_not_loaded(monkeypatch):
     with pytest.raises(RealTransportForbidden):
         RealProviderTransport()
-    import multijudge_execution
+    import backend.multijudge.execution as multijudge_execution
     original = multijudge_execution._copy_rows
     def reject_human_preferences(table):
         if table == "human_preferences":

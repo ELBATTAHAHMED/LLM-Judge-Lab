@@ -9,8 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from database import SessionLocal  # noqa: E402
-from rq6_counterbalanced_execution import load_preflight_manifest, publish_counterbalanced_analysis  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
+from backend.experiments.counterbalanced import load_preflight_manifest, publish_counterbalanced_analysis  # noqa: E402
 
 
 def main() -> int:

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from backend.data.canonical import CanonicalSourceError, build_fresh_dataset, compare_canonical_to_frozen_reconciliation, load_canonical_study, stable_sha, validate_canonical_source, verify_fresh_dataset
-from database import Base
+from backend.core.database import Base
 
 
 def test_committed_canonical_source_validates_all_records():

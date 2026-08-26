@@ -11,9 +11,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_models import AnalysisRun  # noqa: E402
-from database import SessionLocal  # noqa: E402
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256  # noqa: E402
+from backend.core.controlled_models import AnalysisRun  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
+from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256  # noqa: E402
 PACKAGE = ROOT / "evidence" / "final" / "controlled_source_text_corrected_v1"
 SOURCE = ROOT / "evidence" / "remediation"
 SOURCES = ("source_text_reconciliation_v1.json", "controlled_source_text_corrected_preflight_v1.json", "controlled_source_text_corrected_execution_manifest_v1.json", "source_corrected_recovery_amendment_v1.json", "source_corrected_recovery_manifest_v1.json", "source_corrected_complete_case_full_population_analysis_v2.json")

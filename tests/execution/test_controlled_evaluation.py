@@ -15,16 +15,16 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_evaluation import (  # noqa: E402
+from backend.evaluation.engine import (  # noqa: E402
     ControlledEvaluationEngine, ControlledExecutionService, EvaluationRequest,
     derive_dual_pass_decision,
 )
-from controlled_models import ControlledRun  # noqa: E402
-from controlled_persistence import ControlledPersistence, Outcome  # noqa: E402
-from controlled_real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile  # noqa: E402
-from mock_provider import DeterministicMockProvider, MockScenario  # noqa: E402
-from model_registry import Provider, UnsupportedModelError, get_model_spec  # noqa: E402
-from models import Answer, JudgeDecision, Prompt  # noqa: E402
+from backend.core.controlled_models import ControlledRun  # noqa: E402
+from backend.evaluation.persistence import ControlledPersistence, Outcome  # noqa: E402
+from backend.evaluation.real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile  # noqa: E402
+from backend.evaluation.mock import DeterministicMockProvider, MockScenario  # noqa: E402
+from backend.core.model_registry import Provider, UnsupportedModelError, get_model_spec  # noqa: E402
+from backend.core.models import Answer, JudgeDecision, Prompt  # noqa: E402
 
 
 @pytest.fixture()
@@ -234,14 +234,14 @@ def test_registry_and_input_validation_fail_before_mock_execution(isolated_engin
 
 
 def test_18_ensemble_failures_are_not_scientific_votes(monkeypatch):
-    from judge_engine import JudgeResult, call_multi_judge_ensemble
+    from backend.evaluation.live import JudgeResult, call_multi_judge_ensemble
 
     def fake_call_judge(*, model_name, **_):
         if model_name == "broken":
             raise RuntimeError("offline fake failure")
         return JudgeResult("A", "offline", model_name, 1, 1)
 
-    monkeypatch.setattr("judge_engine.call_judge", fake_call_judge)
+    monkeypatch.setattr("backend.evaluation.live.call_judge", fake_call_judge)
     result = call_multi_judge_ensemble("q", "a", "b", ["working", "broken"], mitigation_strategy="none")
     assert result.consensus_verdict == "A"
     assert result.vote_counts == {"A": 1, "B": 0, "TIE": 0, "UNKNOWN": 0, "FAILED": 1}

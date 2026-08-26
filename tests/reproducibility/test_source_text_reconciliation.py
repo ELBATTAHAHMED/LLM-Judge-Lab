@@ -8,8 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from build_source_text_reconciliation import artifact_sha, build, load_raw_source  # noqa: E402
-from database import SessionLocal  # noqa: E402
+from backend.historical.source_reconciliation import artifact_sha, build, load_raw_source  # noqa: E402
+from backend.core.database import SessionLocal  # noqa: E402
 
 
 def _artifact():

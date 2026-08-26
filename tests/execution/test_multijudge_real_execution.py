@@ -17,13 +17,13 @@ from sqlalchemy.orm import sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from multijudge_execution_models import MultiJudgeExecutionAttempt, MultiJudgeExecutionBatch, MultiJudgeExecutionSlot  # noqa: E402
-from multijudge_real_execution import (  # noqa: E402
+from backend.multijudge.models import MultiJudgeExecutionAttempt, MultiJudgeExecutionBatch, MultiJudgeExecutionSlot  # noqa: E402
+from backend.multijudge.real_execution import (  # noqa: E402
     HARD_CAP_USD, MultiJudgePreflightError,
     MultiJudgeRealRunner, _map_vote, _validate_routes_and_pricing,
     credential_presence, format_live_progress, utc_now,
 )
-from controlled_persistence import Outcome  # noqa: E402
+from backend.evaluation.persistence import Outcome  # noqa: E402
 
 
 class FakeTransport:
@@ -151,7 +151,7 @@ def test_credentials_route_and_human_reference_safety_fail_closed(session_factor
     runner.frozen.manifest["scientific_configuration"]["judges"][0]["route"] = "wrong-route"
     with pytest.raises(MultiJudgePreflightError, match="route"):
         _validate_routes_and_pricing(runner.frozen)
-    import multijudge_real_execution
+    import backend.multijudge.real_execution as multijudge_real_execution
     original = multijudge_real_execution._copy_rows
     def reject_human_preferences(table):
         if table == "human_preferences":
@@ -163,7 +163,7 @@ def test_credentials_route_and_human_reference_safety_fail_closed(session_factor
 
 
 def test_default_cli_invocation_is_preflight_only(session_factory, configured_credentials, monkeypatch):
-    import run_multijudge_consensus as cli
+    import backend.multijudge.run as cli
     fake = FakeTransport(); runner = MultiJudgeRealRunner(transport=fake)
     _prepare(runner, session_factory)
     with session_factory() as session:

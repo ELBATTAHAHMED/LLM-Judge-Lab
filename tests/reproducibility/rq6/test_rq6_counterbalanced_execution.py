@@ -12,10 +12,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from controlled_evaluation import EvaluationRequest
-from controlled_real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile
-from model_registry import Provider
-from rq6_counterbalanced_execution import (
+from backend.evaluation.engine import EvaluationRequest
+from backend.evaluation.real_execution import BudgetLedger, ExecutionCaps, RealExecutionProfile
+from backend.core.model_registry import Provider
+from backend.experiments.counterbalanced import (
     ALLOWED_JUDGES,
     HARD_CAP_USD,
     PLANNED_PASSES,
