@@ -259,7 +259,7 @@ def operational_coverage_proxy(session) -> dict[str, object]:
     estimator.  It is deliberately limited to provider/parse completion rates.
     """
     from controlled_models import ControlledRun, RunPass
-    from evidence_contract import EvidenceClass
+    from controlled_persistence import EvidenceClass
 
     run_ids = [row.id for row in session.query(ControlledRun.id).filter(
         ControlledRun.metadata_json["evidence_class"].as_string() == EvidenceClass.CONTROLLED.value

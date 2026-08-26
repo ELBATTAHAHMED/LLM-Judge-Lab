@@ -40,7 +40,7 @@ if str(BACKEND_DIR) not in sys.path:
 from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
 import models  # noqa: E402
 from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
-from evidence_contract import EvidenceClass  # noqa: E402
+from controlled_persistence import EvidenceClass  # noqa: E402
 from final_evidence import (  # noqa: E402
     CANONICAL_FINAL_ANALYSIS_RUNS,
     CANONICAL_FINAL_MANIFESTS,

@@ -66,6 +66,7 @@ class EvidenceClass(str, Enum):
     CONTROLLED = "CONTROLLED"
     PILOT = "PILOT"
     PLANNED = "PLANNED"
+    DRY_RUN_MOCK = "DRY_RUN_MOCK"
 
 
 class Outcome(str, Enum):

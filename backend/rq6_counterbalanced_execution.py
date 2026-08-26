@@ -23,10 +23,9 @@ from sqlalchemy.orm import Session
 from controlled_analysis_metrics import MetricResult, bootstrap_ci
 from controlled_evaluation import EvaluationRequest
 from controlled_models import AnalysisRun, ControlledRun, DatasetVersion, Experiment, ExperimentalCondition, ExperimentManifest, ExperimentalUnit, PassAttempt, RunPass
-from controlled_persistence import ControlledPersistence, to_json_safe
+from controlled_persistence import ControlledPersistence, EvidenceClass, to_json_safe
 from controlled_prompt import PROMPT_TEMPLATE_VERSION, prompt_hash
 from controlled_real_execution import BudgetLedger, ControlledRealRunner, ExecutionCaps, RealExecutionProfile
-from evidence_contract import EvidenceClass
 from execution_policy import FAILURE_POLICY_VERSION, RETRY_POLICY_VERSION
 from experiment_planning import SOURCE_FAMILIES
 from model_registry import MODEL_REGISTRY, Provider, get_model_spec
