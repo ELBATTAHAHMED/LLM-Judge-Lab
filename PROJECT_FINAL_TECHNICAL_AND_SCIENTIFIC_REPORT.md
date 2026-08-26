@@ -5,7 +5,7 @@
 The current controlled science is the source-corrected full-population analysis
 `source-corrected-complete-case-full-population-analysis-v2`, frozen in
 [`evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json`](evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json)
-(SHA-256 `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97).
+(deterministic analysis-content hash `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97`; file SHA-256 `85b36f2320a91fc590014566ded1c6203a17948ccfcd3a4b8558de479cb3b49b`, recorded in the corrected package manifest).
 It selects the following authoritative completed AnalysisRuns:
 
 | Result | AnalysisRun |

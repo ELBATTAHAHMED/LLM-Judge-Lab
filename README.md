@@ -10,7 +10,7 @@ server-side provider-execution gate.
 
 The current authority is the verified source-corrected full-population analysis
 [`evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json`](evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json)
-(SHA-256 `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97).
+(deterministic analysis-content hash `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97`; file SHA-256 `85b36f2320a91fc590014566ded1c6203a17948ccfcd3a4b8558de479cb3b49b`, recorded in the corrected package manifest).
 The API selects only its pinned completed AnalysisRuns and fails closed if any
 is absent or incompatible. Phase 11, `research_release_v2`,
 `research_release_v3`, and historical/provisional remediation evidence remain

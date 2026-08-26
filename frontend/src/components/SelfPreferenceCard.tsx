@@ -82,15 +82,15 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
     if (diffVal !== null && diffVal <= -10) {
       return (
         <>
-          No positive self-preference detected. The model exhibits significant{' '}
+          No positive self-source association detected. The observed same-source preference rate is{' '}
           <strong className="text-neutral-900 dark:text-neutral-200">
-            Self-Disfavor Bias ({diffPct}%)
+            {diffPct}%
           </strong>
-          , penalizing answers from its own{' '}
+          {' '}lower than the rival-family baseline for the{' '}
           <strong className="text-neutral-900 dark:text-neutral-200">
             {data.judge_family.toUpperCase()}
           </strong>{' '}
-          family compared to rivals ({baselinePct}% baseline).
+          family ({baselinePct}% baseline). This historical exploratory difference does not establish a causal penalty.
         </>
       );
     }

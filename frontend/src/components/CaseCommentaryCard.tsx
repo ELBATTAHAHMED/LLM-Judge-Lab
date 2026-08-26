@@ -23,8 +23,8 @@ export const CaseCommentaryCard: React.FC<Props> = ({ bucket, record }) => {
 
       case 'forced_choice':
         return {
-          title: 'Decisiveness Hallucination & Hedging Commentary',
-          summary: `Human raters declared a TIE on this pair, but the AI judge forced a decisive winner (${record.ai_winner}). Notice how the reasoning text uses hedging vocabulary ("slightly", "marginal", "subtle") — demonstrating that the judge perceived equivalence yet hallucinated a winner decision.`,
+          title: 'Forced-Choice and Hedging Commentary',
+          summary: `Human raters declared a TIE on this pair, but the AI judge returned a decisive winner (${record.ai_winner}). The reasoning text contains hedging vocabulary ("slightly", "marginal", "subtle"), which can be read alongside that forced-choice output but does not establish the judge's internal assessment.`,
         };
 
       case 'position_bias':

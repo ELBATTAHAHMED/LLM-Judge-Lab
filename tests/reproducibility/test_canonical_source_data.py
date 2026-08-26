@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
@@ -9,6 +14,9 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.data.canonical import CanonicalSourceError, build_fresh_dataset, compare_canonical_to_frozen_reconciliation, load_canonical_study, stable_sha, validate_canonical_source, verify_fresh_dataset
 from backend.core.database import Base
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_committed_canonical_source_validates_all_records():
@@ -62,3 +70,31 @@ def test_empty_database_build_is_source_keyed_and_reconciles_all_records():
         "controlled_records": 1568,
         "unresolved": 0,
     }
+
+
+def test_public_planning_script_runs_directly_without_provider_calls(tmp_path):
+    database_path = tmp_path / "canonical-cli.sqlite"
+    database_url = f"sqlite:///{database_path.as_posix()}"
+    engine = create_engine(database_url)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    try:
+        build_fresh_dataset(session)
+        session.commit()
+    finally:
+        session.close()
+        engine.dispose()
+
+    env = os.environ.copy()
+    env["DATABASE_URL"] = database_url
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "run_evaluation.py"), "--limit", "2"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert json.loads(completed.stdout)["provider_calls"] == 0
