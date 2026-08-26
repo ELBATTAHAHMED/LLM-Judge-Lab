@@ -28,7 +28,7 @@ from controlled_prompt import PROMPT_TEMPLATE_VERSION, prompt_hash
 from controlled_real_execution import BudgetLedger, ControlledRealRunner, ExecutionCaps, RealExecutionProfile
 from execution_policy import FAILURE_POLICY_VERSION, RETRY_POLICY_VERSION
 from experiment_planning import SOURCE_FAMILIES
-from model_registry import MODEL_REGISTRY, Provider, get_model_spec
+from model_registry import Provider, get_model_spec
 from models import Answer, Prompt
 from pricing import CONFIG as PRICING_CONFIG
 from routing_policy import frozen_openrouter_route, routing_fingerprint, routing_policy_version

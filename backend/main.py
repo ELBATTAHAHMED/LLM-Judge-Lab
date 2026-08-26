@@ -1,5 +1,4 @@
 import sys
-import threading
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,12 +12,9 @@ from pydantic import BaseModel, Field
 from scipy.stats import chisquare
 from sklearn.metrics import cohen_kappa_score
 import uuid
-import datetime
 import json
-import asyncio
-from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
 from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -39,7 +35,7 @@ if str(BACKEND_DIR) not in sys.path:
 # Import engine and Base for table creation, and get_db dependency
 from database import engine, Base, get_db, resync_postgres_sequences  # noqa: E402
 import models  # noqa: E402
-from controlled_models import AnalysisRun, ControlledRun, Experiment, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
+from controlled_models import AnalysisRun, ControlledRun, ExperimentManifest, ExperimentalUnit, RunPass  # noqa: E402
 from controlled_persistence import EvidenceClass  # noqa: E402
 from final_evidence import (  # noqa: E402
     CANONICAL_FINAL_ANALYSIS_RUNS,
@@ -230,32 +226,6 @@ class SelfPreferenceResponse(BaseModel):
     total_other_matchups: int
     p_value: float | None = None
     statistically_significant: bool
-
-
-class CategoryBreakdownItem(BaseModel):
-    category: str
-    baseline_kappa: float
-    calibrated_kappa: float
-    delta_kappa: float
-
-
-class MacroBenchmarkResponse(BaseModel):
-    judge_model: str
-    total_evaluations: int
-    baseline_kappa: float
-    calibrated_kappa: float
-    delta_kappa: float
-    baseline_accuracy: float
-    calibrated_accuracy: float
-    delta_accuracy: float
-    baseline_flip_rate: float
-    mitigated_flip_rate: float
-    flip_rate_reduction: float
-    baseline_length_bias: float | None = None
-    mitigated_length_bias: float | None = None
-    length_bias_reduction: float | None = None
-    category_breakdown: list[CategoryBreakdownItem] = []
-    message: str
 
 
 class ControlledResultsAccounting(BaseModel):
@@ -632,86 +602,6 @@ def get_dataset_count(db: Session = Depends(get_db)) -> DatasetCountResponse:
         )
 
 
-# ── GET & POST /api/leaderboard ───────────────────────────────────────────────
-
-def compute_and_save_leaderboard(db_engine, judge_model: str) -> list[dict]:
-    """
-    On-demand calculation of Bradley-Terry MLE parameters and Residual Length Neutralization.
-    Writes/updates CSV artifacts on disk and returns merged leaderboard records.
-    """
-    judge_model = normalize_model_id(judge_model)
-    sanitized = judge_model.replace("/", "_")
-    csv_dir = ROOT_DIR / "data" / "artifacts" / "csv"
-    csv_dir.mkdir(parents=True, exist_ok=True)
-    bt_csv_path          = csv_dir / f"bradley_terry_scores_{sanitized}.csv"
-    neutralized_csv_path = csv_dir / f"neutralized_scores_{sanitized}.csv"
-
-    try:
-        from calculate_latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
-        from calculate_neutralized_scores import fetch_decisions_with_lengths, run_length_bias_regression, compute_neutralized_scores
-
-        bt_df_raw = fetch_pairwise_results(db_engine, judge_model_name=judge_model)
-        if bt_df_raw.empty:
-            return []
-
-        models = sorted(bt_df_raw["model_i"].unique().tolist())
-        raw_wr = compute_raw_win_rates(bt_df_raw, models)
-        theta, _ = fit_bradley_terry(bt_df_raw, models)
-
-        bt_results = pd.DataFrame({
-            "model": models,
-            "raw_win_rate": [raw_wr[m] for m in models],
-            "bt_score": theta,
-        })
-        bt_results = bt_results.sort_values("bt_score", ascending=False).reset_index(drop=True)
-        bt_results["rank"] = bt_results.index + 1
-
-        def assign_tier(score: float) -> str:
-            if score >= 0.5:
-                return "Top Tier"
-            elif score >= 0.0:
-                return "Competitive"
-            elif score >= -1.0:
-                return "Below Average"
-            return "Weak"
-
-        bt_results["quality_tier"] = bt_results["bt_score"].apply(assign_tier)
-        bt_results.to_csv(bt_csv_path, index=False)
-
-        neut_df_raw = fetch_decisions_with_lengths(db_engine, judge_model_name=judge_model)
-        if not neut_df_raw.empty:
-            _, _, _, _, residuals, _, _ = run_length_bias_regression(neut_df_raw)
-            neut_results = compute_neutralized_scores(neut_df_raw, residuals)
-            neut_results.to_csv(neutralized_csv_path, index=False)
-        else:
-            neut_results = pd.DataFrame({
-                "model": models,
-                "total_games": 0,
-                "raw_win_rate": [raw_wr[m] for m in models],
-                "neutralized_score": 0.0,
-                "rank_raw": list(range(1, len(models)+1)),
-                "rank_neutralized": list(range(1, len(models)+1)),
-            })
-            neut_results.to_csv(neutralized_csv_path, index=False)
-
-        merged = bt_results.merge(neut_results, on="model", suffixes=("_bt", "_neut"))
-        raw_win_col = "raw_win_rate_bt" if "raw_win_rate_bt" in merged.columns else "raw_win_rate"
-
-        result_df = merged[[
-            "model",
-            raw_win_col,
-            "bt_score",
-            "quality_tier",
-            "neutralized_score",
-        ]].rename(columns={raw_win_col: "raw_win_rate"})
-        result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
-
-        return _df_to_records(result_df)
-    except Exception as exc:
-        print(f"[WARN] Dynamic leaderboard calculation error for '{judge_model}': {exc}")
-        return []
-
-
 def compute_leaderboard_read_only(db_engine, judge_model: str) -> list[dict]:
     """Build historical leaderboard telemetry in memory when its cache is absent.
 
@@ -789,15 +679,6 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     result_df = result_df.sort_values("bt_score", ascending=False).reset_index(drop=True)
 
     return _df_to_records(result_df)
-
-
-# Retired in the final application: no public route may recalculate or write
-# legacy leaderboard artifacts.
-def _retired_trigger_leaderboard_calculation(judge_model: str, db: Session) -> list[dict]:
-    """
-    Explicit development-only recalculation of legacy CSV artifacts.
-    """
-    raise RuntimeError("Retired legacy leaderboard recalculation is unavailable in the final application.")
 
 
 @app.get("/api/consistency")

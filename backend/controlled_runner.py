@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from collections import defaultdict
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 from typing import Iterable
@@ -27,7 +27,7 @@ from mock_provider import FinalPayloadMockTransport, MockScenario
 from controlled_providers import ProviderExecutionGate, adapter_for_judge
 from model_registry import MODEL_REGISTRY, Provider
 from models import Answer, Prompt
-from experiment_planning import SOURCE_FAMILIES, PairRecord, PlannedUnit, call_plan, generate_units, manifest, validate_units
+from experiment_planning import SOURCE_FAMILIES, PairRecord, PlannedUnit, generate_units, manifest, validate_units
 from experiment_protocols import PLANNED_BASE_UNIT_LIMIT, PROTOCOLS
 from controlled_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
 from controlled_analysis_metrics import RQ6Unit, RQ7Observation, VariantPair, analyze_rq1, analyze_rq2, analyze_rq3, analyze_rq4, analyze_rq5, analyze_rq6, analyze_rq7

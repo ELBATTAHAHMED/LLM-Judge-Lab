@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Mapping
 
-from controlled_persistence import Outcome
 from controlled_evaluation import ProviderCallError
 
 

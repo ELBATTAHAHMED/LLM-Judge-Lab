@@ -16,7 +16,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictInt, StrictStr, model_validator
 
 from controlled_persistence import ControlledPersistence, Outcome, PassObservation
-from controlled_prompt import PROMPT_TEMPLATE_VERSION
 from execution_policy import next_backoff_seconds, retry_rule, terminal_state
 from controlled_models import ControlledRun, ExperimentalUnit
 from model_registry import Provider, get_model_spec

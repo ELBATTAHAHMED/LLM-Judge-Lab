@@ -59,13 +59,10 @@ def test_normal_startup_does_not_run_schema_or_sequence_maintenance(monkeypatch)
 
 
 def test_public_leaderboard_is_read_only_when_artifacts_are_absent(monkeypatch, tmp_path):
-    calls: list[str] = []
     monkeypatch.setattr(main, "ROOT_DIR", tmp_path)
-    monkeypatch.setattr(main, "compute_and_save_leaderboard", lambda *_: calls.append("write") or [])
     monkeypatch.setattr(main, "compute_leaderboard_read_only", lambda *_: [{"model": "historical-model"}])
 
     assert main.get_leaderboard("gpt-4o-mini") == [{"model": "historical-model"}]
-    assert calls == []
 
 
 def test_retired_legacy_mutation_and_macro_routes_are_not_exposed():

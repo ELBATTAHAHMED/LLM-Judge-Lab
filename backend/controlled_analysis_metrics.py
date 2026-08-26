@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import random
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from math import fsum, isfinite
 from statistics import mean
 from typing import Any, Callable, Iterable, Literal, Mapping, Sequence

@@ -84,7 +84,6 @@ def analyze(session: Session) -> dict[str, Any]:
     expected=primary["primary"]
     if not (primary_result["retained_n"]==expected["covered_n"] and abs(primary_result["agreement"]-expected["agreement"]["agreement"])<1e-12 and abs(primary_result["equal_weight_individual_baseline"]-expected["individual_comparator"]["equal_weight_agreement"])<1e-12 and abs(primary_result["delta"]-expected["individual_comparator"]["delta"]["estimate"])<1e-12): raise RobustnessError("primary reproduction mismatch")
     primary_result["delta_ci_95_primary"] = primary_result.pop("delta_ci_95_secondary")
-    sensitivity=evaluate(three,tuple(),rule="three",label="THREE_VALID_SENSITIVITY") if False else None
     # Each three-valid row has a different missing judge, so use exactly its observed voters.
     def three_eval(rows: list[dict[str,Any]]) -> dict[str,Any]:
         scored=[]

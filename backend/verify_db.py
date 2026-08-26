@@ -14,7 +14,6 @@ Usage (from project root, with venv active):
 """
 
 import sys
-import os
 import io
 from pathlib import Path
 
@@ -29,7 +28,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from database import SessionLocal, engine, Base  # noqa: E402
+from database import SessionLocal  # noqa: E402
 import models  # noqa: E402
 
 # ── helpers ───────────────────────────────────────────────────────────────────
