@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from create_research_release_v2 import PG_BIN, postgres_connection, run, sha256
+from release_utils import PG_BIN, postgres_connection, run, sha256
 
 
 ROOT = Path(__file__).resolve().parents[1]

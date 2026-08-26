@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from math import fsum, isfinite
 from statistics import mean
-from typing import Any, Callable, Iterable, Literal, Sequence
+from typing import Any, Callable, Iterable, Literal, Mapping, Sequence
 
 
 ANALYSIS_VERSION = "phase4-analysis-v1"
@@ -19,6 +19,12 @@ CONFIDENCE_LEVEL = 0.95
 BOOTSTRAP_ITERATIONS = 10_000
 VALID = frozenset({"ANSWER_A", "ANSWER_B", "TIE"})
 FAILURES = frozenset({"UNKNOWN", "INVALID_RESPONSE", "API_ERROR", "TIMEOUT", "REFUSAL", "AMBIGUOUS", "MISSING_PASS"})
+
+# Compatibility helpers for the provider-free methodology contract. They retain
+# the exact pre-existing inputs and return shapes; the ``analyze_rq*`` functions
+# below remain the authoritative controlled-evidence analysis path.
+VALID_LABELS = frozenset({"ANSWER_A", "ANSWER_B", "TIE"})
+FAILURE_LABELS = frozenset({"UNKNOWN", "INVALID_RESPONSE", "API_ERROR", "TIMEOUT"})
 
 
 @dataclass(frozen=True)
@@ -419,3 +425,128 @@ def analyze_rq7(units: Iterable[RQ7Pair | RQ7Observation], *, seed: int = 202608
     if all(isinstance(row, RQ7Pair) for row in rows):
         return _analyze_rq7_preaggregated(rows)  # type: ignore[arg-type]
     raise ValueError("RQ7 analysis cannot mix raw observations and preaggregated pairs")
+
+
+# Methodology-level compatibility API formerly provided by
+# ``reliability_metrics``. This deliberately does not coerce inputs into the
+# controlled-evidence dataclasses above: its simpler return shapes are retained
+# for the frozen methodology checks.
+@dataclass(frozen=True)
+class AlignmentObservation:
+    human_label: str | None
+    judge_label: str | None
+    category: str = "uncategorized"
+    judge_name: str = "unknown"
+
+
+def _methodology_kappa(human: list[str], judge: list[str]) -> float | None:
+    if not human:
+        return None
+    observed = sum(a == b for a, b in zip(human, judge)) / len(human)
+    expected = sum((human.count(label) / len(human)) * (judge.count(label) / len(judge)) for label in VALID_LABELS)
+    return None if expected == 1 else (observed - expected) / (1 - expected)
+
+
+def _methodology_groups(records: Iterable[Any], key: Callable[[Any], Any]) -> dict[Any, list[Any]]:
+    result: dict[Any, list[Any]] = defaultdict(list)
+    for record in records:
+        result[key(record)].append(record)
+    return result
+
+
+def rq1_alignment(observations: Iterable[AlignmentObservation]) -> dict[str, object]:
+    records = list(observations)
+    result = _rq1_methodology_core(records)
+    valid = [record for record in records if record.human_label in VALID_LABELS and record.judge_label in VALID_LABELS]
+    result["by_category"] = {category: _rq1_methodology_core(group) for category, group in _methodology_groups(valid, lambda record: record.category).items()}
+    return result
+
+
+def _rq1_methodology_core(records: list[AlignmentObservation]) -> dict[str, object]:
+    valid = [record for record in records if record.human_label in VALID_LABELS and record.judge_label in VALID_LABELS]
+    exclusions = Counter("missing_human_reference" if record.human_label not in VALID_LABELS else f"judge_{str(record.judge_label).lower()}" for record in records if record not in valid)
+    human, judge = [record.human_label for record in valid], [record.judge_label for record in valid]
+    return {"eligible_n": len(valid), "input_n": len(records), "exact_agreement": (sum(a == b for a, b in zip(human, judge)) / len(valid)) if valid else None, "cohens_kappa": _methodology_kappa(human, judge), "human_tie_count": human.count("TIE"), "judge_tie_count": judge.count("TIE"), "tie_agreement_count": sum(a == b == "TIE" for a, b in zip(human, judge)), "failure_or_unknown_count": sum(record.judge_label in FAILURE_LABELS for record in records), "exclusions": dict(exclusions)}
+
+
+@dataclass(frozen=True)
+class RepetitionObservation:
+    group_key: str
+    prompt_id: int
+    answer_a_id: int
+    answer_b_id: int
+    judge_name: str
+    temperature: float
+    repetition_index: int
+    retry_count: int
+    verdict: str
+
+
+def rq2_consistency(observations: Iterable[RepetitionObservation]) -> dict[str, object]:
+    grouped = _methodology_groups(observations, lambda record: record.group_key)
+    summaries: list[dict[str, object]] = []
+    excluded = 0
+    for group in grouped.values():
+        config = {(record.prompt_id, record.answer_a_id, record.answer_b_id, record.judge_name, record.temperature) for record in group}
+        repetitions = {record.repetition_index for record in group}
+        valid = [record.verdict for record in group if record.verdict in VALID_LABELS]
+        if len(config) != 1 or len(repetitions) != len(group):
+            excluded += 1
+            continue
+        modal = max(Counter(valid).values()) if valid else 0
+        summaries.append({"group_key": group[0].group_key, "n_repetitions": len(group), "valid_n": len(valid), "consistency_rate": modal / len(valid) if valid else None, "disagreement_rate": (len(valid) - modal) / len(valid) if valid else None, "failure_or_unknown_n": len(group) - len(valid), "temperature": group[0].temperature, "retry_count_total": sum(record.retry_count for record in group)})
+    return {"groups": summaries, "eligible_group_n": len(summaries), "excluded_group_n": excluded, "temperature_groups": _methodology_groups(summaries, lambda record: record["temperature"])}
+
+
+@dataclass(frozen=True)
+class SwapObservation:
+    pair_key: str
+    presentation_order: str
+    mapped_outcome: str
+    presented_winner_slot: str | None = None
+
+
+def rq3_position_sensitivity(observations: Iterable[SwapObservation]) -> dict[str, object]:
+    groups = _methodology_groups(observations, lambda record: record.pair_key)
+    counts: Counter[str] = Counter()
+    slot_wins: Counter[str] = Counter()
+    incomplete = 0
+    for pair in groups.values():
+        orders = {record.presentation_order for record in pair}
+        if orders != {"AB", "BA"} or len(pair) != 2:
+            incomplete += 1
+            continue
+        a, b = sorted(pair, key=lambda record: record.presentation_order)
+        for record in pair:
+            if record.presented_winner_slot in {"A", "B"}:
+                slot_wins[record.presented_winner_slot] += 1
+        if a.mapped_outcome in {"ANSWER_A", "ANSWER_B"} and b.mapped_outcome in {"ANSWER_A", "ANSWER_B"}:
+            counts["CONSISTENT_ORIGINAL_A" if a.mapped_outcome == b.mapped_outcome == "ANSWER_A" else "CONSISTENT_ORIGINAL_B" if a.mapped_outcome == b.mapped_outcome == "ANSWER_B" else "DECISIVE_FLIP"] += 1
+        elif a.mapped_outcome == b.mapped_outcome == "TIE":
+            counts["TIE_BOTH"] += 1
+        elif "TIE" in {a.mapped_outcome, b.mapped_outcome}:
+            counts["TIE_DISAGREEMENT"] += 1
+        elif any(value in FAILURE_LABELS for value in (a.mapped_outcome, b.mapped_outcome)):
+            counts["FAILURE_OR_UNKNOWN"] += 1
+        else:
+            counts["NONDECISIVE_DISAGREEMENT"] += 1
+    paired_n = sum(counts.values())
+    decisive_n = counts["CONSISTENT_ORIGINAL_A"] + counts["CONSISTENT_ORIGINAL_B"] + counts["DECISIVE_FLIP"]
+    return {"eligible_paired_n": paired_n, "incomplete_pair_count": incomplete, "classifications": dict(counts), "paired_decisive_flip_rate": counts["DECISIVE_FLIP"] / decisive_n if decisive_n else None, "all_paired_disagreement_rate": (counts["DECISIVE_FLIP"] + counts["TIE_DISAGREEMENT"] + counts["NONDECISIVE_DISAGREEMENT"]) / paired_n if paired_n else None, "slot_win_imbalance": (slot_wins["A"] - slot_wins["B"]) / (slot_wins["A"] + slot_wins["B"]) if sum(slot_wins.values()) else None}
+
+
+def rq6_source_family_preference(records: Iterable[Mapping[str, object]]) -> dict[str, object]:
+    rows = list(records)
+    valid = [row for row in rows if row.get("winner_family") in {row.get("self_family"), row.get("other_family")}]
+    slots = Counter(row.get("self_slot") for row in valid)
+    self_wins = sum(row.get("winner_family") == row.get("self_family") for row in valid)
+    balanced = abs(slots["A"] - slots["B"]) <= 1
+    return {"eligible_n": len(valid), "excluded_n": len(rows) - len(valid), "self_family_preference_rate": self_wins / len(valid) if valid else None, "self_slot_counts": dict(slots), "position_balanced": balanced, "status": "ESTIMABLE" if valid and balanced else "NOT_ESTIMABLE"}
+
+
+def rq7_mitigation_comparison(baseline: Mapping[str, float], mitigation: Mapping[str, float]) -> dict[str, object]:
+    shared = set(baseline) & set(mitigation)
+    if not shared:
+        return {"status": "NOT_ESTIMABLE", "matched_n": 0, "changes": {}}
+    changes = {key: mitigation[key] - baseline[key] for key in sorted(shared) if isfinite(mitigation[key]) and isfinite(baseline[key])}
+    return {"status": "ESTIMABLE" if changes else "NOT_ESTIMABLE", "matched_n": len(shared), "changes": changes}

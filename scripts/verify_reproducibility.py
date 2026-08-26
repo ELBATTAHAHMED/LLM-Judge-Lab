@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from canonical_source_data import compare_canonical_to_frozen_reconciliation, validate_canonical_source  # noqa: E402
-from create_research_release_v2 import PG_BIN, postgres_connection, run  # noqa: E402
+from release_utils import PG_BIN, postgres_connection, run  # noqa: E402
 from database import DATABASE_URL  # noqa: E402
 
 

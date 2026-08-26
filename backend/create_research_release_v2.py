@@ -6,50 +6,19 @@ and performs a disposable database restore/read test before writing checksums.
 """
 from __future__ import annotations
 
-import hashlib
 import json
-import os
-import subprocess
-import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 
 from controlled_models import AnalysisRun, DatasetVersion, ExperimentalUnit
 from database import DATABASE_URL, SessionLocal
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS
+from release_utils import PG_BIN, postgres_connection, run, sha256
 
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v2"
-PG_BIN = Path(os.environ.get("POSTGRES_BIN", r"C:\Program Files\PostgreSQL\17\bin"))
-
-
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def postgres_connection() -> tuple[list[str], dict[str, str]]:
-    parsed = urlsplit(DATABASE_URL.replace("postgresql+psycopg2", "postgresql"))
-    if parsed.scheme != "postgresql" or not parsed.hostname or not parsed.path:
-        raise RuntimeError("A PostgreSQL DATABASE_URL is required for the physical release snapshot.")
-    env = os.environ.copy()
-    if parsed.password:
-        env["PGPASSWORD"] = unquote(parsed.password)
-    base = ["-h", parsed.hostname, "-p", str(parsed.port or 5432), "-U", unquote(parsed.username or "postgres")]
-    return base, env
-
-
-def run(command: list[str], *, env: dict[str, str]) -> str:
-    completed = subprocess.run(command, check=True, text=True, capture_output=True, env=env)
-    return completed.stdout
-
-
 def verify_restore(snapshot: Path, *, base: list[str], env: dict[str, str]) -> dict[str, object]:
     """Restore only into a unique disposable database and remove it afterwards."""
     psql = str(PG_BIN / "psql.exe")

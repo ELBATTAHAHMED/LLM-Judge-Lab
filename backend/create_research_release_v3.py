@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib,json,subprocess,sys,uuid
 from datetime import datetime,timezone
 from pathlib import Path
-from create_research_release_v2 import PG_BIN,postgres_connection,run,sha256
+from release_utils import PG_BIN, postgres_connection, run, sha256
 from database import DATABASE_URL,SessionLocal
 from controlled_models import AnalysisRun
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS

@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from reliability_metrics import AlignmentObservation, RepetitionObservation, SwapObservation, rq1_alignment, rq2_consistency, rq3_position_sensitivity, rq6_source_family_preference, rq7_mitigation_comparison
+from controlled_analysis_metrics import AlignmentObservation, RepetitionObservation, SwapObservation, rq1_alignment, rq2_consistency, rq3_position_sensitivity, rq6_source_family_preference, rq7_mitigation_comparison
 from experiment_planning import PairRecord, call_plan, generate_units, manifest, validate_units
 from experiment_protocols import PROTOCOLS, SCIENTIFIC_TERMINOLOGY
 from controlled_transforms import make_format_variant, make_verbosity_variant, validate_format_variant, validate_verbosity_variant
