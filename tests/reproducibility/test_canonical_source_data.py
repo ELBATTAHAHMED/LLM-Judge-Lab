@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from canonical_source_data import CanonicalSourceError, build_fresh_dataset, compare_canonical_to_frozen_reconciliation, load_canonical_study, stable_sha, validate_canonical_source, verify_fresh_dataset
+from backend.data.canonical import CanonicalSourceError, build_fresh_dataset, compare_canonical_to_frozen_reconciliation, load_canonical_study, stable_sha, validate_canonical_source, verify_fresh_dataset
 from database import Base
 
 

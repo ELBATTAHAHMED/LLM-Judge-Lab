@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from release_utils import PG_BIN, postgres_connection, run, sha256  # noqa: E402
+from backend.release.utils import PG_BIN, postgres_connection, run, sha256  # noqa: E402
 from database import DATABASE_URL,SessionLocal  # noqa: E402
 from controlled_models import AnalysisRun  # noqa: E402
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS  # noqa: E402

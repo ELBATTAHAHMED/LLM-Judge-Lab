@@ -14,10 +14,10 @@ from pathlib import Path
 from controlled_models import AnalysisRun, DatasetVersion, ExperimentalUnit
 from database import DATABASE_URL, SessionLocal
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS
-from release_utils import PG_BIN, postgres_connection, run, sha256
+from backend.release.utils import PG_BIN, postgres_connection, run, sha256
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v2"
 def verify_restore(snapshot: Path, *, base: list[str], env: dict[str, str]) -> dict[str, object]:
     """Restore only into a unique disposable database and remove it afterwards."""

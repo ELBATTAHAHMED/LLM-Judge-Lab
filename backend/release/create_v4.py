@@ -9,11 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from controlled_models import AnalysisRun
-from release_utils import PG_BIN, postgres_connection, run, sha256
+from backend.release.utils import PG_BIN, postgres_connection, run, sha256
 from database import DATABASE_URL, SessionLocal
 from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v4"
 CORRECTED = ROOT / "evidence" / "final" / "controlled_source_text_corrected_v1"
 
@@ -58,7 +58,7 @@ def main() -> int:
     (RELEASE / "RELEASE_MANIFEST.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     files = sorted(path for path in RELEASE.rglob("*") if path.is_file() and path.name not in {"SHA256SUMS.txt", "VERIFY_RELEASE.py"})
     (RELEASE / "SHA256SUMS.txt").write_text("".join(f"{sha256(path)}  {path.relative_to(RELEASE).as_posix()}\n" for path in files), encoding="utf-8")
-    shutil.copyfile(ROOT / "backend" / "verify_research_release_v4.py", RELEASE / "VERIFY_RELEASE.py")
+    shutil.copyfile(ROOT / "backend" / "release" / "verify_v4.py", RELEASE / "VERIFY_RELEASE.py")
     print(json.dumps({"release": str(RELEASE), "root_digest": sha256(RELEASE / "SHA256SUMS.txt"), "dump_sha256": manifest["database_snapshot"]["sha256"], "restore": restored}, sort_keys=True))
     return 0
 

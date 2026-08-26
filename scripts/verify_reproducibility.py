@@ -11,10 +11,10 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT))
 
-from canonical_source_data import compare_canonical_to_frozen_reconciliation, validate_canonical_source  # noqa: E402
-from release_utils import PG_BIN, postgres_connection, run  # noqa: E402
+from backend.data.canonical import compare_canonical_to_frozen_reconciliation, validate_canonical_source  # noqa: E402
+from backend.release.utils import PG_BIN, postgres_connection, run  # noqa: E402
 from database import DATABASE_URL  # noqa: E402
 
 
@@ -40,7 +40,7 @@ def fresh_empty_postgres_build() -> None:
         subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT, env=child_env, check=True)
         subprocess.run([sys.executable, str(ROOT / "scripts" / "build_dataset.py")], cwd=ROOT, env=child_env, check=True)
         subprocess.run([sys.executable, str(ROOT / "scripts" / "run_evaluation.py"), "--limit", "2"], cwd=ROOT, env=child_env, check=True)
-        code = "import sys;sys.path.insert(0,'backend');from database import SessionLocal;from canonical_source_data import verify_fresh_dataset; s=SessionLocal(); print(verify_fresh_dataset(s)); s.close()"
+        code = "import sys;sys.path.insert(0,'backend');from database import SessionLocal;from backend.data.canonical import verify_fresh_dataset; s=SessionLocal(); print(verify_fresh_dataset(s)); s.close()"
         subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=child_env, check=True)
     finally:
         if created:

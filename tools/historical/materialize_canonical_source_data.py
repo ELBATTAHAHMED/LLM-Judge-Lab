@@ -11,9 +11,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT))
 
-from canonical_source_data import (  # noqa: E402
+from backend.data.canonical import (  # noqa: E402
     CANONICAL_IDENTITY,
     CANONICAL_PATH,
     RAW_HUMAN_PATH,

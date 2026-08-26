@@ -8,9 +8,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT))
 
-from canonical_source_data import build_fresh_dataset  # noqa: E402
+from backend.data.canonical import build_fresh_dataset  # noqa: E402
 from database import SessionLocal  # noqa: E402
 
 

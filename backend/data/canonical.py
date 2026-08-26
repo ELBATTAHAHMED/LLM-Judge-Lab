@@ -21,7 +21,7 @@ from controlled_models import DatasetVersion
 from models import Answer, HumanPreference, Prompt
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 RAW_HUMAN_PATH = ROOT / "data" / "human_judgment.jsonl"
 RAW_QUESTION_PATH = ROOT / "data" / "question.jsonl"
 CANONICAL_PATH = ROOT / "data" / "canonical" / "source_corrected_study_v1.json"

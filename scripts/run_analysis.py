@@ -8,9 +8,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT))
 
-from canonical_source_data import load_canonical_study, validate_canonical_source  # noqa: E402
+from backend.data.canonical import load_canonical_study, validate_canonical_source  # noqa: E402
 
 
 ARTIFACT = ROOT / "evidence" / "remediation" / "source_corrected_complete_case_full_population_analysis_v2.json"

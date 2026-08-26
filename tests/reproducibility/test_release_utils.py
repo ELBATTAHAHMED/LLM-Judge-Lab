@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 
-from release_utils import postgres_connection, sha256
+from backend.release.utils import postgres_connection, sha256
 
 
 def test_release_helpers_hash_files_and_parse_postgres_urls_without_runtime_database_access(tmp_path):

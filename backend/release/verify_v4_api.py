@@ -12,10 +12,11 @@ import uuid
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from release_utils import PG_BIN, postgres_connection, run, sha256
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
 
+from backend.release.utils import PG_BIN, postgres_connection, run, sha256
 
-ROOT = Path(__file__).resolve().parents[1]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v4"
 SNAPSHOT = RELEASE / "database" / "judgelab-research-release-v4.dump"
 
