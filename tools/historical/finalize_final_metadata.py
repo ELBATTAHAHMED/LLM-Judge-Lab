@@ -8,10 +8,16 @@ constraint defines ``FROZEN`` as the compatible final state.
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
 
-from controlled_models import AnalysisRun, Experiment, ExperimentManifest
-from database import SessionLocal
-from final_evidence import canonical_final_analysis_runs
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
+
+from controlled_models import AnalysisRun, Experiment, ExperimentManifest  # noqa: E402
+from database import SessionLocal  # noqa: E402
+from final_evidence import canonical_final_analysis_runs  # noqa: E402
 
 
 def final_metadata_rows(session):

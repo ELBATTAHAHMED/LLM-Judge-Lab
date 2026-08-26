@@ -10,11 +10,15 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from enum import Enum
 from pathlib import Path
+import sys
 from typing import Iterable
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy.orm import Session
 
-from models import Answer, HumanPreference, JudgeDecision, Prompt
+from models import Answer, HumanPreference, JudgeDecision, Prompt  # noqa: E402
 
 
 class ReuseClass(str, Enum):

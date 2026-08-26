@@ -3,12 +3,16 @@ from __future__ import annotations
 import hashlib,json,subprocess,sys,uuid
 from datetime import datetime,timezone
 from pathlib import Path
-from release_utils import PG_BIN, postgres_connection, run, sha256
-from database import DATABASE_URL,SessionLocal
-from controlled_models import AnalysisRun
-from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS
 
-ROOT=Path(__file__).resolve().parents[1]; REL=ROOT/'evidence'/'final'/'research_release_v3'; PKG=ROOT/'evidence'/'final'/'multijudge_consensus_v1'; MJ='fc40faf1-b886-42f8-8faf-a616f61f3107'
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
+
+from release_utils import PG_BIN, postgres_connection, run, sha256  # noqa: E402
+from database import DATABASE_URL,SessionLocal  # noqa: E402
+from controlled_models import AnalysisRun  # noqa: E402
+from final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS  # noqa: E402
+
+REL=ROOT/'evidence'/'final'/'research_release_v3'; PKG=ROOT/'evidence'/'final'/'multijudge_consensus_v1'; MJ='fc40faf1-b886-42f8-8faf-a616f61f3107'
 def restore(snapshot,base,env):
  name='judgelab_v3_verify_'+uuid.uuid4().hex[:10];psql=str(PG_BIN/'psql.exe');restore=str(PG_BIN/'pg_restore.exe')
  try:

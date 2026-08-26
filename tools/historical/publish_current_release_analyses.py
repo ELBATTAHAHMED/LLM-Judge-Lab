@@ -2,11 +2,17 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 
-from controlled_analysis_publisher import publish_manifest_analysis
-from controlled_models import Experiment, ExperimentManifest
-from database import SessionLocal
-from final_evidence import CANONICAL_FINAL_MANIFESTS
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
+
+from controlled_analysis_publisher import publish_manifest_analysis  # noqa: E402
+from controlled_models import Experiment, ExperimentManifest  # noqa: E402
+from database import SessionLocal  # noqa: E402
+from final_evidence import CANONICAL_FINAL_MANIFESTS  # noqa: E402
 
 
 CORRECTED_RQS = ("RQ2", "RQ3", "RQ4", "RQ5", "RQ7")

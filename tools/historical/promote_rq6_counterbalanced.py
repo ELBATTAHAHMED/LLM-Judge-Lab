@@ -2,9 +2,15 @@
 from __future__ import annotations
 
 import json
+import sys
+from pathlib import Path
 
-from database import SessionLocal
-from rq6_counterbalanced_execution import load_preflight_manifest, publish_counterbalanced_analysis
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "backend"))
+
+from database import SessionLocal  # noqa: E402
+from rq6_counterbalanced_execution import load_preflight_manifest, publish_counterbalanced_analysis  # noqa: E402
 
 
 def main() -> int:
