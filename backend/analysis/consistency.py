@@ -1,5 +1,5 @@
 """
-analyze_consistency.py
+backend.analysis.consistency
 ======================
 Multi-Turn Logical Consistency Analysis Module.
 
@@ -31,7 +31,7 @@ Output
 
 Usage
 -----
-    python backend/analyze_consistency.py
+    python -m backend.analysis.consistency
 """
 
 from __future__ import annotations

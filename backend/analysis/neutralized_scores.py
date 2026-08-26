@@ -1,5 +1,5 @@
 """
-calculate_neutralized_scores.py
+backend.analysis.neutralized_scores
 ================================
 Experimental Module 3: Residual-Based Length Neutralization.
 
@@ -39,7 +39,7 @@ Output
 
 Usage
 -----
-    python backend/calculate_neutralized_scores.py
+    python -m backend.analysis.neutralized_scores
 """
 
 from __future__ import annotations

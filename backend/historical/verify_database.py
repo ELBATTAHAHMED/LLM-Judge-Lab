@@ -1,5 +1,5 @@
 """
-verify_db.py
+backend.historical.verify_database
 ============
 QA Health-Check script for the LLM-as-a-Judge Reliability Lab database.
 
@@ -10,7 +10,7 @@ Runs 4 categories of checks against the PostgreSQL database:
   4. Distribution Check   – answer count grouped by model_name
 
 Usage (from project root, with venv active):
-    python backend/verify_db.py
+    python -m backend.historical.verify_database
 """
 
 import sys

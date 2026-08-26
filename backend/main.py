@@ -536,7 +536,7 @@ def get_self_preference(
     """
     judge_model_norm = normalize_model_id(judge_model)
     try:
-        from analyze_consistency import compute_self_preference_bias
+        from backend.analysis.consistency import compute_self_preference_bias
         payload = compute_self_preference_bias(db, judge_model_name=judge_model_norm)
         payload["evidence_class"] = "LEGACY_EXPLORATORY"
         payload["n"] = int(payload.get("total_self_matchups") or 0)
@@ -563,7 +563,7 @@ def get_inter_judge_kappa(
     model_a_norm = normalize_model_id(model_a)
     model_b_norm = normalize_model_id(model_b)
     try:
-        from analyze_consistency import compute_inter_judge_kappa
+        from backend.analysis.consistency import compute_inter_judge_kappa
         payload = compute_inter_judge_kappa(db.get_bind(), model_a=model_a_norm, model_b=model_b_norm)
         n = int(payload.get("overlapping_trials") or 0)
         payload["evidence_class"] = "LEGACY_EXPLORATORY"
@@ -611,8 +611,8 @@ def compute_leaderboard_read_only(db_engine, judge_model: str) -> list[dict]:
     """
     judge_model = normalize_model_id(judge_model)
     try:
-        from calculate_latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
-        from calculate_neutralized_scores import fetch_decisions_with_lengths, run_length_bias_regression, compute_neutralized_scores
+        from backend.analysis.latent_quality import fetch_pairwise_results, compute_raw_win_rates, fit_bradley_terry
+        from backend.analysis.neutralized_scores import fetch_decisions_with_lengths, run_length_bias_regression, compute_neutralized_scores
 
         pairwise = fetch_pairwise_results(db_engine, judge_model_name=judge_model)
         if pairwise.empty:
@@ -687,7 +687,7 @@ def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt
     Query multi-turn logical consistency and inter-judge reliability stats for a given judge_model.
     """
     judge_model = normalize_model_id(judge_model)
-    from analyze_consistency import (
+    from backend.analysis.consistency import (
         fetch_decisions,
         compute_position_consistency,
         compute_cross_category_consistency,

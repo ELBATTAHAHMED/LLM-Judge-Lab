@@ -1,5 +1,5 @@
 """
-calculate_latent_quality.py
+backend.analysis.latent_quality
 ============================
 Experimental Module 2: Bradley-Terry Latent Quality Scoring.
 
@@ -40,7 +40,7 @@ Output
 
 Usage
 -----
-    python backend/calculate_latent_quality.py
+    python -m backend.analysis.latent_quality
 """
 from __future__ import annotations
 
