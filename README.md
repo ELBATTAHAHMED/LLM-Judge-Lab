@@ -103,6 +103,19 @@ and pre-correction analyses remain preserved for audit. They are not inputs to
 the normal workflow above. Historical-only reconstruction helpers live under
 `tools/historical/`; package verifiers remain alongside their frozen packages.
 
+### Current code layout
+
+`backend/main.py` is the FastAPI entrypoint. Its current domain packages are
+`core/`, `data/`, `evaluation/`, `analysis/`, `experiments/`, `multijudge/`,
+`historical/`, and `release/`. The public provider-free commands are
+`scripts/build_dataset.py`, `scripts/run_evaluation.py`,
+`scripts/run_analysis.py`, and `scripts/verify_reproducibility.py`.
+
+The two root compatibility modules, `backend/database.py` and
+`backend/controlled_models.py`, remain only for immutable frozen-package
+verifiers that import those historical module names. They are not a second
+runtime implementation.
+
 ### Frozen-release verification
 
 Restore the additive `research_release_v4` snapshot when verifying the full

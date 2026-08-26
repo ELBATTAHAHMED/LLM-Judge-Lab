@@ -104,3 +104,20 @@ the fresh build contains 160 turn-level prompt records; this is not a count of
 
 The separately documented historical/remediation tools and all frozen packages
 remain available for audit, but are not prerequisites for this clean workflow.
+
+## Current implementation layout
+
+`backend/main.py` is the API entrypoint. The maintained backend domains are
+`core/` (ORM, database, evidence pins), `data/` (canonical source data),
+`evaluation/` (prompt, route, provider, retry, and execution safety),
+`analysis/` (controlled and source-corrected estimators), `experiments/`
+(counterbalanced RQ6), `multijudge/` (RQ7 secondary protocol), `historical/`
+(required source-correction lineage), and `release/` (release construction and
+verification).
+
+The public reproducibility commands are `scripts/build_dataset.py`,
+`scripts/run_evaluation.py`, `scripts/run_analysis.py`, and
+`scripts/verify_reproducibility.py`. Historical one-off reconstruction helpers
+live under `tools/historical/`. The root `backend/database.py` and
+`backend/controlled_models.py` modules are intentionally retained only as
+compatibility shims for immutable frozen-package verifiers.
