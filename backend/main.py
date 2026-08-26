@@ -26,7 +26,7 @@ ROOT_DIR    = BACKEND_DIR.parent.resolve()
 
 # Resolve the local configuration from the repository root so the manual-only
 # sandbox setting survives local restarts regardless of the Uvicorn cwd.
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR / ".env", override=True)
 
 # Ensure backend/ directory is in sys.path so 'database' and 'models' import cleanly
 if str(BACKEND_DIR) not in sys.path:
