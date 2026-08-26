@@ -117,7 +117,13 @@ verification).
 
 The public reproducibility commands are `scripts/build_dataset.py`,
 `scripts/run_evaluation.py`, `scripts/run_analysis.py`, and
-`scripts/verify_reproducibility.py`. Historical one-off reconstruction helpers
+`scripts/verify_reproducibility.py`.
+
+The analysis command (`scripts/run_analysis.py`) exposes two provider-free modes:
+1. **Frozen artifact verification** (`python scripts/run_analysis.py`): validates the committed/frozen final result and all expected metrics.
+2. **Independent database recomputation** (`python scripts/run_analysis.py --recompute-from-db`): independently reconstructs RQ1–RQ7 metrics directly from the restored PostgreSQL database using `backend/analysis/source_corrected_full_population.py` and compares against the frozen release artifact.
+
+Historical one-off reconstruction helpers
 live under `tools/historical/`. The root `backend/database.py` and
 `backend/controlled_models.py` modules are intentionally retained only as
 compatibility shims for immutable frozen-package verifiers.

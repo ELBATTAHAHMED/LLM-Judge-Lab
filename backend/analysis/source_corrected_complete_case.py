@@ -425,6 +425,17 @@ def _metric_from_payload(result: dict[str, Any], metric_key: str) -> float | Non
     return None
 
 
+HISTORICAL_COMPARISON_RUNS: dict[str, str] = {
+    "RQ1": "63cd1939-05f4-42cf-a933-4094ac652eea",
+    "RQ2": "4013c629-44bf-4021-860b-5c5caba6a8d2",
+    "RQ3": "28e45929-c042-4578-be2f-d8f30082b693",
+    "RQ4": "057a5a79-0b44-4ba3-9dbb-2d9d01590728",
+    "RQ5": "a729804a-5539-400f-998f-83b8c6ada30a",
+    "RQ6": "ca2bd7a4-88dc-4be5-883d-cd8f849aa5fa",
+    "RQ7": "fa24666d-b4c9-4b1d-a767-cfc59c4380ac",
+}
+
+
 def _historical_comparison(session: Session, results: dict[str, Any]) -> list[dict[str, Any]]:
     """Comparison-only table; pinned historical runs are never analysis input."""
     mapping = {
@@ -438,7 +449,7 @@ def _historical_comparison(session: Session, results: dict[str, Any]) -> list[di
     }
     output: list[dict[str, Any]] = []
     for rq_key, (historical_rq, old_key, new_key) in mapping.items():
-        row = session.get(AnalysisRun, CANONICAL_FINAL_ANALYSIS_RUNS[historical_rq])
+        row = session.get(AnalysisRun, HISTORICAL_COMPARISON_RUNS[historical_rq])
         if row is None:
             raise CompleteCaseAnalysisError(f"pinned historical AnalysisRun missing for {rq_key}")
         historical = _metric_from_payload(row.result_json or {}, old_key)

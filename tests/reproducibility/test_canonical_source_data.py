@@ -98,3 +98,20 @@ def test_public_planning_script_runs_directly_without_provider_calls(tmp_path):
 
     assert completed.returncode == 0, completed.stderr
     assert json.loads(completed.stdout)["provider_calls"] == 0
+
+
+def test_public_analysis_script_verifies_frozen_artifact_without_provider_calls():
+    completed = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "run_analysis.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["status"] == "VERIFIED"
+    assert payload["provider_calls"] == 0
+    assert payload["analysis_artifact_sha256"] == "ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97"
+

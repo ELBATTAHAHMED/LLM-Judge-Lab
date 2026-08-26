@@ -81,6 +81,22 @@ historical working database or answer insertion order.
 .\.venv\Scripts\python.exe scripts\verify_reproducibility.py --fresh-empty-db
 ```
 
+### Analysis execution modes
+
+The public analysis command supports two distinct provider-free modes:
+
+1. **Frozen artifact verification (default):**
+   ```powershell
+   .\.venv\Scripts\python.exe scripts\run_analysis.py
+   ```
+   Validates the committed/frozen final scientific artifact and checks all expected point estimates without requiring database execution.
+
+2. **Independent database recomputation:**
+   ```powershell
+   .\.venv\Scripts\python.exe scripts\run_analysis.py --recompute-from-db
+   ```
+   Independently reconstructs all full-population RQ1–RQ7 metrics directly from the released/restored PostgreSQL experimental database using the authoritative estimator implementation (`backend/analysis/source_corrected_full_population.py`), verifying exact metric and artifact SHA agreement against the frozen release without making provider calls.
+
 `scripts/run_evaluation.py` is deliberately planning-only and makes zero
 provider calls. Real evaluation remains separately authorized and guarded; it
 is not required to verify the frozen final science.
