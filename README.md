@@ -1,156 +1,317 @@
 # LLM-as-a-Judge Reliability Lab
 
-This repository contains a controlled, provenance-preserving study of pairwise
-LLM judgments. The final scientific pages are `/synthesis` and
-`/controlled-results`; `/` opens the historical exploratory Leaderboard.
-Live Evaluation is a separate manual sandbox and remains behind its explicit
-server-side provider-execution gate.
+> Measuring and Mitigating Biases in Automatic Evaluation of Generated Responses
 
-## Current corrected controlled science
+LLM-as-a-Judge Reliability Lab is a Master's applied-research project about the reliability of large language models used to evaluate generated answers. Its central question is: **how reliable are LLM judges, which sensitivities affect their decisions, and which mitigation strategies improve the resulting evaluation process?**
 
-The current authority is the verified source-corrected full-population analysis
-[`evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json`](evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json)
-(deterministic analysis-content hash `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97`; file SHA-256 `85b36f2320a91fc590014566ded1c6203a17948ccfcd3a4b8558de479cb3b49b`, recorded in the corrected package manifest).
-The API selects only its pinned completed AnalysisRuns and fails closed if any
-is absent or incompatible. Phase 11, `research_release_v2`,
-`research_release_v3`, and historical/provisional remediation evidence remain
-immutable audit records.
+This is not merely a web application that calls model APIs. The project combines a controlled benchmark, provenance-preserving experiment records, quantitative analysis with uncertainty estimates, frozen evidence releases, and a research dashboard. The final scientific results are source-corrected, pinned to specific completed analysis records, and can be verified without making provider calls.
 
-| RQ | Current authoritative result |
+## Research questions
+
+| RQ | Final scope |
 | --- | --- |
-| RQ1 — Human Alignment | 457/772 = **59.20%** agreement with human preference reference labels (95% CI 55.70–62.69%); Cohen's kappa **0.3230** (95% CI 0.2698–0.3758). |
-| RQ2 — Stochastic Consistency | Fixed-temperature strict complete-repetition consistency: 7,119/7,375 = **96.53%** across 1,475 strict-valid cells (1,599/1,600 physical complete cells). Conditional sensitivity: **96.31%**, N=1,585. |
-| RQ3 — Position Sensitivity | **17.49%** decisive flip rate (96/549) after canonical answer-identity remapping; all-paired disagreement 193/759 = 25.43%. |
-| RQ4 — Controlled Redundant-Length Effect | **0/682 = 0.00%** stable controlled redundant-text variant wins. This is the narrow frozen estimator `variant_outcome == "VARIANT"` after valid/stable pair requirements, not a broad verbosity claim. |
-| RQ5 — Controlled Presentation-Format Effect | **0/716 = 0.00%** stable controlled presentation/list-prefix variant wins under the same narrow estimator, not a general formatting claim. |
-| RQ6 — Counterbalanced Matched Source-Family Preference | 81/159 = **50.94%** (95% CI 42.77–58.49%; coverage 33.13%); the association has substantial judge-level heterogeneity and is not causal self-bias evidence. |
-| RQ7 — Mitigation Trade-off | **PRIMARY DUAL_SWAP:** 405/597 = 67.84% to 409/597 = 68.51%, **+0.67 pp** (95% CI −0.17 to +1.68 pp), with coverage 96.87% to 75.84% (−21.03 pp): a small uncertain change plus substantial coverage loss. **SECONDARY Multi-Judge:** 808/1,125 = 71.82% vs 66.80% equal-weight comparator, **+5.02 pp** (95% CI +4.16 to +5.89 pp), 69.83% coverage of 1,611 planned pairs. |
+| **RQ1 — Human alignment** | Agreement between LLM judgments and human preference reference labels. The labels are not treated as absolute ground truth. |
+| **RQ2 — Repeatability** | Fixed-condition consistency when the same judge evaluates the same pair repeatedly. This is not a general temperature-effects study. |
+| **RQ3 — Position sensitivity** | Change in the mapped decision when the same answers are shown as A/B and B/A. |
+| **RQ4 — Redundant-length treatment** | Effect of an exact duplicated-text treatment under a narrow controlled design; not a general claim about verbosity bias. |
+| **RQ5 — Presentation-format treatment** | Effect of a content-equivalent list-prefix treatment; not a general claim about formatting bias. |
+| **RQ6 — Source-family association** | Counterbalanced association between a judge and answer-source family; not proof of causal self-preference. |
+| **RQ7 — Mitigation** | DUAL_SWAP is the primary mitigation; Multi-Judge consensus is secondary. Their estimands and comparators differ, so direct superiority is not assessed. |
 
-DUAL_SWAP and Multi-Judge have different frozen units, comparators, and
-estimands; direct superiority comparison is **not defensible**. Human
-preference labels are reference labels, not ground truth.
+## Research contribution
 
-## Dataset provenance and correction
+The project provides a controlled, reproducible framework for pairwise LLM judging. It preserves dataset, prompt, answer, model, configuration, presentation, pass, attempt, and analysis provenance; measures reliability and sensitivity against human preference references; reports confidence intervals and operational outcomes; and presents the resulting evidence in a research dashboard.
 
-The upstream dataset is **LMSYS MT-Bench Human Judgments**
-(`lmsys/mt_bench_human_judgments`), associated with Zheng et al. (2023),
-*Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena*
-([arXiv:2306.05685](https://arxiv.org/abs/2306.05685)). The dataset license is
-**CC BY 4.0**; this is distinct from the FastChat code license, **Apache-2.0**.
+The current authority is the **source-corrected full-population analysis**. Historical evidence remains available for audit, but it is not substituted for the current final results.
 
-All 3,355/3,355 local raw human rows matched upstream. Source-text
-reconciliation resolved 1,568/1,568 controlled records: 1,070
-`SOURCE_EXACT`, 498 `SOURCE_CORRECTION_REQUIRED`, and 0 unresolved. Historical
-DB ingestion had selected answers by insertion order, causing source-text
-mismatches for those 498 controlled reference records; the upstream human
-judgment dataset was not corrupted. Exact source responses were reconciled
-deterministically, affected evaluations were rerun additively, and historical
-evidence was retained unchanged.
+## Dataset
 
-Fourteen terminal Claude observations remained unavailable after bounded
-recovery. Provider response identifiers were retained, but raw rejected
-response bodies were not persisted, preventing scientifically defensible
-offline re-parsing. The missing observations are judge-specific and
-concentrated in a small subset of questions, turns, and categories. Analyses
-therefore use explicitly reported complete-case populations, without claiming
-MCAR or MAR.
+The canonical study is `source-corrected-controlled-study-v1`, built from the LMSYS MT-Bench Human Judgments source snapshot.
 
-## Reproduce and verify
+| Item | Verified value |
+| --- | ---: |
+| Controlled source records | 1,568 |
+| Source exact | 1,070 |
+| Source correction required | 498 |
+| Unresolved records | 0 |
+| Distinct MT-Bench questions | 80 (IDs 81–160) |
+| Turn-level prompt records | 160 (80 turn 1 + 80 turn 2) |
 
-### Normal reproducibility workflow
+The distinction matters: the study contains **80 benchmark questions**, each represented by two MT-Bench turns, rather than 160 distinct questions. The canonical manifest, raw snapshot, and provenance note are under `data/`.
 
-This workflow starts from an empty PostgreSQL database and never relies on the
-historical working database or answer insertion order.
+## Experimental design
 
-1. Create a virtual environment and install `requirements.txt`.
-2. Set a local PostgreSQL `DATABASE_URL` in an ignored `.env` file.
-3. Apply the checked-in schema migrations.
-4. Build the canonical source-correct dataset from committed raw and canonical
-   data.
-5. Create a provider-free controlled evaluation plan, or use the separately
-   authorized execution workflow when collecting new evidence.
-6. Verify frozen corrected analysis outputs.
-7. Run the complete reproducibility verifier, including a disposable empty-DB
-   reconstruction when PostgreSQL is available.
+The framework evaluates answer pairs with structured LLM judgments. It includes repeated fixed-condition evaluations, counterbalanced A/B ↔ B/A presentation, deterministic redundant-text and format-only variants, source-family counterbalancing, and mitigation protocols. Ties, provider failures, invalid responses, missing observations, and incomplete paired units are retained as explicit operational outcomes and are handled by the estimator-specific inclusion rules.
 
-```powershell
-.\.venv\Scripts\python.exe -m alembic upgrade head
-.\.venv\Scripts\python.exe scripts\build_dataset.py
-.\.venv\Scripts\python.exe scripts\run_evaluation.py --limit 80
-.\.venv\Scripts\python.exe scripts\run_analysis.py
-.\.venv\Scripts\python.exe scripts\verify_reproducibility.py --fresh-empty-db
-```
+## Final results
 
-### Analysis execution modes
+These are the authoritative results from the verified source-corrected full-population artifact.
 
-The public analysis command supports two distinct provider-free modes:
+| RQ | Primary estimand / population | Result | Interpretation |
+| --- | --- | --- | --- |
+| RQ1 | Human-reference agreement, N=772 | 457/772 = **59.20%**; Cohen's κ = **0.3230** | 95% CI: 55.70–62.69% for agreement; 0.2698–0.3758 for κ. |
+| RQ2 | Strict complete-repetition consistency, N=1,475 cells | **96.53%** | Fixed-condition repeatability; conditional sensitivity is 96.31%, N=1,585. |
+| RQ3 | Decisive mapped-original swap pairs, N=549 | 96/549 = **17.49%** flips | All-paired disagreement is 193/759 = 25.43%. |
+| RQ4 | Stable valid redundant-text pairs, N=682 | 0/682 = **0.00%** variant wins | A narrow duplicate-text result, not a universal verbosity finding. |
+| RQ5 | Stable valid presentation/list-prefix pairs, N=716 | 0/716 = **0.00%** variant wins | A narrow format-treatment result, not a universal formatting finding. |
+| RQ6 | Counterbalanced stable decisive units, N=159 | 81/159 = **50.94%** | 95% CI: 42.77–58.49%; coverage is 159/480 = 33.13%; associational only. |
+| RQ7 primary | DUAL_SWAP matched retained decisions, N=597 | 67.84% → 68.51%; **+0.67 pp** | 95% CI: −0.17 to +1.68 pp; coverage falls from 96.87% to 75.84%. |
+| RQ7 secondary | Multi-Judge retained consensus pairs, N=1,125 of 1,611 planned | 71.82% vs 66.80%; **+5.02 pp** | 95% CI: +4.16 to +5.89 pp against its equal-weight individual-judge comparator. |
 
-1. **Frozen artifact verification (default):**
-   ```powershell
-   .\.venv\Scripts\python.exe scripts\run_analysis.py
-   ```
-   Validates the committed/frozen final scientific artifact and checks all expected point estimates without requiring database execution.
+For full metric definitions, strata, and operational accounting, consult [the technical and scientific record](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md) and the frozen evidence.
 
-2. **Independent database recomputation:**
-   ```powershell
-   .\.venv\Scripts\python.exe scripts\run_analysis.py --recompute-from-db
-   ```
-   Independently reconstructs all full-population RQ1–RQ7 metrics directly from the released/restored PostgreSQL experimental database using the authoritative estimator implementation (`backend/analysis/source_corrected_full_population.py`), verifying exact metric and artifact SHA agreement against the frozen release without making provider calls.
+## Interpretation boundaries and limitations
 
-`scripts/run_evaluation.py` is deliberately planning-only and makes zero
-provider calls. Real evaluation remains separately authorized and guarded; it
-is not required to verify the frozen final science.
+- Human labels are preference reference labels, not objective ground truth.
+- RQ4 and RQ5 estimate only their documented controlled treatments.
+- RQ6 is an association; residual source and answer-quality confounding prevent a causal self-bias conclusion.
+- RQ7 DUAL_SWAP has a small, uncertain agreement difference and a substantial coverage trade-off. Multi-Judge is evaluated against its own retained-pair comparator, not against DUAL_SWAP.
+- Provider-specific missing observations are reported through the complete-case populations rather than silently removed.
+- Bootstrap intervals apply to the logical units specified by each estimator; they do not claim a wider independent benchmark-pair population.
+- The final analysis and evidence are reproducible from the released database and frozen artifacts. Exact historical provider-response replay is not guaranteed where provider-side determinism, seed behavior, or immutable provider-revision metadata was unavailable or not durably exposed.
 
-Canonical inputs are:
-
-- raw snapshot: `data/human_judgment.jsonl` (3,355 verified rows);
-- canonical study manifest:
-  `data/canonical/source_corrected_study_v1.json`;
-- data-layout/provenance note: `data/metadata/CANONICAL_SOURCE_DATA.md`.
-
-The canonical study covers **80 distinct MT-Bench questions** (preserved
-upstream question IDs 81–160), represented by **160 turn-level prompt
-records**: one record for each of the two MT-Bench turns per question.
-
-### Historical correction and audit material
-
-Historical databases, remediation/recovery ledgers, Phase 11, releases v2/v3,
-and pre-correction analyses remain preserved for audit. They are not inputs to
-the normal workflow above. Historical-only reconstruction helpers live under
-`tools/historical/`; package verifiers remain alongside their frozen packages.
-
-### Current code layout
-
-`backend/main.py` is the FastAPI entrypoint. Its current domain packages are
-`core/`, `data/`, `evaluation/`, `analysis/`, `experiments/`, `multijudge/`,
-`historical/`, and `release/`. The public provider-free commands are
-`scripts/build_dataset.py`, `scripts/run_evaluation.py`,
-`scripts/run_analysis.py`, and `scripts/verify_reproducibility.py`.
-
-The two root compatibility modules, `backend/database.py` and
-`backend/controlled_models.py`, remain only for immutable frozen-package
-verifiers that import those historical module names. They are not a second
-runtime implementation.
-
-### Frozen-release verification
-
-Restore the additive `research_release_v4` snapshot when verifying the full
-frozen database release. The normal dashboard path does not make provider calls.
-
-```powershell
-.\.venv\Scripts\python.exe evidence/final/phase11/VERIFY_PACKAGE.py
-.\.venv\Scripts\python.exe evidence/final/research_release_v2/VERIFY_RELEASE.py
-.\.venv\Scripts\python.exe evidence/final/multijudge_consensus_v1/VERIFY_PACKAGE.py
-.\.venv\Scripts\python.exe evidence/final/research_release_v3/VERIFY_RELEASE.py
-.\.venv\Scripts\python.exe evidence/final/controlled_source_text_corrected_v1/VERIFY_PACKAGE.py
-.\.venv\Scripts\python.exe evidence/final/research_release_v4/VERIFY_RELEASE.py
-```
-
-The immutable Phase 11 root digest remains:
+## Architecture
 
 ```text
-f1a1d6ffcb6f6fd5a5dd48f7b51a731d6b765a68ff76501bf6c0ef356e53ce13
+React / Vite frontend
+        ↓ REST
+FastAPI API (`backend/main.py`)
+        ↓
+PostgreSQL experiment and provenance database
+        ↓
+analysis · evaluation · controlled experiments · multi-judge modules
+        ↓
+canonical data, frozen evidence, and reproducibility releases
 ```
 
-For the technical/scientific record, see
-[`PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md).
+The backend is organized by responsibility:
+
+- `backend/core/` — database, ORM, model registry, and pinned final evidence.
+- `backend/data/` — canonical source-text validation and fresh dataset construction.
+- `backend/evaluation/` — protocols, planning, provider routing, execution, and persistence.
+- `backend/analysis/` — estimators and source-corrected full-population analysis.
+- `backend/experiments/` — counterbalanced source-family experiment support.
+- `backend/multijudge/` — secondary multi-judge consensus protocol.
+- `backend/historical/` and `backend/release/` — preserved lineage and release verification.
+
+## Application pages
+
+| Route | Evidence class / purpose |
+| --- | --- |
+| `/leaderboard` | **Historical/exploratory** telemetry. This remains the current default landing route. |
+| `/synthesis` | **Authoritative** executive synthesis of final controlled science. |
+| `/controlled-results` | **Authoritative** detailed RQ1–RQ7 controlled evidence. |
+| `/diagnostics` | **Historical/exploratory** diagnostics. |
+| `/qualitative-explorer` | **Historical/exploratory** provenance-gated qualitative inspection. |
+| `/live-lab` | **Manual sandbox**; separate from frozen final evidence. |
+
+The authoritative pages use `/api/controlled/results`, which selects only pinned, compatible corrected analysis records and fails closed rather than falling back to legacy or live results.
+
+## Prerequisites
+
+- Git, to clone the repository.
+- Python and `venv` compatible with the pinned packages in `requirements.txt`.
+- PostgreSQL for application use, canonical dataset construction, and database recomputation.
+- Node.js and npm for the frontend.
+
+The repository does not declare a single minimum Python, Node.js, or PostgreSQL version. Use versions compatible with the pinned dependencies and local PostgreSQL tooling.
+
+## Installation
+
+```bash
+git clone https://github.com/ELBATTAHAHMED/LLM-Judge-Lab.git
+cd LLM-Judge-Lab
+
+python -m venv .venv
+```
+
+Activate the environment:
+
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
+
+```bash
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Install the pinned Python dependencies and frontend dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+npm install --prefix frontend
+```
+
+## Environment configuration
+
+Copy `.env.example` to `.env` and configure the database connection. Do not commit `.env`.
+
+```bash
+cp .env.example .env
+```
+
+On Windows, create the copy with your preferred file-management command. The relevant variables are:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Application PostgreSQL connection string. |
+| `OPENAI_API_KEY` | Optional; required only for applicable Live Evaluation provider calls. |
+| `OPENROUTER_API_KEY` | Optional; required only for applicable Live Evaluation provider calls. |
+| `ENABLE_LIVE_SANDBOX_PROVIDER_CALLS` | Manual provider-call gate; `false` by default. |
+| `JUDGELAB_CORS_ORIGINS` | Allowed frontend origins; the example permits local Vite origins. |
+| `OLLAMA_BASE_URL` | Optional local-provider base URL. |
+
+For application configuration, normal `python-dotenv` behavior applies: process environment values take precedence over `.env`, which takes precedence over code defaults. Credentials stay server-side; never put them in frontend variables or commit them.
+
+### Alembic connection note
+
+Alembic reads **`ALEMBIC_DATABASE_URL`** from the process environment; it does not load `.env`. Before applying migrations, export `ALEMBIC_DATABASE_URL` with the same PostgreSQL connection string as `DATABASE_URL`.
+
+```powershell
+# PowerShell: set this to the same PostgreSQL URL used in .env
+$env:ALEMBIC_DATABASE_URL = 'postgresql://user:password@host:5432/database'
+python -m alembic upgrade head
+```
+
+```bash
+# macOS / Linux
+ALEMBIC_DATABASE_URL='postgresql://user:password@host:5432/database' python -m alembic upgrade head
+```
+
+## Canonical dataset build
+
+After migrations, run:
+
+```bash
+python scripts/build_dataset.py
+```
+
+This validates the committed raw source and canonical manifest, then builds the canonical source-correct dataset into an **empty** database. It fails if the target database already contains prompts.
+
+## Provider-free experiment planning
+
+```bash
+python scripts/run_evaluation.py --limit 80
+```
+
+This command reads canonical pair records and emits a deterministic evaluation plan. It is planning-only and reports `provider_calls: 0`; it does not rerun paid experiments.
+
+## Final analysis
+
+Two provider-free commands have different purposes:
+
+### A. Verify the frozen corrected artifact
+
+```bash
+python scripts/run_analysis.py
+```
+
+This validates the canonical dataset and the authoritative frozen result values. It does not require database analysis execution.
+
+### B. Independently recompute from PostgreSQL
+
+```bash
+python scripts/run_analysis.py --recompute-from-db
+```
+
+This recomputes the final RQ1–RQ7 results from the current or restored experimental PostgreSQL database using the authoritative estimator implementation, then compares the recomputed artifact identity with the frozen result. It makes no provider calls.
+
+The final controlled dashboard and an independent database recomputation require the released or restored experimental PostgreSQL database. A fresh canonical build validates source data and planning; it does not reconstruct historical provider executions.
+
+## Fresh reproducibility check
+
+```bash
+python scripts/verify_reproducibility.py --fresh-empty-db
+```
+
+This provider-free verification creates a uniquely named disposable PostgreSQL database, applies migrations, builds canonical data, plans a small evaluation, checks source hashes, and removes the temporary database afterward. It does not re-execute paid model evaluations.
+
+## Running the application
+
+Start the backend from the repository root:
+
+```bash
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+Start the frontend in another terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The backend is served on `http://127.0.0.1:8000`; Vite is configured for port `5173`. Open the frontend at `http://localhost:5173`, then use `/synthesis` or `/controlled-results` for the final research evidence.
+
+## Live Evaluation
+
+Live Evaluation is optional and separate from the frozen study. It can make real provider calls and may incur cost. It is not required for installation, reproducibility, final analysis verification, or presentation of the final RQ results.
+
+The backend rejects manual provider transport unless `ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true` is explicitly configured. Do not enable it without appropriate provider credentials and cost controls.
+
+## Testing and build checks
+
+Run backend tests from the repository root:
+
+```bash
+python -m pytest
+```
+
+Run frontend checks from `frontend/`:
+
+```bash
+npm run test
+npm run lint
+npx tsc --noEmit -p tsconfig.app.json
+npm run build
+```
+
+The production build writes `frontend/dist/`, which is ignored by Git.
+
+## Reproducibility and evidence
+
+| Item | Authoritative location / identity |
+| --- | --- |
+| Canonical dataset | `data/canonical/source_corrected_study_v1.json`; identity `source-corrected-controlled-study-v1`; canonical dataset SHA-256 `f4dd4b2ec9e44d61b7e963b34eba6fe796f61fbe930100f9c6fff82da6ab1209` |
+| Corrected analysis | `evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json`; analysis identity `source-corrected-complete-case-full-population-analysis-v2`; content hash `ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97` |
+| Corrected evidence package | `evidence/final/controlled_source_text_corrected_v1/` |
+| Current PostgreSQL release | `evidence/final/research_release_v4/` |
+
+The analysis content hash identifies the deterministic analysis material; it is not a claim about the byte hash of every release file. Package manifests and their verifier scripts check file-level integrity.
+
+Useful offline verifiers include:
+
+```bash
+python evidence/final/phase11/VERIFY_PACKAGE.py
+python evidence/final/controlled_source_text_corrected_v1/VERIFY_PACKAGE.py
+python evidence/final/research_release_v4/VERIFY_RELEASE.py
+```
+
+## Project structure
+
+```text
+alembic/              Database migrations
+backend/              FastAPI application and research modules
+data/                 Raw snapshot, canonical study, and dataset metadata
+evidence/             Frozen evidence packages and releases
+frontend/             React/Vite dashboard
+scripts/              Dataset, planning, analysis, and reproducibility entry points
+tests/                Backend, integration, methodology, and reproducibility tests
+tools/                Historical audit and release helpers
+```
+
+## Security and safety
+
+- `.env` and related local environment files are ignored by Git.
+- Provider credentials are server-side configuration only.
+- Manual provider execution is disabled by default.
+- Frozen analysis and reproducibility verification are provider-free.
+- Never commit provider keys, database credentials, or generated local database files.
+
+## Further reading
+
+- [Technical and scientific record](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md)
+- [Canonical source-data note](data/metadata/CANONICAL_SOURCE_DATA.md)
+- [Final evidence directory](evidence/final/)
