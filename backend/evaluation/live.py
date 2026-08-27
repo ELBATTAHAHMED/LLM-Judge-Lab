@@ -498,7 +498,7 @@ def call_calibrated_judge(
     initial_backoff: float = 2.0,
 ) -> CalibratedJudgeResult:
     """
-    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
+    Execute a manual dual-presentation or length-adjusted evaluation trial.
     Supports both OpenAI Cloud and Local Ollama models natively.
     """
     resolved_client, effective_model = get_evaluator_client(model_name, client)
@@ -518,13 +518,14 @@ def call_calibrated_judge(
             prompt_messages=messages,
         )
         detailed_reasoning = (
-            f"=== ACTIVE VERBOSITY PENALIZATION TRIAL ===\n"
+            f"=== MANUAL LENGTH-ADJUSTED TRIAL ===\n"
             f"Mitigation Strategy: Information Density Prompting (Length-Calibrated System Instructions)\n"
             f"Raw Verdict: WINNER: {res.verdict}\n\n"
             f"Step-by-Step Calibrated Reasoning:\n{res.reasoning}\n\n"
-            f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
-            f"Position Order Bias Detected: False (Single-pass Length Penalization)\n"
-            f"Final Calibrated Verdict: WINNER: {res.verdict}"
+            f"=== MANUAL TRIAL SUMMARY ===\n"
+            f"Single-presentation result; no order comparison was performed.\n"
+            f"This descriptive manual result is not population-level evidence.\n"
+            f"Final Trial Verdict: WINNER: {res.verdict}"
         )
         return CalibratedJudgeResult(
             original_order_winner=res.verdict,
@@ -555,9 +556,10 @@ def call_calibrated_judge(
             f"=== UNCALIBRATED BASELINE TRIAL (No Active Mitigation) ===\n"
             f"Raw Verdict: WINNER: {res.verdict}\n\n"
             f"Step-by-Step Reasoning:\n{res.reasoning}\n\n"
-            f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
-            f"Position Order Bias Detected: False (Uncalibrated Baseline)\n"
-            f"Final Calibrated Verdict: WINNER: {res.verdict}"
+            f"=== MANUAL TRIAL SUMMARY ===\n"
+            f"Single-presentation result; no order comparison was performed.\n"
+            f"This descriptive manual result is not population-level evidence.\n"
+            f"Final Trial Verdict: WINNER: {res.verdict}"
         )
         return CalibratedJudgeResult(
             original_order_winner=res.verdict,
@@ -572,7 +574,7 @@ def call_calibrated_judge(
             total_output_tokens=res.output_tokens,
         )
 
-    # 3. Dual A/B Swap Strategy (Position Bias Mitigation)
+    # 3. Dual A/B swap for a manual presentation-sensitivity check.
     import concurrent.futures
 
     def _eval_pass_1():
@@ -628,7 +630,7 @@ def call_calibrated_judge(
         final_calibrated_winner = "TIE"
 
     log.info(
-        "Dual A/B Swap Evaluation completed: Pass 1 Winner=%s | Pass 2 Mapped Winner=%s | Bias Detected=%s | Final Winner=%s",
+        "Manual dual A/B trial completed: Pass 1 Winner=%s | Pass 2 Mapped Winner=%s | Outcomes differ=%s | Final Winner=%s",
         cand_winner_1, cand_winner_2, position_bias_detected, final_calibrated_winner
     )
 
@@ -641,11 +643,12 @@ def call_calibrated_judge(
         f"Position A: Candidate B | Position B: Candidate A\n"
         f"Raw Verdict: WINNER: {res2.verdict} (Mapped Candidate ID: {cand_winner_2})\n"
         f"Step-by-Step Reasoning:\n{res2.reasoning}\n\n"
-        f"=== ACTIVE BIAS MITIGATION SYNTHESIS ===\n"
-        f"Position Order Bias Detected: {position_bias_detected}\n"
+        f"=== MANUAL DUAL-PASS SUMMARY ===\n"
+        f"Position-order sensitivity observed in this trial: {position_bias_detected}\n"
         f"Pass 1 Choice: Candidate {cand_winner_1}\n"
         f"Pass 2 Choice: Candidate {cand_winner_2}\n"
-        f"Final Calibrated Verdict: WINNER: {final_calibrated_winner}"
+        f"This descriptive manual result is not population-level evidence.\n"
+        f"Final Trial Verdict: WINNER: {final_calibrated_winner}"
     )
 
     return CalibratedJudgeResult(

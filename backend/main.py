@@ -109,12 +109,6 @@ def _require_live_sandbox_enabled() -> None:
         raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
 
 
-@app.get("/api/live-sandbox/status")
-def get_live_sandbox_status() -> dict[str, bool]:
-    """Expose only the local manual-execution opt-in state; never provider credentials."""
-    return {"enabled": _live_sandbox_provider_calls_enabled()}
-
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _sanitize(value: Any) -> Any:
@@ -156,6 +150,38 @@ class HealthCheckResponse(BaseModel):
     status: Literal["healthy", "degraded", "unhealthy"]
     database: str
     message: str
+
+
+class LiveSandboxStatusResponse(BaseModel):
+    """Safe local opt-in state for the manual live sandbox."""
+    enabled: bool
+
+
+class InterJudgeReliabilityResponse(BaseModel):
+    inter_judge_kappa: float | None
+    overlapping_trials: int
+    agreement_rate: float | None
+    model_a: str
+    model_b: str
+
+
+class ConsistencyStatsResponse(BaseModel):
+    """Stable contract for historical exploratory consistency telemetry."""
+    evidence_class: Literal["LEGACY_EXPLORATORY"]
+    status: Literal["AVAILABLE", "NO_DATA"]
+    n: int
+    judge_model: str
+    overall_consistency_score: float | None
+    position_consistency_rate: float | None
+    cross_category_consistency_rate: float | None
+    inconsistencies_count: int | None
+    inter_judge_reliability: InterJudgeReliabilityResponse
+
+
+@app.get("/api/live-sandbox/status", response_model=LiveSandboxStatusResponse)
+def get_live_sandbox_status() -> LiveSandboxStatusResponse:
+    """Expose only the local manual-execution opt-in state; never provider credentials."""
+    return LiveSandboxStatusResponse(enabled=_live_sandbox_provider_calls_enabled())
 
 
 class LeaderboardItem(BaseModel):
@@ -681,8 +707,8 @@ def get_leaderboard(judge_model: str = "gpt-4o-mini") -> list[dict]:
     return _df_to_records(result_df)
 
 
-@app.get("/api/consistency")
-def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> dict:
+@app.get("/api/consistency", response_model=ConsistencyStatsResponse)
+def get_consistency_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-mini") -> ConsistencyStatsResponse:
     """
     Query multi-turn logical consistency and inter-judge reliability stats for a given judge_model.
     """

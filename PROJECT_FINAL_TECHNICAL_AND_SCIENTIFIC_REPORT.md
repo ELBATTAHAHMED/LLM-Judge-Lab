@@ -87,6 +87,28 @@ historical, exploratory, or live-sandbox metrics. The Leaderboard, Diagnostics,
 and Qualitative Explorer remain historical/exploratory views, while Live
 Evaluation is a manual sandbox guarded by the server-side provider gate.
 
+The dashboard's execution-accounting strip is database-wide: it includes
+persisted historical and superseded controlled lineages for operational
+transparency. It is not an RQ denominator; every final RQ estimate uses the
+pinned authoritative AnalysisRuns above.
+
+## Inference and provider-provenance limitations
+
+The frozen 95% percentile bootstrap uses the logical analysis unit supplied to
+each estimator—typically a judge×pair cell or a complete paired record, never
+an independently resampled presentation pass. RQ6 uses its counterbalanced
+logical unit and the Multi-Judge secondary analysis resamples complete
+pair-level consensus records. These intervals describe those specified
+inferential populations; because benchmark pairs can recur across judges, they
+do not claim a cluster-by-benchmark-pair population inference. This limitation
+does not change any reported point estimate or frozen interval.
+
+Requested model identifiers, returned effective model identifiers, response
+IDs, and routing provenance are persisted. `model_version` stores a provider
+revision only when the response supplies one (for example, an OpenAI system
+fingerprint); it remains null when an immutable vendor revision is not exposed
+rather than being inferred or backfilled.
+
 ## Clean fresh-start reproducibility boundary
 
 The normal fresh-start workflow uses the committed raw LMSYS snapshot

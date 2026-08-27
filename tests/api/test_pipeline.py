@@ -83,7 +83,7 @@ def test_retired_macro_benchmark_endpoint_is_not_available(client):
 
 
 def test_call_calibrated_judge_unit_logic():
-    """Verify call_calibrated_judge consensus and position bias detection logic using a mock client."""
+    """Verify manual dual-pass mapping without a population-level bias claim."""
     from unittest.mock import MagicMock
     from backend.evaluation.live import call_calibrated_judge
 
@@ -93,7 +93,7 @@ def test_call_calibrated_judge_unit_logic():
     res1.choices = [MagicMock(message=MagicMock(content="WINNER: A"))]
     res1.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
 
-    # Pass 2 response: WINNER: A (which maps to Candidate B, detecting position bias)
+    # Pass 2 response: WINNER: A maps to Candidate B for this manual trial.
     res2 = MagicMock()
     res2.choices = [MagicMock(message=MagicMock(content="WINNER: A"))]
     res2.usage = MagicMock(prompt_tokens=100, completion_tokens=50)
@@ -111,6 +111,9 @@ def test_call_calibrated_judge_unit_logic():
     assert res.swapped_order_winner == "B"
     assert res.position_bias_detected is True
     assert res.final_calibrated_winner == "TIE"
+    assert "Position-order sensitivity observed in this trial: True" in res.detailed_reasoning
+    assert "not population-level evidence" in res.detailed_reasoning
+    assert "Position Order Bias Detected" not in res.detailed_reasoning
 
 
 def test_calibrated_evaluation_endpoint_validation(client, monkeypatch):
