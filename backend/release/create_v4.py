@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.core.controlled_models import AnalysisRun
-from backend.release.utils import PG_BIN, postgres_connection, run, sha256
+from backend.release.utils import postgres_binary, postgres_connection, run, sha256
 from backend.core.database import DATABASE_URL, SessionLocal
 from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_RQ7_SECONDARY_ANALYSIS_RUN, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256
 
@@ -20,7 +20,7 @@ CORRECTED = ROOT / "evidence" / "final" / "controlled_source_text_corrected_v1"
 
 def restore(snapshot: Path, base: list[str], env: dict[str, str]) -> dict[str, object]:
     name = f"judgelab_v4_verify_{uuid.uuid4().hex[:10]}"
-    psql, restore_bin = str(PG_BIN / "psql.exe"), str(PG_BIN / "pg_restore.exe")
+    psql, restore_bin = postgres_binary("psql"), postgres_binary("pg_restore")
     created = False
     try:
         run([psql, *base, "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", f'CREATE DATABASE "{name}"'], env=env); created = True
@@ -35,8 +35,7 @@ def restore(snapshot: Path, base: list[str], env: dict[str, str]) -> dict[str, o
 
 
 def main() -> int:
-    if not (PG_BIN / "pg_dump.exe").exists():
-        raise RuntimeError("PostgreSQL client tools are unavailable")
+    dump = postgres_binary("pg_dump")
     package = json.loads((CORRECTED / "package_manifest.json").read_text(encoding="utf-8"))
     if package["authoritative_analysis"]["artifact_sha256"] != CORRECTED_ARTIFACT_SHA256:
         raise RuntimeError("corrected package does not match the authoritative artifact")
@@ -48,9 +47,9 @@ def main() -> int:
         total_runs = session.query(AnalysisRun).count()
     base, env = postgres_connection(); database = RELEASE / "database"; database.mkdir(parents=True, exist_ok=True)
     snapshot = database / "judgelab-research-release-v4.dump"
-    run([str(PG_BIN / "pg_dump.exe"), "--format=custom", "--no-owner", "--no-privileges", "--file", str(snapshot), *base, DATABASE_URL.rsplit("/", 1)[-1].split("?", 1)[0]], env=env)
+    run([dump, "--format=custom", "--no-owner", "--no-privileges", "--file", str(snapshot), *base, DATABASE_URL.rsplit("/", 1)[-1].split("?", 1)[0]], env=env)
     listing = database / "pg_restore_list.txt"
-    listing.write_text(run([str(PG_BIN / "pg_restore.exe"), "--list", str(snapshot)], env=env), encoding="utf-8")
+    listing.write_text(run([postgres_binary("pg_restore"), "--list", str(snapshot)], env=env), encoding="utf-8")
     restored = restore(snapshot, base, env)
     if restored["status"] != "PASSED" or restored["authoritative_analysis_runs"] != len(ids):
         raise RuntimeError(f"release v4 restore validation mismatch: {restored}")

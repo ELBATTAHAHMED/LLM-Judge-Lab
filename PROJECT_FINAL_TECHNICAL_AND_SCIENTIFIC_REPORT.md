@@ -24,6 +24,13 @@ source-corrected provenance contract is absent. Historical Phase 11 evidence,
 release v2/v3 snapshots, pre-correction analyses, and provisional Phase-E
 subset runs remain preserved for audit and are not current scientific values.
 
+The immutable source-corrected artifact retains `promotion_status:
+"NOT_PROMOTED"` from its remediation-stage creation. That field records the
+earlier stage rather than the current authority decision: release v4 explicitly
+pins the artifact identity and the eight completed AnalysisRuns above, and the
+backend fails closed unless that later contract is present. The historical
+artifact is therefore preserved without being rewritten.
+
 ## Dataset provenance and source correction
 
 The source is **LMSYS MT-Bench Human Judgments**,
@@ -144,6 +151,16 @@ The public reproducibility commands are `scripts/build_dataset.py`,
 The analysis command (`scripts/run_analysis.py`) exposes two provider-free modes:
 1. **Frozen artifact verification** (`python scripts/run_analysis.py`): validates the committed/frozen final result and all expected metrics.
 2. **Independent database recomputation** (`python scripts/run_analysis.py --recompute-from-db`): independently reconstructs RQ1–RQ7 metrics directly from the restored PostgreSQL database using `backend/analysis/source_corrected_full_population.py` and compares against the frozen release artifact.
+
+The frozen package verifiers establish file integrity and pinned-record
+provenance; they are not by themselves a release-dump restore test because they
+reconcile with the configured database. The supported end-to-end release-v4
+command is `python -m backend.release.verify_v4_api`: it checks the dump digest,
+restores it to a uniquely named disposable database, reconciles the controlled
+API and pinned AnalysisRuns against that restored database, independently
+recomputes the analysis there, and drops only the database it created. PostgreSQL
+tools resolve through `POSTGRES_BIN`, then `PATH`, with version-agnostic Windows
+discovery only as a fallback.
 
 Historical one-off reconstruction helpers
 live under `tools/historical/`. The root `backend/database.py` and

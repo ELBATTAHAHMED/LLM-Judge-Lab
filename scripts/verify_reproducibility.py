@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.data.canonical import compare_canonical_to_frozen_reconciliation, validate_canonical_source  # noqa: E402
-from backend.release.utils import PG_BIN, postgres_connection, run  # noqa: E402
+from backend.release.utils import postgres_binary, postgres_connection, run  # noqa: E402
 from backend.core.database import DATABASE_URL  # noqa: E402
 
 
@@ -27,7 +27,7 @@ def temporary_url(name: str) -> str:
 
 def fresh_empty_postgres_build() -> None:
     base, env = postgres_connection()
-    psql = str(PG_BIN / "psql.exe")
+    psql = postgres_binary("psql")
     temporary = f"judgelab_canonical_{uuid.uuid4().hex[:12]}"
     created = False
     try:

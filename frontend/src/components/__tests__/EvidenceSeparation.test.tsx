@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { isFinalControlledEvidence } from '../../api/evidence';
 import { ControlledEvidencePanel } from '../ControlledEvidencePanel';
 import { ControlledMetricCard } from '../ControlledMetricCard';
-import type { ControlledMetricResult } from '../../api/types';
+import type { ControlledMetricResult, ControlledResultsResponse } from '../../api/types';
 
 const controlledMetric = (rq: string, metric_key: string, value: number | null): ControlledMetricResult => ({
   rq, metric_key, judge: null, condition: null, metric: metric_key, value, numerator: null, denominator: 10,
@@ -51,5 +51,26 @@ describe('controlled evidence separation', () => {
     expect(screen.getByText(/no eligible source data/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'RQ7' }));
     expect(screen.getByText(/dual-pass stability/i)).toBeInTheDocument();
+  });
+
+  it('shows the RQ2 primary estimator once while retaining the distinct conditional sensitivity metric', () => {
+    const rq2 = (metric_key: string, value: number, denominator: number) => ({ ...controlledMetric('RQ2', metric_key, value), denominator });
+    const data: ControlledResultsResponse = {
+      status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
+      accounting: null, analysis_runs: { RQ2: 'pinned' }, secondary_mitigations: {}, message: 'frozen',
+      results: [
+        rq2('consistency', 0.9652881355932204, 1475),
+        rq2('strict_complete_repetition_consistency', 0.9652881355932204, 1475),
+        rq2('conditional_returned_judgment_consistency', 0.9631230283911671, 1585),
+      ],
+    };
+    render(<ControlledEvidencePanel loading={false} error={null} data={data} />);
+    fireEvent.click(screen.getByRole('button', { name: 'RQ2' }));
+    expect(screen.getAllByText('96.53%')).toHaveLength(1);
+    expect(screen.getByText(/N = 1,?475/)).toBeInTheDocument();
+    expect(screen.getByText(/Additional reported metrics \(1\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Additional reported metrics \(1\)/));
+    expect(screen.getByText('conditional_returned_judgment_consistency')).toBeInTheDocument();
+    expect(screen.queryByText('Strict complete-repetition consistency')).not.toBeInTheDocument();
   });
 });

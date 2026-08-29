@@ -14,15 +14,15 @@ from pathlib import Path
 from backend.core.controlled_models import AnalysisRun, DatasetVersion, ExperimentalUnit
 from backend.core.database import DATABASE_URL, SessionLocal
 from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS
-from backend.release.utils import PG_BIN, postgres_connection, run, sha256
+from backend.release.utils import postgres_binary, postgres_connection, run, sha256
 
 
 ROOT = Path(__file__).resolve().parents[2]
 RELEASE = ROOT / "evidence" / "final" / "research_release_v2"
 def verify_restore(snapshot: Path, *, base: list[str], env: dict[str, str]) -> dict[str, object]:
     """Restore only into a unique disposable database and remove it afterwards."""
-    psql = str(PG_BIN / "psql.exe")
-    restore = str(PG_BIN / "pg_restore.exe")
+    psql = postgres_binary("psql")
+    restore = postgres_binary("pg_restore")
     temporary = f"judgelab_release_verify_{uuid.uuid4().hex[:12]}"
     created = False
     try:
@@ -37,16 +37,15 @@ def verify_restore(snapshot: Path, *, base: list[str], env: dict[str, str]) -> d
 
 
 def main() -> int:
-    if not (PG_BIN / "pg_dump.exe").exists():
-        raise RuntimeError(f"PostgreSQL client tools are unavailable at {PG_BIN}")
+    dump = postgres_binary("pg_dump")
     RELEASE.mkdir(parents=True, exist_ok=True)
     database_dir = RELEASE / "database"; database_dir.mkdir(exist_ok=True)
     dataset_dir = RELEASE / "dataset"; dataset_dir.mkdir(exist_ok=True)
     base, env = postgres_connection()
     snapshot = database_dir / "judgelab-final-research-release-v2.dump"
-    run([str(PG_BIN / "pg_dump.exe"), "--format=custom", "--no-owner", "--no-privileges", "--file", str(snapshot), *base, DATABASE_URL.rsplit("/", 1)[-1].split("?", 1)[0]], env=env)
+    run([dump, "--format=custom", "--no-owner", "--no-privileges", "--file", str(snapshot), *base, DATABASE_URL.rsplit("/", 1)[-1].split("?", 1)[0]], env=env)
     archive_list = database_dir / "pg_restore_list.txt"
-    archive_list.write_text(run([str(PG_BIN / "pg_restore.exe"), "--list", str(snapshot)], env=env), encoding="utf-8")
+    archive_list.write_text(run([postgres_binary("pg_restore"), "--list", str(snapshot)], env=env), encoding="utf-8")
     restore_check = verify_restore(snapshot, base=base, env=env)
 
     with SessionLocal() as session:

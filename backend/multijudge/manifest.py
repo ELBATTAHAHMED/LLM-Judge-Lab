@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import subprocess
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -19,6 +18,7 @@ from backend.evaluation.prompts import PROMPT_TEMPLATE_VERSION, prompt_hash
 from backend.evaluation.retry_policy import FAILURE_POLICY_VERSION, RETRY_POLICY_VERSION, RETRY_RULES
 from backend.core.model_registry import MODEL_REGISTRY
 from backend.evaluation.routing import routing_config, routing_fingerprint, routing_policy_version
+from backend.release.utils import postgres_binary
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,16 +45,7 @@ def _canonical_json(value: Any) -> str:
 
 
 def _pg_restore() -> str:
-    candidates = [shutil.which("pg_restore")]
-    if __import__("os").name == "nt":
-        candidates.extend([
-            r"C:\Program Files\PostgreSQL\17\bin\pg_restore.exe",
-            r"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe",
-        ])
-    executable = next((candidate for candidate in candidates if candidate and Path(candidate).is_file()), None)
-    if executable is None:
-        raise RuntimeError("pg_restore is required to read the immutable research-release dump")
-    return executable
+    return postgres_binary("pg_restore")
 
 
 def _decode_copy(value: str) -> str | None:

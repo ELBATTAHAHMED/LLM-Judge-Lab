@@ -3,12 +3,48 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 
-PG_BIN = Path(os.environ.get("POSTGRES_BIN", r"C:\Program Files\PostgreSQL\17\bin"))
+def postgres_binary(name: str) -> str:
+    """Locate a PostgreSQL client executable without assuming a local version.
+
+    ``POSTGRES_BIN`` remains an explicit override for a directory containing
+    the client tools.  Otherwise PATH is authoritative; Windows installations
+    are discovered only as a version-agnostic last resort.
+    """
+    executable = f"{name}.exe" if os.name == "nt" else name
+    configured = os.environ.get("POSTGRES_BIN")
+    if configured:
+        candidate = Path(configured) / executable
+        if candidate.is_file():
+            return str(candidate)
+        raise RuntimeError(
+            f"POSTGRES_BIN does not contain {executable}: {Path(configured)}"
+        )
+
+    discovered = shutil.which(name) or shutil.which(executable)
+    if discovered:
+        return discovered
+
+    if os.name == "nt":
+        roots = {os.environ.get("ProgramW6432"), os.environ.get("ProgramFiles")}
+        for root in filter(None, roots):
+            postgres_root = Path(root) / "PostgreSQL"
+            if not postgres_root.is_dir():
+                continue
+            for version_dir in sorted(postgres_root.iterdir(), reverse=True):
+                candidate = version_dir / "bin" / executable
+                if candidate.is_file():
+                    return str(candidate)
+
+    raise RuntimeError(
+        f"Unable to locate PostgreSQL client executable {executable}. "
+        "Set POSTGRES_BIN to its directory or add it to PATH."
+    )
 
 
 def sha256(path: Path) -> str:

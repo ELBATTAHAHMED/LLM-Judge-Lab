@@ -15,7 +15,7 @@ from urllib.parse import urlsplit, urlunsplit
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from backend.release.utils import PG_BIN, postgres_connection, run, sha256
+from backend.release.utils import postgres_binary, postgres_connection, run, sha256
 
 RELEASE = ROOT / "evidence" / "final" / "research_release_v4"
 SNAPSHOT = RELEASE / "database" / "judgelab-research-release-v4.dump"
@@ -85,18 +85,33 @@ print("RESEARCH_RELEASE_V4_API_RECONCILIATION_VERIFIED")
     subprocess.run([sys.executable, "-c", code], cwd=ROOT / "backend", env=env, check=True)
 
 
+def recompute_check(database_url: str) -> None:
+    """Independently recompute the frozen analysis using only the restored DB."""
+    env = os.environ.copy()
+    env["DATABASE_URL"] = database_url
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "run_analysis.py"), "--recompute-from-db"],
+        cwd=ROOT,
+        env=env,
+        check=True,
+    )
+    print("RESEARCH_RELEASE_V4_INDEPENDENT_RECOMPUTATION_VERIFIED")
+
+
 def main() -> int:
     if sha256(SNAPSHOT) != "db138478cda7ebb1b560595378dad3b3e49f32ae99f4a2ff02c09cb359f4e254":
         raise RuntimeError("research_release_v4 dump checksum mismatch")
     base, env = postgres_connection()
-    psql, restore = str(PG_BIN / "psql.exe"), str(PG_BIN / "pg_restore.exe")
+    psql, restore = postgres_binary("psql"), postgres_binary("pg_restore")
     temporary = f"judgelab_v4_api_verify_{uuid.uuid4().hex[:12]}"
     created = False
     try:
         run([psql, *base, "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", f'CREATE DATABASE "{temporary}"'], env=env)
         created = True
         run([restore, "--no-owner", "--no-privileges", "--dbname", temporary, *base, str(SNAPSHOT)], env=env)
-        api_check(restored_database_url(temporary))
+        database_url = restored_database_url(temporary)
+        api_check(database_url)
+        recompute_check(database_url)
     finally:
         if created:
             run([psql, *base, "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-c", f'DROP DATABASE IF EXISTS "{temporary}"'], env=env)

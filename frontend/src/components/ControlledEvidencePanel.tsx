@@ -89,7 +89,10 @@ export const ControlledEvidencePanel: React.FC<{ data: ControlledResultsResponse
     : selectedRq === 'RQ4' || selectedRq === 'RQ5' ? ['variant_win_rate', 'original_win_rate', 'excluded_pair_count'].map(byKey).filter(Boolean) as ControlledMetricResult[]
     : [];
   const rq1Judges = metrics.filter((row) => row.metric_key?.startsWith('judge:'));
-  const mainKeys = [...primary.map((row) => row.metric_key ?? ''), ...rq1Judges.map((row) => row.metric_key ?? '')];
+  const rq2AliasKeys = selectedRq === 'RQ2'
+    ? metrics.filter((row) => row.metric_key === 'strict_complete_repetition_consistency' || row.metric_key?.endsWith(':strict_complete_repetition_consistency')).map((row) => row.metric_key ?? '')
+    : [];
+  const mainKeys = [...primary.map((row) => row.metric_key ?? ''), ...rq1Judges.map((row) => row.metric_key ?? ''), ...rq2AliasKeys];
   const detailMetrics = selectedRq === 'RQ7' ? metrics.filter((row) => !['baseline_agreement', 'dual_swap_agreement', 'agreement_delta', 'baseline_coverage', 'dual_swap_coverage', 'coverage_delta', 'dual_swap_dual_pass_stability'].includes(row.metric_key ?? '')) : without(mainKeys);
 
   return <section aria-label="Final controlled results" className="space-y-5">

@@ -20,6 +20,7 @@ const JUDGE_LABELS: Record<string, string> = {
 const METRIC_LABELS: Record<string, string> = {
   rq1_exact_agreement: 'Agreement with human preference reference labels',
   rq1_cohens_kappa: "Cohen's kappa",
+  rq2_consistency: 'Strict complete-repetition consistency',
   rq2_strict_complete_repetition_consistency: 'Strict complete-repetition consistency',
   rq2_conditional_returned_judgment_consistency: 'Conditional returned-judgment consistency',
   rq3_paired_decisive_flip_rate: 'Paired decisive flip rate',

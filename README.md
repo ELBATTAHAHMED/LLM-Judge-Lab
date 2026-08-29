@@ -24,6 +24,12 @@ The project provides a controlled, reproducible framework for pairwise LLM judgi
 
 The current authority is the **source-corrected full-population analysis**. Historical evidence remains available for audit, but it is not substituted for the current final results.
 
+The corrected analysis artifact retains `promotion_status: "NOT_PROMOTED"` as
+immutable remediation-stage history. Current authority is established later by
+the release-v4 manifest and the eight pinned completed AnalysisRuns, which the
+backend selects by identity and provenance contract; the historical field is
+not the current promotion decision.
+
 ## Dataset
 
 The canonical study is `source-corrected-controlled-study-v1`, built from the LMSYS MT-Bench Human Judgments source snapshot.
@@ -279,7 +285,7 @@ The production build writes `frontend/dist/`, which is ignored by Git.
 | Corrected evidence package | `evidence/final/controlled_source_text_corrected_v1/` |
 | Current PostgreSQL release | `evidence/final/research_release_v4/` |
 
-The analysis content hash identifies the deterministic analysis material; it is not a claim about the byte hash of every release file. Package manifests and their verifier scripts check file-level integrity.
+The analysis content hash identifies the deterministic analysis material; it is not a claim about the byte hash of every release file. Package manifests and their verifier scripts check file-level integrity. The frozen package verifiers also reconcile pinned records with the currently configured database; they are integrity/provenance checks, not a substitute for restoring a release dump.
 
 Useful offline verifiers include:
 
@@ -287,6 +293,18 @@ Useful offline verifiers include:
 python evidence/final/phase11/VERIFY_PACKAGE.py
 python evidence/final/controlled_source_text_corrected_v1/VERIFY_PACKAGE.py
 python evidence/final/research_release_v4/VERIFY_RELEASE.py
+```
+
+To validate the **actual release-v4 database dump** end to end, use the
+provider-free supported workflow below. It verifies the dump checksum, restores
+the dump into a uniquely named disposable PostgreSQL database, reconciles the
+controlled API and pinned AnalysisRuns there, independently recomputes the
+analysis there, and then removes only that verifier-created database. PostgreSQL
+client tools are resolved from `POSTGRES_BIN`, then `PATH` (with version-agnostic
+Windows discovery as a fallback).
+
+```bash
+python -m backend.release.verify_v4_api
 ```
 
 ## Project structure
