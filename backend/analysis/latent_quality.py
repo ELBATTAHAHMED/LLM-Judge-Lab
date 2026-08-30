@@ -5,14 +5,13 @@ Experimental Module 2: Bradley-Terry Latent Quality Scoring.
 
 Research Protocol
 -----------------
-Raw win rates are a fundamentally flawed metric for ranking LLM quality because
-they are confounded by SCHEDULE EFFECTS: a model's win rate is artificially
-inflated if it consistently faces weaker opponents, and deflated if it
-consistently faces stronger ones.
+Raw win rates can be sensitive to schedule effects: a model's observed rate
+may differ when it consistently faces weaker or stronger opponents.
 
-The Bradley-Terry (BT) model solves this by estimating a LATENT QUALITY
-PARAMETER (theta) for each model through maximum likelihood estimation over
-all pairwise comparisons. Given a match between model i and model j:
+The Bradley-Terry (BT) model provides an alternative latent-quality estimate
+by fitting a LATENT QUALITY PARAMETER (theta) for each model through maximum
+likelihood estimation over all pairwise comparisons. Given a match between
+model i and model j:
 
     P(i beats j) = exp(theta_i) / (exp(theta_i) + exp(theta_j))
 
@@ -22,8 +21,8 @@ INTRINSIC quality independent of opponent schedule difficulty.
 
 Thesis Justification
 ---------------------
-Bradley-Terry scores are mathematically superior to raw win percentages for
-three reasons:
+Under the stated model, Bradley-Terry scores offer a model-based ranking
+estimate with three characteristics that differ from raw win percentages:
   1. STRENGTH-OF-SCHEDULE CORRECTION: A model's score reflects not just how
      often it wins, but who it beat. Beating GPT-4 is worth more than beating
      Alpaca-13B.
@@ -194,8 +193,10 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float, total_decisions
     lines.append(
         "> **Research Protocol**: This report presents intrinsic model quality "
         "estimates derived from Maximum Likelihood Estimation of the Bradley-Terry "
-        "pairwise comparison model. Unlike raw win rates, these scores control for "
-        "schedule difficulty and provide a globally consistent ranking.\n"
+        "pairwise comparison model. Under its stated assumptions, the model adjusts "
+        "for opponent schedule and yields a globally fitted ranking estimate. This "
+        "historical exploratory analysis is not part of the authoritative controlled "
+        "RQ1–RQ7 evidence.\n"
     )
 
     lines.append("## Theoretical Foundation\n")
@@ -239,7 +240,7 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float, total_decisions
         )
     lines.append("")
 
-    lines.append("## Why BT Scores Are Superior to Raw Win Rates\n")
+    lines.append("## How BT Scores Differ from Raw Win Rates\n")
     lines.append(
         "1. **Strength-of-Schedule Correction**: `gpt-4` frequently faces strong "
         "opponents (`claude-v1`, `gpt-3.5-turbo`). Its BT score correctly accounts "
@@ -261,9 +262,9 @@ def build_report(scores_df: pd.DataFrame, log_likelihood: float, total_decisions
     lines.append("## Thesis Interpretation\n")
     lines.append(
         "The divergence between Raw Win Rate rank and BT Score rank for certain "
-        "models constitutes direct empirical evidence that raw pairwise benchmarks "
-        "are schedule-dependent. This finding argues for adopting latent variable "
-        "models as the standard for LLM evaluation leaderboards in future research."
+        "models is consistent with schedule-sensitive raw pairwise benchmark ranks. "
+        "It motivates reporting a latent-variable estimate alongside raw win rates "
+        "when the model assumptions and intended use support it."
     )
 
     return "\n".join(lines)

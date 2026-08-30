@@ -188,8 +188,11 @@ def compute_neutralized_scores(
 
     # Compute raw win rate for reference
     # For model_a: a_wins == 1 is a win; for model_b: a_wins == 0 is a win
-    wins_a = df.groupby("model_a").apply(lambda g: (g["a_wins"] == 1.0).sum())
-    wins_b = df.groupby("model_b").apply(lambda g: (g["a_wins"] == 0.0).sum())
+    # Group the explicit boolean win indicators rather than applying over whole
+    # frames. This preserves the counts while avoiding pandas' grouping-column
+    # deprecation warning.
+    wins_a = df["a_wins"].eq(1.0).groupby(df["model_a"]).sum()
+    wins_b = df["a_wins"].eq(0.0).groupby(df["model_b"]).sum()
     games_a = df.groupby("model_a")["decision_id"].count()
     games_b = df.groupby("model_b")["decision_id"].count()
 
