@@ -803,9 +803,11 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
                     ELSE                                     0.0
                 END AS llm_verdict
             FROM judge_decisions jd
+            JOIN prompts p ON jd.prompt_id = p.id
             JOIN answers a1 ON jd.answer_a_id = a1.id
             JOIN answers a2 ON jd.answer_b_id = a2.id
             WHERE jd.judge_model_name = :judge_model
+              AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
         """)
 
         verbosity_rows = db.execute(verbosity_sql, {"judge_model": judge_model}).fetchall()
@@ -848,7 +850,9 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
                     ELSE                                             0
                 END) AS tie
             FROM judge_decisions jd
+            JOIN prompts p ON jd.prompt_id = p.id
             WHERE jd.judge_model_name = :judge_model
+              AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
         """)
 
         pos_row = db.execute(position_sql, {"judge_model": judge_model}).fetchone()
@@ -874,6 +878,7 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
                 AND hp.answer_b_id = jd.answer_b_id
             JOIN prompts p ON hp.prompt_id = p.id
             WHERE jd.judge_model_name = :judge_model
+              AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
         """)
 
         domain_rows = db.execute(domain_sql, {"judge_model": judge_model}).fetchall()
@@ -923,9 +928,11 @@ def get_bias_stats(db: Session = Depends(get_db), judge_model: str = "gpt-4o-min
                     ELSE                                     'B'
                 END AS llm_choice
             FROM judge_decisions jd
+            JOIN prompts p ON jd.prompt_id = p.id
             JOIN answers a1 ON jd.answer_a_id = a1.id
             JOIN answers a2 ON jd.answer_b_id = a2.id
             WHERE jd.judge_model_name = :judge_model
+              AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
         """)
 
         format_rows = db.execute(format_sql, {"judge_model": judge_model}).fetchall()
@@ -1125,15 +1132,18 @@ def _validate_api_key_or_raise(model_name: str):
 
 def _get_or_create_prompt(db: Session, text_content: str, category: str = "live") -> int:
     """
-    Get-or-create helper for prompts table to prevent UniqueViolation errors on insertion.
-    1. Checks if exact prompt text exists. If found, returns existing prompt ID.
+    Get-or-create helper for prompts table scoped by prompt category.
+
+    A manual live prompt must never attach its answers or decision to a
+    historical prompt with the same text: historical telemetry distinguishes
+    live sandbox records through this durable category field.
     2. Resynchronizes PostgreSQL primary key sequence if out of sync.
     3. Safely inserts new prompt letting database assign auto-increment ID.
     """
     cleaned_text = text_content[:4096]
     existing = db.execute(
-        text("SELECT id FROM prompts WHERE text = :text LIMIT 1"),
-        {"text": cleaned_text}
+        text("SELECT id FROM prompts WHERE text = :text AND category = :cat LIMIT 1"),
+        {"text": cleaned_text, "cat": category},
     ).fetchone()
     if existing:
         return existing[0]
@@ -1206,10 +1216,11 @@ def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_
 @app.post("/api/evaluate", response_model=EvaluateResponse)
 def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict:
     """
-    Perform a live G-EVAL evaluation comparing Answer A vs Answer B.
+    Perform one manually triggered Live Sandbox G-EVAL trial.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
     and do not expose operational details to the client.
-    Results are persisted to PostgreSQL so live evaluations accumulate in the database.
+    Operational metadata is persisted for inspection, outside historical
+    telemetry and frozen RQ1-RQ7 controlled evidence.
     """
     if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
         raise HTTPException(status_code=400, detail="Prompt, Answer A, and Answer B are required.")
@@ -1273,10 +1284,10 @@ class CalibratedEvaluationRequest(BaseModel):
 @app.post("/api/evaluate/calibrated", response_model=CalibratedEvaluationResponse)
 def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
     """
-    Execute real-time in-flight bias mitigation via Dual A/B Position Swapping or Length Penalization.
+    Execute one manual sandbox trial using its selected presentation or prompt adjustment.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
     and do not expose operational details to the client.
-    Final calibrated verdict is persisted to PostgreSQL so live evaluations accumulate in the database.
+    This is not an RQ7 estimate or final controlled mitigation result.
     """
     try:
         _validate_api_key_or_raise(req.model_name)
@@ -1359,9 +1370,9 @@ class MultiJudgeEnsembleResponse(BaseModel):
 @app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
 def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
     """
-    Executes concurrent multi-judge ensemble voting across selected LLM judge models.
-    Aggregates individual verdicts into a majority-rule consensus verdict.
-    Persists ensemble judgment decisions to PostgreSQL for database auditability.
+    Execute one manual sandbox ensemble trial across selected judge models.
+    Its operational records are retained for inspection, but are excluded from
+    historical telemetry and frozen controlled evidence.
     """
     if not req.judge_models or len(req.judge_models) == 0:
         raise HTTPException(status_code=400, detail="At least one judge model must be provided in 'judge_models'.")

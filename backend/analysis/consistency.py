@@ -122,6 +122,7 @@ def fetch_decisions(engine, judge_model_name: str = "gpt-4o-mini") -> pd.DataFra
     JOIN answers a2     ON jd.answer_b_id = a2.id
     LEFT JOIN answers a_win ON jd.winner_id = a_win.id
     WHERE jd.judge_model_name = :judge_model_name
+      AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
     ORDER BY p.category, a1.model_name, a2.model_name
     """)
     conn = _get_connectable(engine)
@@ -365,12 +366,14 @@ def compute_inter_judge_kappa(
             ELSE 'B'
         END AS choice_b
     FROM judge_decisions j1
+    JOIN prompts p ON j1.prompt_id = p.id
     JOIN judge_decisions j2 
       ON j1.prompt_id = j2.prompt_id 
      AND j1.answer_a_id = j2.answer_a_id 
      AND j1.answer_b_id = j2.answer_b_id
     WHERE j1.judge_model_name = :model_a
       AND j2.judge_model_name = :model_b
+      AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
     """)
     conn = _get_connectable(engine)
     if hasattr(conn, "connect"):
@@ -544,9 +547,11 @@ def compute_self_preference_bias(db_bind_or_session, judge_model_name: str = "gp
             jd.answer_a_id,
             jd.answer_b_id
         FROM judge_decisions jd
+        JOIN prompts p ON jd.prompt_id = p.id
         JOIN answers a1 ON jd.answer_a_id = a1.id
         JOIN answers a2 ON jd.answer_b_id = a2.id
         WHERE jd.judge_model_name = :judge_model
+          AND p.category NOT IN ('live', 'live_calibrated', 'ensemble_eval')
     """)
 
     try:

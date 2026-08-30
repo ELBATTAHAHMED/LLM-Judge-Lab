@@ -253,7 +253,7 @@ The backend is served on `http://127.0.0.1:8000`; Vite is configured for port `5
 
 ## Live Evaluation
 
-Live Evaluation is optional and separate from the frozen study. It can make real provider calls and may incur cost. It is not required for installation, reproducibility, final analysis verification, or presentation of the final RQ results.
+Live Evaluation is an optional manual/exploratory sandbox, separate from the frozen study. It can make real provider calls and may incur cost. Its operational records are retained for inspection but excluded from historical telemetry and frozen RQ1–RQ7 evidence; exact replay of a provider response is not guaranteed because provider behavior and revisions can change. It is not required for installation, reproducibility, final analysis verification, or presentation of the final RQ results.
 
 The backend rejects manual provider transport unless `ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true` is explicitly configured. Do not enable it without appropriate provider credentials and cost controls.
 

@@ -29,8 +29,9 @@ For multi-turn evaluations, the judge receives:
 This allows post-hoc computation of a Logical Consistency Score: measuring
 whether the judge preserves a coherent relative quality ordering across turns.
 
-The explicit reasoning is stored verbatim in JudgeDecision.reasoning so that
-every decision is fully auditable and reproducible for your thesis.
+Manual-trial reasoning may be retained in JudgeDecision.reasoning for local
+inspection. It is not a reproducibility guarantee and is not frozen research
+evidence.
 """
 
 import os
@@ -62,7 +63,7 @@ class CalibratedJudgeResult:
     """Structured output from a real-time Dual A/B Swap calibrated evaluation."""
     original_order_winner: str     # Candidate winner from Pass 1 ("A", "B", "TIE", "UNKNOWN")
     swapped_order_winner: str      # Candidate winner from Pass 2 mapped back to original IDs
-    final_calibrated_winner: str   # Final debiased consensus winner ("A", "B", "TIE", "UNKNOWN")
+    final_calibrated_winner: str   # Mapped manual-trial outcome ("A", "B", "TIE", "UNKNOWN")
     position_bias_detected: bool   # True if Pass 1 and Pass 2 verdicts diverged
     reasoning_original: str        # Raw text from Pass 1
     reasoning_swapped: str         # Raw text from Pass 2
@@ -87,8 +88,8 @@ class MultiJudgeEnsembleResult:
 # ── Prompt Template ───────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
-You are an expert, impartial AI evaluator participating in a rigorous academic \
-research study on the reliability of LLM-as-a-Judge systems.
+You are an expert, impartial AI evaluator in a manual exploratory sandbox.
+This one-off trial is not frozen controlled research evidence.
 
 Your task is to evaluate two candidate answers to a given question. You must:
 1. Carefully read the question and both answers.
@@ -107,9 +108,9 @@ The verdict line MUST appear at the very end of your response. Do not add any \
 text after it. Do not use markdown formatting for the verdict line itself.
 """
 
-_LENGTH_CALIBRATED_SYSTEM_PROMPT = """You are an expert, impartial evaluation judge. Your task is to compare two candidate answers (Answer A and Answer B) to a user question and determine which response is strictly superior.
+_LENGTH_CALIBRATED_SYSTEM_PROMPT = """You are an expert, impartial evaluation judge in a manual exploratory sandbox. Your task is to compare two candidate answers (Answer A and Answer B) to a user question and determine which response is strictly superior.
 
-CRITICAL CALIBRATION MANDATE ON VERBOSITY:
+MANUAL PROMPT ADJUSTMENT FOR THIS TRIAL:
 Evaluate responses based strictly on Information Density (Substantive Content per Word). Strictly penalize artificially padded, repetitive, fluff-filled, or excessively verbose answers that add no substantive value over concise, accurate alternatives. Do NOT reward word count.
 
 Evaluation Rubric:
@@ -214,8 +215,8 @@ def parse_winner(response_text: str) -> Verdict:
 # ── Multi-Turn Context-Aware Prompt ──────────────────────────────────────────
 
 _MULTITURN_SYSTEM_PROMPT = """\
-You are an expert, impartial AI evaluator participating in a rigorous academic \
-research study on the reliability of LLM-as-a-Judge systems.
+You are an expert, impartial AI evaluator in a manual exploratory sandbox.
+This one-off trial is not frozen controlled research evidence.
 
 You are evaluating a TWO-TURN conversation. You have already evaluated Turn 1 \
 and reached a verdict. Now you must evaluate Turn 2 while staying LOGICALLY \
@@ -484,7 +485,7 @@ def call_judge(
             raise
 
 
-# ── Active Calibrated API Caller (Dual A/B Swap & Length Mitigation) ─────────
+# ── Manual trial caller (Dual A/B Swap & Length heuristic) ──────────────────
 
 def call_calibrated_judge(
     client=None,
@@ -519,9 +520,9 @@ def call_calibrated_judge(
         )
         detailed_reasoning = (
             f"=== MANUAL LENGTH-ADJUSTED TRIAL ===\n"
-            f"Mitigation Strategy: Information Density Prompting (Length-Calibrated System Instructions)\n"
+            f"Manual Prompt Adjustment: Information Density Prompting (Length Heuristic)\n"
             f"Raw Verdict: WINNER: {res.verdict}\n\n"
-            f"Step-by-Step Calibrated Reasoning:\n{res.reasoning}\n\n"
+            f"Step-by-Step Trial Reasoning:\n{res.reasoning}\n\n"
             f"=== MANUAL TRIAL SUMMARY ===\n"
             f"Single-presentation result; no order comparison was performed.\n"
             f"This descriptive manual result is not population-level evidence.\n"
@@ -553,7 +554,7 @@ def call_calibrated_judge(
             initial_backoff=initial_backoff,
         )
         detailed_reasoning = (
-            f"=== UNCALIBRATED BASELINE TRIAL (No Active Mitigation) ===\n"
+            f"=== UNCALIBRATED BASELINE TRIAL (No Manual Adjustment) ===\n"
             f"Raw Verdict: WINNER: {res.verdict}\n\n"
             f"Step-by-Step Reasoning:\n{res.reasoning}\n\n"
             f"=== MANUAL TRIAL SUMMARY ===\n"
@@ -621,7 +622,7 @@ def call_calibrated_judge(
     else:
         cand_winner_2 = "UNKNOWN"
 
-    # Consensus & Mitigation Logic
+    # Map the two presentation orders into one manual-trial result.
     if cand_winner_1 == cand_winner_2:
         position_bias_detected = False
         final_calibrated_winner = cand_winner_1

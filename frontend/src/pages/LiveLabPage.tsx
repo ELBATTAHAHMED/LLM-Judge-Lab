@@ -176,7 +176,7 @@ export const LiveLabPage: React.FC = () => {
             Live Evaluation Sandbox
           </h2>
           <p className="text-xs text-neutral-500 mt-1">
-            LIVE / MANUAL EVALUATION — ad-hoc tests are not included in frozen controlled RQ1–RQ7 evidence.
+            LIVE / MANUAL EXPLORATORY EVALUATION — operational metadata is retained for inspection, not frozen controlled RQ1–RQ7 evidence.
           </p>
           <p className="text-[11px] text-neutral-500 mt-1" aria-live="polite">
             {liveExecutionEnabled === false
@@ -361,9 +361,12 @@ export const LiveLabPage: React.FC = () => {
                   className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-xs font-mono text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-neutral-500 cursor-pointer"
                 >
                   <option value="dual_ab">Dual A/B Swap (two presentation orders)</option>
-                  <option value="verbosity_penalized">Length Penalization (prompt adjustment)</option>
+                  <option value="verbosity_penalized">Manual length-penalty heuristic (prompt adjustment)</option>
                   <option value="none">None (Uncalibrated Baseline)</option>
                 </select>
+                <p className="text-[10px] font-mono text-neutral-500">
+                  Trial-only adjustments are exploratory and are not frozen RQ7 mitigation evidence.
+                </p>
               </div>
             )}
 
@@ -431,7 +434,7 @@ export const LiveLabPage: React.FC = () => {
                       ? `Running Multi-Judge Voting across ${selectedEnsembleModels.length} Models...`
                       : evalMode === 'calibrated'
                       ? (mitigationStrategy === 'verbosity_penalized'
-                          ? 'Evaluating Length Penalization Trial...'
+                          ? 'Evaluating manual length-penalty trial...'
                           : mitigationStrategy === 'none'
                           ? 'Executing Uncalibrated Baseline Trial...'
                           : `[Step ${executionStep || 1}/3] ${
@@ -615,7 +618,7 @@ export const LiveLabPage: React.FC = () => {
                           <span className="text-[11px] font-mono text-neutral-500">Trial Adjustment:</span>
                           <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
                             <ShieldCheck className="w-3 h-3" />
-                            <span>Length penalty applied for this trial</span>
+                            <span>Manual length-penalty heuristic applied for this trial</span>
                           </span>
                         </div>
 
@@ -704,7 +707,7 @@ export const LiveLabPage: React.FC = () => {
                     </span>
                     <span className="font-semibold">
                       {mitigationStrategy === 'verbosity_penalized'
-                        ? 'Length penalty applied to this trial'
+                        ? 'Manual length-penalty heuristic applied to this trial'
                         : mitigationStrategy === 'none'
                         ? 'Single-pass result'
                         : calibratedResult.position_bias_detected
@@ -716,21 +719,21 @@ export const LiveLabPage: React.FC = () => {
                     This result applies only to the current manual trial.
                   </p>
 
-                  {/* Detailed Auditable Reasoning Inspector */}
+                  {/* Trial reasoning inspector */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500">
                       <span>
                         {mitigationStrategy === 'verbosity_penalized'
-                          ? 'Length-Calibrated Reasoning Narrative'
+                          ? 'Manual Length-Adjustment Reasoning Narrative'
                           : mitigationStrategy === 'none'
                           ? 'Uncalibrated Single-Pass Reasoning Narrative'
-                          : 'Dual-Pass Auditable Reasoning Narrative'}
+                          : 'Dual-Pass Reasoning Narrative'}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] text-teal-600 dark:text-teal-400">
                         <Sparkles className="w-3 h-3" />
                         <span>
                           {mitigationStrategy === 'verbosity_penalized'
-                            ? 'Length Penalty Active'
+                            ? 'Manual Heuristic Active'
                             : mitigationStrategy === 'none'
                             ? 'Baseline Mode'
                             : 'Dual A/B Active'}
@@ -804,7 +807,7 @@ export const LiveLabPage: React.FC = () => {
                     ? 'Multi-Judge Voting Active'
                     : evalMode === 'calibrated'
                     ? (mitigationStrategy === 'verbosity_penalized'
-                        ? 'Length Penalization Active'
+                        ? 'Manual Length Heuristic Active'
                         : mitigationStrategy === 'none'
                         ? 'Uncalibrated Baseline Active'
                         : 'Dual A/B Swap Active')

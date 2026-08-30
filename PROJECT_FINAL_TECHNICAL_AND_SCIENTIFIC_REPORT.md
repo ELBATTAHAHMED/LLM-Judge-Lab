@@ -92,7 +92,9 @@ The React scientific pages consume `/api/controlled/results`; the route is
 AnalysisRun-backed, accepts controlled evidence only, and does not substitute
 historical, exploratory, or live-sandbox metrics. The Leaderboard, Diagnostics,
 and Qualitative Explorer remain historical/exploratory views, while Live
-Evaluation is a manual sandbox guarded by the server-side provider gate.
+Evaluation is a server-gated manual/exploratory sandbox. Its retained
+operational records are excluded from historical telemetry and frozen RQ1–RQ7
+evidence; exact provider-response replay is not guaranteed.
 
 The dashboard's execution-accounting strip is database-wide: it includes
 persisted historical and superseded controlled lineages for operational
