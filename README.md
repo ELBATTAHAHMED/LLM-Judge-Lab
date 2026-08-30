@@ -122,6 +122,10 @@ The authoritative pages use `/api/controlled/results`, which selects only pinned
 
 The repository does not declare a single minimum Python, Node.js, or PostgreSQL version. Use versions compatible with the pinned dependencies and local PostgreSQL tooling.
 
+### Verified development / reproducibility environment
+
+The current local verification environment used Python 3.11.4, Node.js v22.18.0, and npm 10.9.3. PostgreSQL client binaries are resolved portably by the release tooling; they need not be on `PATH` when a discoverable local PostgreSQL installation is available. These are tested versions, not minimum compatibility claims.
+
 ## Installation
 
 ```bash

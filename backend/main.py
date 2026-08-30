@@ -1130,6 +1130,12 @@ def _validate_api_key_or_raise(model_name: str):
         raise ValueError(f"OPENAI_API_KEY is missing or unconfigured in .env for model '{model_name}'.")
 
 
+def _require_live_text_inputs(question: str, answer_a: str, answer_b: str) -> None:
+    """Reject malformed manual sandbox inputs before transport or persistence."""
+    if not question.strip() or not answer_a.strip() or not answer_b.strip():
+        raise HTTPException(status_code=400, detail="Question, Answer A, and Answer B are required.")
+
+
 def _get_or_create_prompt(db: Session, text_content: str, category: str = "live") -> int:
     """
     Get-or-create helper for prompts table scoped by prompt category.
@@ -1222,8 +1228,7 @@ def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None 
     Operational metadata is persisted for inspection, outside historical
     telemetry and frozen RQ1-RQ7 controlled evidence.
     """
-    if not req.prompt.strip() or not req.answer_a.strip() or not req.answer_b.strip():
-        raise HTTPException(status_code=400, detail="Prompt, Answer A, and Answer B are required.")
+    _require_live_text_inputs(req.prompt, req.answer_a, req.answer_b)
 
     try:
         _validate_api_key_or_raise(req.model_name)
@@ -1289,6 +1294,7 @@ def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(
     and do not expose operational details to the client.
     This is not an RQ7 estimate or final controlled mitigation result.
     """
+    _require_live_text_inputs(req.question, req.answer_a, req.answer_b)
     try:
         _validate_api_key_or_raise(req.model_name)
     except ValueError as val_err:
@@ -1374,6 +1380,7 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
     Its operational records are retained for inspection, but are excluded from
     historical telemetry and frozen controlled evidence.
     """
+    _require_live_text_inputs(req.question, req.answer_a, req.answer_b)
     if not req.judge_models or len(req.judge_models) == 0:
         raise HTTPException(status_code=400, detail="At least one judge model must be provided in 'judge_models'.")
 
