@@ -261,6 +261,8 @@ Live Evaluation is an optional manual/exploratory sandbox, separate from the fro
 
 The backend rejects manual provider transport unless `ENABLE_LIVE_SANDBOX_PROVIDER_CALLS=true` is explicitly configured. Do not enable it without appropriate provider credentials and cost controls.
 
+Blank or whitespace-only questions and candidate answers are rejected before provider transport or persistence. Client-facing provider failures, including failed Live Ensemble members, are sanitized; raw provider exception details remain server-side.
+
 ## Testing and build checks
 
 Run backend tests from the repository root:
