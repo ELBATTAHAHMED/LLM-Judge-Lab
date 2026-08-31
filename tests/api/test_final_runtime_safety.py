@@ -3,11 +3,15 @@ from __future__ import annotations
 
 import asyncio
 import os
+from contextlib import nullcontext
 from types import SimpleNamespace
 
 import main
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
+from backend.core.database import get_db
+from backend.evaluation import live as live_evaluation
 from backend.core.final_evidence import CANONICAL_FINAL_ANALYSIS_RUNS, CANONICAL_FINAL_MANIFESTS, CORRECTED_ANALYSIS_VERSION, CORRECTED_ARTIFACT_SHA256, canonical_final_analysis_runs
 
 
@@ -172,3 +176,43 @@ def test_live_ensemble_persistence_failure_is_explicit(monkeypatch):
 
     assert payload["consensus_verdict"] == "A"
     assert payload["persisted"] is False
+
+
+def test_live_ensemble_member_failure_is_sanitized_in_http_response(monkeypatch):
+    """Provider exception details remain server-side for failed ensemble members."""
+    marker = "SECRET_AUDIT_MARKER_123"
+    provider_url = "https://internal.example.invalid/provider"
+
+    class FailingDatabase:
+        def begin_nested(self):
+            return nullcontext()
+
+        def commit(self):
+            pass
+
+        def rollback(self):
+            pass
+
+    monkeypatch.setenv("ENABLE_LIVE_SANDBOX_PROVIDER_CALLS", "true")
+    monkeypatch.setattr(main, "_validate_api_key_or_raise", lambda _model: None)
+    monkeypatch.setattr(
+        live_evaluation,
+        "call_calibrated_judge",
+        lambda **_: (_ for _ in ()).throw(RuntimeError(f"token={marker} endpoint={provider_url}")),
+    )
+    main.app.dependency_overrides[get_db] = lambda: FailingDatabase()
+    try:
+        response = TestClient(main.app).post(
+            "/api/evaluate/ensemble",
+            json={"question": "q", "answer_a": "a", "answer_b": "b", "judge_models": ["gpt-4o-mini"]},
+        )
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    member = response.json()["individual_results"][0]
+    assert member["status"] == "failed"
+    assert member["error"] == member["reasoning"] == "Provider evaluation failed."
+    assert marker not in response.text
+    assert provider_url not in response.text
+    assert "RuntimeError" not in response.text
