@@ -243,8 +243,12 @@ This provider-free verification creates a uniquely named disposable PostgreSQL d
 Start the backend from the repository root:
 
 ```bash
-python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn backend.main:app
 ```
+
+Uvicorn uses its local development defaults (`127.0.0.1:8000`), so no host or
+port flags are required. If port 8000 is already in use, stop the existing
+local backend process before starting another one.
 
 Start the frontend in another terminal:
 
@@ -325,6 +329,31 @@ scripts/              Dataset, planning, analysis, and reproducibility entry poi
 tests/                Backend, integration, methodology, and reproducibility tests
 tools/                Historical audit and release helpers
 ```
+
+### Current reproducibility entry points
+
+The supported provider-free workflow is intentionally small and explicit:
+
+```bash
+# Build/validate the canonical source-corrected dataset
+python scripts/build_dataset.py
+
+# Produce a provider-free controlled-evaluation plan (planning only)
+python scripts/run_evaluation.py --limit 80
+
+# Verify the frozen analysis artifact; add --recompute-from-db for an
+# independent database recomputation
+python scripts/run_analysis.py
+python scripts/run_analysis.py --recompute-from-db
+
+# Run the fresh-start reproducibility rehearsal
+python scripts/verify_reproducibility.py --fresh-empty-db
+```
+
+These commands do not contact model providers. Provider-backed Live Evaluation
+is a separate, manually authorized sandbox and is never part of the frozen
+RQ1–RQ7 evidence. One-off audit and release-history utilities are retained
+under `tools/historical/` and are not required to start the application.
 
 ## Security and safety
 
