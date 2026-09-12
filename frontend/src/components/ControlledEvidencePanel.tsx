@@ -135,50 +135,40 @@ const NavigationButton: React.FC<{ rq: InternalRqId; selectedRq: InternalRqId; o
   </button>
 );
 
-const NavigationGroup: React.FC<{ label: string; title: string; children: React.ReactNode; ariaLabel: string; subdued?: boolean }> = ({ label, title, children, ariaLabel, subdued = false }) => (
-  <section aria-label={ariaLabel} className={`min-w-0 rounded-lg border p-3 ${subdued ? 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#0a0a0a]' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-[#111]'}`}>
-    <header className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
-      <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{label}</p>
-      <h3 className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{title}</h3>
-    </header>
-    <div className="mt-3 space-y-2">{children}</div>
+const NavigationGroup: React.FC<{ label: string; title: string; children: React.ReactNode; ariaLabel: string }> = ({ label, title, children, ariaLabel }) => (
+  <section aria-label={ariaLabel} className="min-w-0 space-y-1">
+    <p className="text-[10px] text-neutral-600 dark:text-neutral-400">{label} · {title}</p>
+    <div>{children}</div>
   </section>
 );
 
 const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect: (rq: InternalRqId) => void }> = ({ selectedRq, onSelect }) => (
-  <nav aria-label="Research question navigation" className="space-y-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+  <nav aria-label="Research question navigation" className="max-w-5xl space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
     <section aria-labelledby="principal-navigation-title">
-      <div className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
-        <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p>
-        <h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2>
-      </div>
-      <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-3">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p>
+      <h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2>
+      <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
         <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}>
           <NavigationButton rq="RQ1" selectedRq={selectedRq} onSelect={onSelect} />
         </NavigationGroup>
         <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q2.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q2.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q2.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q2.displayTitle}>
-          <NavigationButton rq="RQ2" selectedRq={selectedRq} onSelect={onSelect} />
-          <NavigationButton rq="RQ3" selectedRq={selectedRq} onSelect={onSelect} />
+          <div className="grid grid-cols-2 gap-2"><NavigationButton rq="RQ2" selectedRq={selectedRq} onSelect={onSelect} /><NavigationButton rq="RQ3" selectedRq={selectedRq} onSelect={onSelect} /></div>
         </NavigationGroup>
         <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q3.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q3.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q3.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q3.displayTitle}>
           <NavigationButton rq="RQ7" selectedRq={selectedRq} onSelect={onSelect} detail={`Primary · ${MITIGATION_BY_ID.DUAL_SWAP.displayTitle}`} />
         </NavigationGroup>
       </div>
     </section>
-    <section aria-labelledby="supporting-navigation-title" className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
-      <div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Supporting controlled analyses</p>
-        <h2 id="supporting-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">Secondary, exploratory, and additional mitigation evidence</h2>
-      </div>
-      <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-3">
-        <NavigationGroup ariaLabel="Secondary analyses" label={PRESENTATION_SECTION_BY_ID.SECONDARY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.SECONDARY.displayTitle} subdued>
-          <NavigationButton rq="RQ4" selectedRq={selectedRq} onSelect={onSelect} />
-          <NavigationButton rq="RQ5" selectedRq={selectedRq} onSelect={onSelect} />
+    <section aria-labelledby="supporting-navigation-title" className="border-t border-neutral-200 pt-3 dark:border-neutral-800">
+      <p id="supporting-navigation-title" className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Supporting analyses</p>
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <NavigationGroup ariaLabel="Secondary analyses" label={PRESENTATION_SECTION_BY_ID.SECONDARY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.SECONDARY.displayTitle}>
+          <div className="grid grid-cols-2 gap-2"><NavigationButton rq="RQ4" selectedRq={selectedRq} onSelect={onSelect} /><NavigationButton rq="RQ5" selectedRq={selectedRq} onSelect={onSelect} /></div>
         </NavigationGroup>
-        <NavigationGroup ariaLabel="Exploratory analysis" label={PRESENTATION_SECTION_BY_ID.EXPLORATORY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.EXPLORATORY.displayTitle} subdued>
+        <NavigationGroup ariaLabel="Exploratory analysis" label={PRESENTATION_SECTION_BY_ID.EXPLORATORY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.EXPLORATORY.displayTitle}>
           <NavigationButton rq="RQ6" selectedRq={selectedRq} onSelect={onSelect} />
         </NavigationGroup>
-        <NavigationGroup ariaLabel="Additional mitigation navigation" label={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.displayTitle} subdued>
+        <NavigationGroup ariaLabel="Additional mitigation navigation" label={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.displayTitle}>
           <button type="button" onClick={() => onSelect('RQ7')} aria-pressed={selectedRq === 'RQ7'} aria-controls="controlled-rq-content" className={`flex w-full flex-col rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === 'RQ7' ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
             <span className="font-mono text-xs font-semibold">RQ7</span>
             <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === 'RQ7' ? 'text-neutral-200 dark:text-neutral-300' : 'text-neutral-500 dark:text-neutral-400'}`}>{MITIGATION_BY_ID.MULTI_JUDGE_CONSENSUS.displayTitle} · Secondary</span>
