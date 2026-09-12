@@ -1,0 +1,415 @@
+{
+  "artifact_id": "question-clustered-bootstrap-sensitivity-v1",
+  "artifact_sha256": "5f848a6571b439e7fa0e1140a27e7053493b28c55ae70e78dd1c86132cbee093",
+  "ci_method_audit": {
+    "current_general_method": "deterministic nonparametric percentile bootstrap with 10,000 resamples",
+    "current_units_vary_by_estimand": true,
+    "reason_for_sensitivity": "judges, turns, repetitions, swaps, variants, and answer pairs can share an original MT-Bench question",
+    "same_original_question_can_contribute_multiple_current_resampling_units": true
+  },
+  "decision_gate": {
+    "metrics_with_changed_null_status": [],
+    "official_results_replaced": false,
+    "substantive_conclusions_unchanged": true
+  },
+  "integrity": {
+    "controlled_logical_passes": 17560,
+    "database_writes": 0,
+    "experiments_rerun": 0,
+    "provider_calls": 0
+  },
+  "method": {
+    "cluster_unit": "original MT-Bench question_id (80-question frame; turns are not separate clusters)",
+    "confidence_level": 0.95,
+    "eligibility": "reapply each existing estimand's eligibility rule inside each clustered replicate",
+    "name": "original-MT-Bench-question clustered nonparametric percentile bootstrap",
+    "non_estimable_policy": "count and report; never silently coerce or impute",
+    "resamples": 10000,
+    "sampling": "sample the represented question clusters with replacement, preserving the original cluster count and all estimator-specific observations within every sampled question",
+    "seed": 20260912
+  },
+  "metrics": [
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.07834936476149834,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.06994818652849744,
+      "current_official_ci_95": {
+        "high": 0.6269430051813472,
+        "low": 0.5569948186528497
+      },
+      "current_resampling_unit": "valid judge-decision observation",
+      "interval_width_difference": 0.008401178233000905,
+      "methodological_notes": "Valid RQ1 judge-decision observations are retained within sampled original-question clusters; the raw agreement rate has no fixed formal null.",
+      "metric_id": "RQ1.exact_agreement",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": null,
+      "null_in_current_ci": null,
+      "null_value": null,
+      "observation_level_denominator": 772,
+      "official_point_estimate": 0.5919689119170984,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.6301204819277109,
+        "low": 0.5517711171662125
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 20
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.12560030109570947,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.10601427695164817,
+      "current_official_ci_95": {
+        "high": 0.3758496837894559,
+        "low": 0.2698354068378077
+      },
+      "current_resampling_unit": "valid judge-decision observation",
+      "interval_width_difference": 0.019586024144061298,
+      "methodological_notes": "Three-class Cohen's kappa is recomputed from the clustered confusion counts in every replicate.",
+      "metric_id": "RQ1.cohens_kappa",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": false,
+      "null_in_current_ci": false,
+      "null_value": 0.0,
+      "observation_level_denominator": 772,
+      "official_point_estimate": 0.32298235210597087,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.3844558869267721,
+        "low": 0.2588555858310626
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 20
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.011348464619492682,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.01030508474576275,
+      "current_official_ci_95": {
+        "high": 0.9703050847457627,
+        "low": 0.96
+      },
+      "current_resampling_unit": "exact five-repetition cell",
+      "interval_width_difference": 0.0010433798737299327,
+      "methodological_notes": "Complete five-repetition cells remain intact and all cells from a sampled question move together.",
+      "metric_id": "RQ2.strict_complete_repetition_consistency",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": null,
+      "null_in_current_ci": null,
+      "null_value": null,
+      "observation_level_denominator": 1475,
+      "official_point_estimate": 0.9652881355932204,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.9708945260347129,
+        "low": 0.9595460614152203
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 34
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.0116671515360115,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.010241850683491038,
+      "current_official_ci_95": {
+        "high": 0.9681388012618296,
+        "low": 0.9578969505783386
+      },
+      "current_resampling_unit": "exact repetition cell",
+      "interval_width_difference": 0.0014253008525204613,
+      "methodological_notes": "Conditional repetition cells remain intact; this stays a secondary sensitivity estimand.",
+      "metric_id": "RQ2.conditional_returned_judgment_consistency",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": null,
+      "null_in_current_ci": null,
+      "null_value": null,
+      "observation_level_denominator": 1585,
+      "official_point_estimate": 0.9631230283911671,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.968930665049525,
+        "low": 0.9572635135135135
+      },
+      "question_clusters": 80,
+      "role": "sensitivity",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 34
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.07483803827981717,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.06193078324225865,
+      "current_official_ci_95": {
+        "high": 0.2058287795992714,
+        "low": 0.14389799635701275
+      },
+      "current_resampling_unit": "decisive AB/BA experimental unit",
+      "interval_width_difference": 0.012907255037558518,
+      "methodological_notes": "AB/BA pairs remain intact and are clustered with both turns and every judge from the same original question.",
+      "metric_id": "RQ3.paired_decisive_flip_rate",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": false,
+      "null_in_current_ci": false,
+      "null_value": 0.0,
+      "observation_level_denominator": 549,
+      "official_point_estimate": 0.17486338797814208,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.21338155515370705,
+        "low": 0.13854351687388988
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 19
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.0,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.0,
+      "current_official_ci_95": {
+        "high": 0.0,
+        "low": 0.0
+      },
+      "current_resampling_unit": "valid matched variant pair",
+      "interval_width_difference": 0.0,
+      "methodological_notes": "Matched redundant-length pairs remain intact within original-question clusters.",
+      "metric_id": "RQ4.variant_win_rate",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": true,
+      "null_in_current_ci": true,
+      "null_value": 0.0,
+      "observation_level_denominator": 682,
+      "official_point_estimate": 0.0,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.0,
+        "low": 0.0
+      },
+      "question_clusters": 80,
+      "role": "secondary",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 18
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.0,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.0,
+      "current_official_ci_95": {
+        "high": 0.0,
+        "low": 0.0
+      },
+      "current_resampling_unit": "valid matched variant pair",
+      "interval_width_difference": 0.0,
+      "methodological_notes": "Matched presentation-format pairs remain intact within original-question clusters.",
+      "metric_id": "RQ5.variant_win_rate",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": true,
+      "null_in_current_ci": true,
+      "null_value": 0.0,
+      "observation_level_denominator": 716,
+      "official_point_estimate": 0.0,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.0,
+        "low": 0.0
+      },
+      "question_clusters": 80,
+      "role": "secondary",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 21
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.17235739112655896,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.1572327044025157,
+      "current_official_ci_95": {
+        "high": 0.5849056603773585,
+        "low": 0.4276729559748428
+      },
+      "current_resampling_unit": "stable decisive counterbalanced unit",
+      "interval_width_difference": 0.015124686724043268,
+      "methodological_notes": "Counterbalanced judge-pair units retain their AB/BA passes; 0.5 is the no-overall-preference reference.",
+      "metric_id": "RQ6.stable_same_family_preference",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": true,
+      "null_in_current_ci": true,
+      "null_value": 0.5,
+      "observation_level_denominator": 159,
+      "official_point_estimate": 0.5094339622641509,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.5970149253731343,
+        "low": 0.4246575342465753
+      },
+      "question_clusters": 78,
+      "role": "exploratory",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 18
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.018050541516245487,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.01842546063651591,
+      "current_official_ci_95": {
+        "high": 0.01675041876046901,
+        "low": -0.0016750418760469012
+      },
+      "current_resampling_unit": "matched retained baseline/DUAL_SWAP decision",
+      "interval_width_difference": -0.00037491912027042343,
+      "methodological_notes": "Matched baseline and stable DUAL_SWAP decisions remain linked within original-question clusters.",
+      "metric_id": "RQ7_PRIMARY.agreement_delta",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": true,
+      "null_in_current_ci": true,
+      "null_value": 0.0,
+      "observation_level_denominator": 597,
+      "official_point_estimate": 0.006700167504187605,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.016245487364620937,
+        "low": -0.0018050541516245488
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 21
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.06984209100946481,
+      "current_ci_method": "no official confidence interval",
+      "current_interval_width": null,
+      "current_official_ci_95": {
+        "high": null,
+        "low": null
+      },
+      "current_resampling_unit": "not previously bootstrapped",
+      "interval_width_difference": null,
+      "methodological_notes": "Coverage is recomputed over complete linked triplets. The official artifact reports no CI for this descriptive delta.",
+      "metric_id": "RQ7_PRIMARY.coverage_delta",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": false,
+      "null_in_current_ci": null,
+      "null_value": 0.0,
+      "observation_level_denominator": 799,
+      "official_point_estimate": -0.21026282853566958,
+      "question_clustered_bootstrap_ci_95": {
+        "high": -0.17639593908629442,
+        "low": -0.24623803009575923
+      },
+      "question_clusters": 80,
+      "role": "main",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 21
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.07255800410702784,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.05246666666666666,
+      "current_official_ci_95": {
+        "high": 0.7448888888888889,
+        "low": 0.6924222222222223
+      },
+      "current_resampling_unit": "retained consensus-covered pair",
+      "interval_width_difference": 0.02009133744036118,
+      "methodological_notes": "Consensus agreement is recomputed on retained pairs while all pairs from each original question move together.",
+      "metric_id": "RQ7_SECONDARY.agreement",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": null,
+      "null_in_current_ci": null,
+      "null_value": null,
+      "observation_level_denominator": 1125,
+      "official_point_estimate": 0.7182222222222222,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.7533898305084745,
+        "low": 0.6808318264014467
+      },
+      "question_clusters": 80,
+      "role": "secondary/exploratory",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 30
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.05805751492132394,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.04593420235878343,
+      "current_official_ci_95": {
+        "high": 0.7212911235257604,
+        "low": 0.675356921166977
+      },
+      "current_resampling_unit": "planned canonical answer pair",
+      "interval_width_difference": 0.012123312562540511,
+      "methodological_notes": "Consensus coverage is recomputed over all planned pairs in sampled original-question clusters.",
+      "metric_id": "RQ7_SECONDARY.coverage",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": null,
+      "null_in_current_ci": null,
+      "null_value": null,
+      "observation_level_denominator": 1611,
+      "official_point_estimate": 0.6983240223463687,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.7275541795665634,
+        "low": 0.6694966646452395
+      },
+      "question_clusters": 80,
+      "role": "secondary/exploratory",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 30
+    },
+    {
+      "bootstrap_replicates": 10000,
+      "clustered_interval_width": 0.02018669971086328,
+      "current_ci_method": "nonparametric percentile bootstrap",
+      "current_interval_width": 0.017333333333333333,
+      "current_official_ci_95": {
+        "high": 0.058888888888888886,
+        "low": 0.041555555555555554
+      },
+      "current_resampling_unit": "retained consensus-covered pair",
+      "interval_width_difference": 0.002853366377529948,
+      "methodological_notes": "Consensus-minus-equal-weight-individual agreement is recomputed only on retained pairs; it is not compared directly with DUAL_SWAP.",
+      "metric_id": "RQ7_SECONDARY.matched_delta",
+      "non_estimable_replicates": 0,
+      "null_in_clustered_ci": false,
+      "null_in_current_ci": false,
+      "null_value": 0.0,
+      "observation_level_denominator": 1125,
+      "official_point_estimate": 0.050222222222222224,
+      "question_clustered_bootstrap_ci_95": {
+        "high": 0.0604089219330855,
+        "low": 0.04022222222222222
+      },
+      "question_clusters": 80,
+      "role": "secondary/exploratory",
+      "statistical_interpretation_changed": false,
+      "valid_replicates": 10000,
+      "within_question_multiplicity": 30
+    }
+  ],
+  "source_official_artifact": {
+    "artifact_sha256": "ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97",
+    "path": "evidence/remediation/source_corrected_complete_case_full_population_analysis_v2.json"
+  },
+  "status": "SENSITIVITY_VALIDATION_ONLY_NOT_AUTHORITATIVE_REPLACEMENT_EVIDENCE"
+}
