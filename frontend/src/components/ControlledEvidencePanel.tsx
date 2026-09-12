@@ -129,16 +129,63 @@ const Rq6Summary: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }
 };
 
 const NavigationButton: React.FC<{ rq: InternalRqId; selectedRq: InternalRqId; onSelect: (rq: InternalRqId) => void; detail?: string }> = ({ rq, selectedRq, onSelect, detail }) => (
-  <button type="button" onClick={() => onSelect(rq)} aria-label={rq} aria-pressed={selectedRq === rq} aria-controls="controlled-rq-content" title={RESEARCH_QUESTION_BY_ID[rq].displayTitle} className={`flex min-w-0 flex-col items-start rounded border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === rq ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-800 dark:bg-[#0a0a0a] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
+  <button type="button" onClick={() => onSelect(rq)} aria-label={rq} aria-pressed={selectedRq === rq} aria-controls="controlled-rq-content" title={RESEARCH_QUESTION_BY_ID[rq].displayTitle} className={`flex min-h-[4.5rem] w-full flex-1 flex-col justify-center rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === rq ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
     <span className="font-mono text-xs font-semibold">{rq}</span>
-    <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === rq ? 'text-neutral-200 dark:text-neutral-700' : 'text-neutral-500 dark:text-neutral-400'}`}>{detail ?? RESEARCH_QUESTION_BY_ID[rq].shortPresentationLabel}</span>
+    <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === rq ? 'text-neutral-200 dark:text-neutral-300' : 'text-neutral-500 dark:text-neutral-400'}`}>{detail ?? RESEARCH_QUESTION_BY_ID[rq].shortPresentationLabel}</span>
   </button>
 );
 
+const NavigationGroup: React.FC<{ label: string; title: string; children: React.ReactNode; ariaLabel: string; subdued?: boolean }> = ({ label, title, children, ariaLabel, subdued = false }) => (
+  <section aria-label={ariaLabel} className={`flex min-w-0 flex-col rounded-lg border p-3 ${subdued ? 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#0a0a0a]' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-[#111]'}`}>
+    <header className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{label}</p>
+      <h3 className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{title}</h3>
+    </header>
+    <div className="mt-3 flex flex-1 flex-col gap-2">{children}</div>
+  </section>
+);
+
 const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect: (rq: InternalRqId) => void }> = ({ selectedRq, onSelect }) => (
-  <nav aria-label="Research question navigation" className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
-    <section aria-labelledby="principal-navigation-title"><p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p><h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2><div className="mt-2 grid gap-2 md:grid-cols-3"><div className="space-y-1"><p className="text-[10px] text-neutral-600 dark:text-neutral-400">{MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} · {MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}</p><NavigationButton rq="RQ1" selectedRq={selectedRq} onSelect={onSelect} /></div><div className="space-y-1"><p className="text-[10px] text-neutral-600 dark:text-neutral-400">{MAIN_QUESTION_BY_ID.MAIN_Q2.displayLabel} · {MAIN_QUESTION_BY_ID.MAIN_Q2.displayTitle}</p><div className="grid grid-cols-2 gap-2"><NavigationButton rq="RQ2" selectedRq={selectedRq} onSelect={onSelect} /><NavigationButton rq="RQ3" selectedRq={selectedRq} onSelect={onSelect} /></div></div><div className="space-y-1"><p className="text-[10px] text-neutral-600 dark:text-neutral-400">{MAIN_QUESTION_BY_ID.MAIN_Q3.displayLabel} · {MAIN_QUESTION_BY_ID.MAIN_Q3.displayTitle}</p><NavigationButton rq="RQ7" selectedRq={selectedRq} onSelect={onSelect} detail="Primary · DUAL_SWAP" /></div></div></section>
-    <div className="grid gap-3 border-t border-neutral-200 pt-3 sm:grid-cols-3 dark:border-neutral-800"><section aria-labelledby="secondary-navigation-title"><p id="secondary-navigation-title" className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.SECONDARY.shortPresentationLabel}</p><div className="mt-2 grid grid-cols-2 gap-2"><NavigationButton rq="RQ4" selectedRq={selectedRq} onSelect={onSelect} /><NavigationButton rq="RQ5" selectedRq={selectedRq} onSelect={onSelect} /></div></section><section aria-labelledby="exploratory-navigation-title"><p id="exploratory-navigation-title" className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.EXPLORATORY.shortPresentationLabel}</p><div className="mt-2"><NavigationButton rq="RQ6" selectedRq={selectedRq} onSelect={onSelect} /></div></section><section aria-labelledby="additional-mitigation-navigation-title"><p id="additional-mitigation-navigation-title" className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.shortPresentationLabel}</p><div className="mt-2"><button type="button" onClick={() => onSelect('RQ7')} aria-pressed={selectedRq === 'RQ7'} aria-controls="controlled-rq-content" className="flex w-full flex-col items-start rounded border border-neutral-200 bg-white px-3 py-2 text-left text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-neutral-800 dark:bg-[#0a0a0a] dark:text-neutral-300 dark:hover:bg-neutral-900/40"><span className="text-[10px] font-medium">{MITIGATION_BY_ID.MULTI_JUDGE_CONSENSUS.displayTitle}</span><span className="mt-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">RQ7 secondary</span></button></div></section></div>
+  <nav aria-label="Research question navigation" className="space-y-5 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+    <section aria-labelledby="principal-navigation-title">
+      <div className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
+        <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p>
+        <h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 md:auto-rows-fr">
+        <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}>
+          <NavigationButton rq="RQ1" selectedRq={selectedRq} onSelect={onSelect} />
+        </NavigationGroup>
+        <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q2.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q2.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q2.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q2.displayTitle}>
+          <NavigationButton rq="RQ2" selectedRq={selectedRq} onSelect={onSelect} />
+          <NavigationButton rq="RQ3" selectedRq={selectedRq} onSelect={onSelect} />
+        </NavigationGroup>
+        <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q3.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q3.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q3.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q3.displayTitle}>
+          <NavigationButton rq="RQ7" selectedRq={selectedRq} onSelect={onSelect} detail={`Primary · ${MITIGATION_BY_ID.DUAL_SWAP.displayTitle}`} />
+        </NavigationGroup>
+      </div>
+    </section>
+    <section aria-labelledby="supporting-navigation-title" className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Supporting controlled analyses</p>
+        <h2 id="supporting-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">Secondary, exploratory, and additional mitigation evidence</h2>
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 md:auto-rows-fr">
+        <NavigationGroup ariaLabel="Secondary analyses" label={PRESENTATION_SECTION_BY_ID.SECONDARY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.SECONDARY.displayTitle} subdued>
+          <NavigationButton rq="RQ4" selectedRq={selectedRq} onSelect={onSelect} />
+          <NavigationButton rq="RQ5" selectedRq={selectedRq} onSelect={onSelect} />
+        </NavigationGroup>
+        <NavigationGroup ariaLabel="Exploratory analysis" label={PRESENTATION_SECTION_BY_ID.EXPLORATORY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.EXPLORATORY.displayTitle} subdued>
+          <NavigationButton rq="RQ6" selectedRq={selectedRq} onSelect={onSelect} />
+        </NavigationGroup>
+        <NavigationGroup ariaLabel="Additional mitigation navigation" label={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.displayTitle} subdued>
+          <button type="button" onClick={() => onSelect('RQ7')} aria-pressed={selectedRq === 'RQ7'} aria-controls="controlled-rq-content" className={`flex min-h-[4.5rem] w-full flex-1 flex-col justify-center rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === 'RQ7' ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
+            <span className="font-mono text-xs font-semibold">RQ7</span>
+            <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === 'RQ7' ? 'text-neutral-200 dark:text-neutral-300' : 'text-neutral-500 dark:text-neutral-400'}`}>{MITIGATION_BY_ID.MULTI_JUDGE_CONSENSUS.displayTitle} · Secondary</span>
+          </button>
+        </NavigationGroup>
+      </div>
+    </section>
   </nav>
 );
 

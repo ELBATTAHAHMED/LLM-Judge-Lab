@@ -61,10 +61,11 @@ describe('controlled evidence separation', () => {
       message: 'frozen',
     }} />);
     expect(screen.getByRole('heading', { name: 'Three Main Research Questions' })).toBeInTheDocument();
-    expect(screen.getByText('Main Question 2 · Stability')).toBeInTheDocument();
-    expect(screen.getByText('Secondary analyses')).toBeInTheDocument();
-    expect(screen.getByText('Exploratory analysis')).toBeInTheDocument();
-    expect(screen.getByText('Additional mitigation analysis')).toBeInTheDocument();
+    expect(screen.getByLabelText('Main Question 2 Stability')).toHaveTextContent('RQ2');
+    expect(screen.getByLabelText('Main Question 2 Stability')).toHaveTextContent('RQ3');
+    expect(screen.getByLabelText('Secondary analyses')).toHaveTextContent('RQ4');
+    expect(screen.getByLabelText('Exploratory analysis')).toHaveTextContent('RQ6');
+    expect(screen.getByLabelText('Additional mitigation navigation')).toHaveTextContent('Multi-Judge Consensus');
   });
 
   it('shows the RQ2 primary estimator once while retaining the distinct conditional sensitivity metric', () => {
