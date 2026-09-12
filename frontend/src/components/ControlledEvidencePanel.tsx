@@ -143,7 +143,7 @@ const NavigationGroup: React.FC<{ label: string; title: string; children: React.
 );
 
 const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect: (rq: InternalRqId) => void }> = ({ selectedRq, onSelect }) => (
-  <nav aria-label="Research question navigation" className="max-w-5xl space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+  <nav aria-label="Research question navigation" className="w-full space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]">
     <section aria-labelledby="principal-navigation-title">
       <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p>
       <h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2>
