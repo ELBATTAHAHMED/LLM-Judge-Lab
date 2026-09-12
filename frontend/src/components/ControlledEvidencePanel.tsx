@@ -129,19 +129,19 @@ const Rq6Summary: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }
 };
 
 const NavigationButton: React.FC<{ rq: InternalRqId; selectedRq: InternalRqId; onSelect: (rq: InternalRqId) => void; detail?: string }> = ({ rq, selectedRq, onSelect, detail }) => (
-  <button type="button" onClick={() => onSelect(rq)} aria-label={rq} aria-pressed={selectedRq === rq} aria-controls="controlled-rq-content" title={RESEARCH_QUESTION_BY_ID[rq].displayTitle} className={`flex min-h-[4.5rem] w-full flex-1 flex-col justify-center rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === rq ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
+  <button type="button" onClick={() => onSelect(rq)} aria-label={rq} aria-pressed={selectedRq === rq} aria-controls="controlled-rq-content" title={RESEARCH_QUESTION_BY_ID[rq].displayTitle} className={`flex w-full flex-col rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === rq ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
     <span className="font-mono text-xs font-semibold">{rq}</span>
     <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === rq ? 'text-neutral-200 dark:text-neutral-300' : 'text-neutral-500 dark:text-neutral-400'}`}>{detail ?? RESEARCH_QUESTION_BY_ID[rq].shortPresentationLabel}</span>
   </button>
 );
 
 const NavigationGroup: React.FC<{ label: string; title: string; children: React.ReactNode; ariaLabel: string; subdued?: boolean }> = ({ label, title, children, ariaLabel, subdued = false }) => (
-  <section aria-label={ariaLabel} className={`flex min-w-0 flex-col rounded-lg border p-3 ${subdued ? 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#0a0a0a]' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-[#111]'}`}>
+  <section aria-label={ariaLabel} className={`min-w-0 rounded-lg border p-3 ${subdued ? 'border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#0a0a0a]' : 'border-neutral-300 bg-white dark:border-neutral-700 dark:bg-[#111]'}`}>
     <header className="border-b border-neutral-200 pb-2 dark:border-neutral-800">
       <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{label}</p>
       <h3 className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{title}</h3>
     </header>
-    <div className="mt-3 flex flex-1 flex-col gap-2">{children}</div>
+    <div className="mt-3 space-y-2">{children}</div>
   </section>
 );
 
@@ -152,7 +152,7 @@ const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect:
         <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.shortPresentationLabel}</p>
         <h2 id="principal-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">{PRESENTATION_SECTION_BY_ID.PRINCIPAL.displayTitle}</h2>
       </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 md:auto-rows-fr">
+      <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-3">
         <NavigationGroup ariaLabel={`${MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} ${MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}`} label={MAIN_QUESTION_BY_ID.MAIN_Q1.displayLabel} title={MAIN_QUESTION_BY_ID.MAIN_Q1.displayTitle}>
           <NavigationButton rq="RQ1" selectedRq={selectedRq} onSelect={onSelect} />
         </NavigationGroup>
@@ -170,7 +170,7 @@ const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect:
         <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Supporting controlled analyses</p>
         <h2 id="supporting-navigation-title" className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">Secondary, exploratory, and additional mitigation evidence</h2>
       </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3 md:auto-rows-fr">
+      <div className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-3">
         <NavigationGroup ariaLabel="Secondary analyses" label={PRESENTATION_SECTION_BY_ID.SECONDARY.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.SECONDARY.displayTitle} subdued>
           <NavigationButton rq="RQ4" selectedRq={selectedRq} onSelect={onSelect} />
           <NavigationButton rq="RQ5" selectedRq={selectedRq} onSelect={onSelect} />
@@ -179,7 +179,7 @@ const ResearchQuestionNavigation: React.FC<{ selectedRq: InternalRqId; onSelect:
           <NavigationButton rq="RQ6" selectedRq={selectedRq} onSelect={onSelect} />
         </NavigationGroup>
         <NavigationGroup ariaLabel="Additional mitigation navigation" label={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.shortPresentationLabel} title={PRESENTATION_SECTION_BY_ID.ADDITIONAL_MITIGATION.displayTitle} subdued>
-          <button type="button" onClick={() => onSelect('RQ7')} aria-pressed={selectedRq === 'RQ7'} aria-controls="controlled-rq-content" className={`flex min-h-[4.5rem] w-full flex-1 flex-col justify-center rounded-md border px-3 py-2.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === 'RQ7' ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
+          <button type="button" onClick={() => onSelect('RQ7')} aria-pressed={selectedRq === 'RQ7'} aria-controls="controlled-rq-content" className={`flex w-full flex-col rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === 'RQ7' ? 'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-700 dark:bg-neutral-800 dark:text-white' : 'border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-white dark:border-neutral-800 dark:bg-[#111] dark:text-neutral-300 dark:hover:bg-neutral-900/40'}`}>
             <span className="font-mono text-xs font-semibold">RQ7</span>
             <span className={`mt-0.5 text-[10px] leading-snug ${selectedRq === 'RQ7' ? 'text-neutral-200 dark:text-neutral-300' : 'text-neutral-500 dark:text-neutral-400'}`}>{MITIGATION_BY_ID.MULTI_JUDGE_CONSENSUS.displayTitle} · Secondary</span>
           </button>
