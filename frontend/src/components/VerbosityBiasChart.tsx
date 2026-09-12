@@ -7,10 +7,10 @@ import {
   Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Legend,
 } from 'recharts';
 
 interface Props {
@@ -104,22 +104,38 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
   const isDark = theme === 'dark';
   const [sampleSize, setSampleSize] = useState<'100' | '250' | 'All'>('250');
 
-  const regStats = useMemo(() => computeRegressionStats(data || []), [data]);
+  // PostgreSQL numeric CASE expressions can arrive as JSON strings (for example
+  // "0.0"). Normalize at the UI boundary so valid telemetry is not treated as
+  // NaN by JavaScript arithmetic or verdict comparisons.
+  const numericData = useMemo(
+    () => (data || [])
+      .map((point) => ({
+        word_count_diff: Number(point.word_count_diff),
+        llm_verdict: Number(point.llm_verdict),
+      })),
+    [data]
+  );
+  const finiteData = useMemo(
+    () => numericData.filter((point) => Number.isFinite(point.word_count_diff) && Number.isFinite(point.llm_verdict)),
+    [numericData]
+  );
+
+  const regStats = useMemo(() => computeRegressionStats(numericData), [numericData]);
 
   const chartData = useMemo(() => {
-    if (!data || !Array.isArray(data) || !regStats) return { scatter: [], trend: [] };
+    if (!finiteData.length || !regStats) return { scatter: [], trend: [] };
 
-    const limit = sampleSize === '100' ? 100 : sampleSize === '250' ? 250 : data.length;
-    const scatter = data.slice(0, limit).map((d, i) => ({
+    const limit = sampleSize === '100' ? 100 : sampleSize === '250' ? 250 : finiteData.length;
+    const scatter = finiteData.slice(0, limit).map((d, i) => ({
       id: i,
       x: d.word_count_diff,
       y: d.llm_verdict,
       outcome:
         d.llm_verdict === 1.0
-          ? 'Winner: A (Longer)'
+          ? 'Answer A won'
           : d.llm_verdict === 0.0
-          ? 'Winner: B (Longer)'
-          : 'Verdict: TIE',
+          ? 'Answer B won'
+          : 'Tie',
     }));
 
     const { alpha, beta } = regStats;
@@ -130,25 +146,10 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
     ];
 
     return { scatter, trend };
-  }, [data, sampleSize, regStats]);
-
-  const combinedData = useMemo(() => {
-    const map = new Map<number, { x: number; y?: number; outcome?: string; trendY?: number }>();
-    chartData.trend.forEach((t) => map.set(t.x, { x: t.x, trendY: t.trendY }));
-    chartData.scatter.forEach((s) => {
-      const existing = map.get(s.x);
-      if (existing) {
-        existing.y = s.y;
-        existing.outcome = s.outcome;
-      } else {
-        map.set(s.x, { x: s.x, y: s.y, outcome: s.outcome });
-      }
-    });
-    return Array.from(map.values()).sort((a, b) => a.x - b.x);
-  }, [chartData]);
+  }, [finiteData, sampleSize, regStats]);
 
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { x: number; y: number; outcome: string } }> }) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload.length && Number.isFinite(payload[0].payload.y)) {
       const dataPoint = payload[0].payload;
       const diff = dataPoint.x;
       const verdict =
@@ -156,7 +157,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
 
       return (
         <div className="p-2.5 rounded bg-white dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 text-xs space-y-1 text-neutral-800 dark:text-neutral-200 font-mono shadow-md">
-          <p className="font-bold text-neutral-900 dark:text-white">Disparity: {diff > 0 ? `+${diff}` : diff} words</p>
+          <p className="font-bold text-neutral-900 dark:text-white">Disparity: {Number.isFinite(diff) ? `${diff > 0 ? '+' : ''}${diff} words` : 'Unavailable'}</p>
           <p className="text-neutral-600 dark:text-neutral-300">Outcome: {verdict}</p>
         </div>
       );
@@ -164,7 +165,8 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
     return null;
   };
 
-  const inflationPct = regStats ? (regStats.beta * 100 * 100).toFixed(1) : '0.0';
+  const displayNumber = (value: number | undefined, digits: number, signed = false) => value !== undefined && Number.isFinite(value) ? `${signed && value >= 0 ? '+' : ''}${value.toFixed(digits)}` : 'Unavailable';
+  const inflationPct = regStats && Number.isFinite(regStats.beta) ? `${displayNumber(regStats.beta * 100 * 100, 1, true)}% per 100 words` : 'Unavailable';
 
   return (
     <div className="p-5 rounded-lg bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 space-y-3 font-sans transition-colors duration-150">
@@ -173,9 +175,9 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
           <h4 className="font-semibold text-neutral-900 dark:text-neutral-100 text-xs tracking-tight">
             Length Association
           </h4>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">
             {regStats
-              ? `OLS Fit: Win Probability ~ α (${regStats.alpha.toFixed(3)}) + β·ΔWC`
+              ? `OLS fit to coded outcomes: α (${displayNumber(regStats.alpha, 3)}) + β·ΔWC`
               : 'OLS Fit: No telemetry data'}
           </p>
         </div>
@@ -194,7 +196,7 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
           </div>
           {regStats && (
             <span className="text-[11px] font-mono text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-800 px-2 py-0.5 rounded bg-white dark:bg-neutral-900">
-              &beta; = {regStats.beta >= 0 ? '+' : ''}{regStats.beta.toFixed(6)}
+              &beta; = {displayNumber(regStats.beta, 6, true)}
             </span>
           )}
         </div>
@@ -206,41 +208,47 @@ export const VerbosityBiasChart: React.FC<Props> = ({ data, loading, error }) =>
         </div>
       ) : error ? (
         <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 text-xs">{error}</div>
-      ) : !data || data.length === 0 || !regStats ? (
+      ) : !numericData.length || !regStats ? (
         <div className="h-64 flex flex-col items-center justify-center font-mono text-xs text-neutral-500 space-y-1.5">
           <p className="font-semibold text-neutral-700 dark:text-neutral-300">No telemetry data available</p>
           <p className="text-neutral-500 text-[11px]">No verbosity comparison samples found for this judge model.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="h-64 w-full">
+          <div className="h-72 w-full" role="img" aria-label="Length association: each dot is an observed decision at its exact word-count difference. B won is coded 0, Tie 0.5, and A won 1. Dotted OLS fit summarizes these numeric codes, not a predicted win probability. The vertical zero line means equal answer lengths.">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={combinedData} margin={{ top: 10, right: 15, left: -15, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#262626' : '#e5e5e5'} />
-                <XAxis type="number" dataKey="x" stroke="#a3a3a3" tick={{ fontSize: 11 }} domain={[-300, 300]} unit="w" />
-                <YAxis type="number" dataKey="y" stroke="#a3a3a3" tick={{ fontSize: 11 }} domain={[-0.1, 1.1]} ticks={[0, 0.5, 1]} />
-                <ReferenceLine y={0.5} stroke={isDark ? '#404040' : '#d4d4d4'} strokeDasharray="3 3" />
-                <ReferenceLine x={0} stroke={isDark ? '#404040' : '#d4d4d4'} strokeDasharray="3 3" />
-                <Tooltip content={<CustomTooltip />} />
-                {/* Muted sky-400 dots with opacity=0.4 creating a natural heatmap density effect */}
-                <Scatter name="Decisions" dataKey="y" fill="#38bdf8" opacity={0.4} />
-                {/* Sharp light-gray OLS Trendline */}
-                <Line
+              <ComposedChart margin={{ top: 14, right: 14, left: 0, bottom: 25 }}>
+                <Legend verticalAlign="top" align="right" height={30} iconSize={9} wrapperStyle={{ fontSize: 11, color: isDark ? '#d4d4d4' : '#525252' }} />
+                {[0, 0.5, 1].map((outcome) => <ReferenceLine key={outcome} y={outcome} stroke={isDark ? '#292d32' : '#e2e5e9'} />)}
+                <XAxis type="number" dataKey="x" stroke={isDark ? '#a3a3a3' : '#737373'} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={8} minTickGap={30} domain={[-300, 300]} label={{ value: 'Word-count difference (A − B)', position: 'bottom', offset: 8, fill: isDark ? '#a3a3a3' : '#525252', fontSize: 11 }} />
+                <YAxis type="number" dataKey="y" width={84} axisLine={false} tickLine={false} tickMargin={8} tick={{ fontSize: 11, fill: isDark ? '#d4d4d4' : '#404040' }} domain={[-0.12, 1.12]} ticks={[0, 0.5, 1]} tickFormatter={(value) => value === 1 ? 'A won' : value === 0 ? 'B won' : 'Tie'} />
+                <ReferenceLine x={0} stroke={isDark ? '#525963' : '#a3aab3'} strokeDasharray="3 6" />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: isDark ? '#737373' : '#a3a3a3', strokeDasharray: '3 3' }} />
+                {/* Keep each observation, including repeated x values and outcomes. */}
+                <Scatter name="Observed decisions" data={chartData.scatter} dataKey="y" fill={isDark ? '#73a6c8' : '#3779a5'} isAnimationActive={false} shape={({ cx, cy }: { cx?: number; cy?: number }) => <circle cx={cx} cy={cy} r={3} fill={isDark ? '#73a6c8' : '#3779a5'} fillOpacity={0.5} />} />
+                {Number.isFinite(regStats.alpha) && Number.isFinite(regStats.beta) && <Line
                   type="monotone"
+                  data={chartData.trend}
                   dataKey="trendY"
-                  stroke={isDark ? '#f5f5f5' : '#171717'}
-                  strokeWidth={2}
+                  stroke={isDark ? '#a6b5c4' : '#576b80'}
+                  strokeWidth={1.5}
                   strokeDasharray="3 3"
                   dot={false}
-                  name="OLS Trendline"
-                />
+                  activeDot={false}
+                  isAnimationActive={false}
+                  name="OLS · coded outcomes"
+                />}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
 
+          <div className="space-y-1 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
+            <p className="flex flex-wrap justify-between gap-x-4 gap-y-1"><span>← Answer B longer</span><span>0 = equal lengths</span><span>Answer A longer →</span></p>
+          </div>
+
           <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400 font-mono flex justify-between">
-            <span>Spearman Rank Correlation: <strong className="text-neutral-900 dark:text-neutral-200">&rho; = {regStats.rho >= 0 ? '+' : ''}{regStats.rho.toFixed(4)}</strong></span>
-            <span>Inflation: <strong className="text-[#38bdf8] font-semibold">{parseFloat(inflationPct) >= 0 ? '+' : ''}{inflationPct}% per 100 words</strong></span>
+            <span>Spearman Rank Correlation: <strong className="text-neutral-900 dark:text-neutral-200">&rho; = {displayNumber(regStats.rho, 4, true)}</strong></span>
+            <span>Inflation: <strong className="text-[#38bdf8] font-semibold">{inflationPct}</strong></span>
           </div>
         </div>
       )}

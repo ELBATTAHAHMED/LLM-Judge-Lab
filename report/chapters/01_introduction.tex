@@ -1,0 +1,49 @@
+\chapter{Introduction}
+\label{ch:introduction}
+
+Generative systems increasingly produce answers, summaries, code explanations, and conversational assistance at a scale that makes manual evaluation expensive. Pairwise evaluation by a language model is attractive because a judge can read a task, compare two candidate answers, and return a compact preference. This apparent simplicity is also the central methodological risk. A verdict may change because the evaluator sees a different order, because a response has superficial presentation features, because repeated sampling is not identical, or because the protocol filters observations in ways that change coverage. A useful evaluator therefore needs to be studied as an empirical measurement instrument.
+
+The LLM-as-a-Judge Reliability Lab treats each verdict as a recorded experimental observation rather than as an unquestionable assessment. The project asks how closely judges agree with human preference reference labels, whether they repeat their decisions under fixed conditions, whether presentation order affects their decisions, whether narrowly controlled text variants receive a systematic advantage, whether source-family identity is associated with preference in a counterbalanced design, and what mitigation strategies gain or lose. This framing avoids a false binary between ``works'' and ``does not work.'' A judge can be stable in one setting, sensitive in another, and operationally useful only with clearly stated limits.
+
+\section{Problem statement}
+
+Automatic evaluation becomes scientifically fragile when an evaluator's output is reported without the provenance needed to interpret it. In particular, a pairwise verdict depends on the exact prompt, the exact two answer texts, their original source identities, the evaluator model, sampling and parser settings, and the ordered protocol. If any of these identities is reconstructed from display labels or database order, the displayed evidence can become incorrect even when the surrounding interface looks plausible. The project therefore separates answer-source provenance from judge identity, records decision attempts and terminal states, and pins final metrics to authoritative analysis runs.
+
+The final study also responds to a data-lineage issue discovered during the project. The controlled population was rebuilt against exact upstream source text. The result is an additive source-corrected evidence lineage: 1,568 records, 1,568/1,568 source hashes matched, and zero unresolved records. The project does not overwrite historical artifacts. Instead, it distinguishes historical evidence from the source-corrected final analysis and makes the final selection explicit. This is important because a reliable numerical result should also be traceable to the text that a judge actually evaluated.
+
+\section{Objectives}
+
+The practical objective is a local research application that can store controlled executions, expose final results safely, and distinguish final evidence from exploratory telemetry and manual sandbox trials. The scientific objective is to quantify several dimensions of evaluator reliability under fixed, transparent protocols. The reproducibility objective is to make the chain from canonical data to releases, analysis runs, API output, and interface visible and verifiable without performing new provider calls.
+
+This combination creates a different kind of deliverable from a benchmark leaderboard. The software is useful for operating the study, but the software alone is not the claim. The claims are the estimands, denominators, confidence intervals, exclusions, and evidence identities reported in this document. Conversely, a table of percentages alone is not enough: the analysis must remain reconstructible from stored records and frozen artifacts.
+
+\section{Research questions}
+
+The seven research questions are deliberately separated because they measure different phenomena. RQ1 measures agreement with human preference reference labels. RQ2 measures repeated-evaluation consistency under fixed conditions. RQ3 measures position sensitivity by pairing both answer orders and mapping the results back to original answer identity. RQ4 measures a controlled redundant-length effect, not generic verbosity. RQ5 measures a controlled presentation-format effect, not generic formatting quality. RQ6 measures a counterbalanced source-family preference association. RQ7 evaluates mitigation trade-offs using two complementary strategies.
+
+\begin{table}[H]
+\centering
+\caption{Canonical research questions and principal estimands.}
+\label{tab:rq-overview}
+\begin{tabularx}{\textwidth}{@{}p{0.10\textwidth}p{0.30\textwidth}X@{}}
+\toprule
+RQ & Focus & Principal final estimand \\
+\midrule
+RQ1 & Human alignment & Exact three-class agreement with human preference reference labels; Cohen's $\kappa$.\\
+RQ2 & Stochastic consistency & Strict consistency across repeated fixed-condition evaluations.\\
+RQ3 & Position sensitivity & Paired decisive mapped flip rate under AB/BA answer-order swaps.\\
+RQ4 & Redundant length & Stable win rate of a narrowly defined redundant-text variant.\\
+RQ5 & Presentation format & Stable win rate of a controlled list-prefix/presentation variant.\\
+RQ6 & Source family & Stable same-family preference rate in a counterbalanced lineage.\\
+RQ7 & Mitigation & Agreement and coverage trade-offs under DUAL\_SWAP and strict multi-judge consensus.\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Contributions}
+
+The work contributes an evidence-oriented controlled evaluation workflow, an explicit provenance model, a source-text correction and recovery lineage, and a complete final analysis that reports both numerator/denominator detail and uncertainty. It also provides a cautious interpretation framework. Agreement with a human preference reference label is not ground truth. A measured order effect is not proof of a causal internal bias mechanism. A null result for a narrow synthetic perturbation is not proof that length or format never matter. A mitigation is not universally better simply because it improves one estimator while reducing coverage.
+
+\section{Report roadmap}
+
+\Cref{ch:sota} reviews the relevant literature and derives the research gap. \Cref{ch:design} describes the data, architecture, provenance, and correction lineage. \Cref{ch:methods} specifies the designs and estimators. \Cref{ch:results} reports the final source-corrected results. \Cref{ch:discussion} interprets findings and limitations. \Cref{ch:system} documents the software and reproducibility pathway. The appendices provide an evidence protocol, a compact numerical ledger, and practical verification guidance.

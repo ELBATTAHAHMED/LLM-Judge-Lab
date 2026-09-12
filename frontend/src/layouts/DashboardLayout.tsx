@@ -65,6 +65,7 @@ export const DashboardLayout: React.FC = () => {
   const { judgeModel, setJudgeModel } = useJudge();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isJudgeOpen, setIsJudgeOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const judgeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,7 +120,7 @@ export const DashboardLayout: React.FC = () => {
       case '/leaderboard':
         return 'Leaderboard';
       case '/synthesis':
-        return 'Executive Synthesis';
+        return 'Synthesis';
       case '/diagnostics':
         return 'Bias Diagnostics';
       case '/controlled-results':
@@ -147,10 +148,10 @@ export const DashboardLayout: React.FC = () => {
       <aside
         className={`${
           isCollapsed ? 'w-16' : 'w-64'
-        } bg-neutral-50 dark:bg-[#0a0a0a] border-r border-neutral-200 dark:border-neutral-800 flex flex-col justify-between h-screen sticky top-0 shrink-0 z-40 select-none transition-all duration-200 ease-in-out`}
+        } bg-neutral-50 dark:bg-[#0a0a0a] border-r border-neutral-200 dark:border-neutral-800 hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 z-40 select-none transition-all duration-200 ease-in-out`}
       >
         {/* Top Header & Nav Section */}
-        <div className="px-4 pb-4 pt-7 space-y-9">
+        <div className="px-4 pb-4 pt-9 space-y-10">
           {/* Top Branding Header & Controls */}
           <div className="flex items-center justify-between px-1.5 py-1 rounded-md text-neutral-800 dark:text-neutral-200">
             {!isCollapsed ? (
@@ -290,9 +291,19 @@ export const DashboardLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Workspace Area */}
-      <main className="flex-1 bg-white dark:bg-[#171717] min-h-screen p-6 md:p-10 lg:p-12 overflow-y-auto transition-colors duration-150 flex flex-col space-y-6">
+      <main className="min-w-0 flex-1 bg-white dark:bg-[#171717] min-h-screen p-4 sm:p-6 lg:p-10 transition-colors duration-150 flex flex-col space-y-6">
+        <div className="lg:hidden border-b border-neutral-200 dark:border-neutral-800 pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold">JudgeLab</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={toggleTheme} aria-label="Toggle theme" className="p-2 rounded border border-neutral-200 dark:border-neutral-700">{theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}</button>
+              <button type="button" aria-expanded={mobileNavOpen} aria-controls="mobile-navigation" onClick={() => setMobileNavOpen(!mobileNavOpen)} className="px-3 py-2 text-sm rounded border border-neutral-200 dark:border-neutral-700">Menu</button>
+            </div>
+          </div>
+          {mobileNavOpen && <nav id="mobile-navigation" aria-label="Mobile navigation" className="mt-3 grid gap-1 sm:grid-cols-2">{navItems.map(({ path, label, icon: Icon }) => <NavLink key={path} to={path} onClick={() => setMobileNavOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded px-3 py-3 text-sm ${isActive ? 'bg-neutral-200 dark:bg-neutral-800 font-semibold' : 'text-neutral-600 dark:text-neutral-300'}`}><Icon size={16} />{label}</NavLink>)}</nav>}
+        </div>
         {/* Top Workspace Header Bar */}
-        <div className="flex items-center justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-neutral-200 dark:border-neutral-800">
           <div className="flex items-center space-x-2 text-xs font-mono text-neutral-500 dark:text-neutral-400">
             <span className="text-neutral-400 dark:text-neutral-500">Workspace</span>
             <span>/</span>
@@ -302,12 +313,14 @@ export const DashboardLayout: React.FC = () => {
           </div>
 
           {/* Aggregate controlled pages do not vary by the global judge selector. */}
-          {showJudgeSelector && (
-            <div className="relative" ref={judgeDropdownRef}>
+          {showJudgeSelector ? (
+            <div className="relative min-w-0" ref={judgeDropdownRef}>
             <button
               type="button"
+              aria-expanded={isJudgeOpen}
+              aria-label={`Select workspace judge: ${currentJudge.name}`}
               onClick={() => setIsJudgeOpen(!isJudgeOpen)}
-              className="flex items-center space-x-2.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-zinc-900/90 border border-neutral-200 dark:border-zinc-800 text-xs font-mono text-neutral-900 dark:text-zinc-100 shadow-xs hover:border-neutral-300 dark:hover:border-zinc-700 transition-all duration-150 ease-out cursor-pointer select-none"
+              className="flex w-full items-center gap-2 px-3 py-2 rounded-lg bg-neutral-100 dark:bg-zinc-900/90 border border-neutral-200 dark:border-zinc-800 text-xs text-neutral-900 dark:text-zinc-100 hover:border-neutral-300 dark:hover:border-zinc-700 transition-colors cursor-pointer select-none"
             >
               <span
                 className="w-2 h-2 rounded-full shrink-0"
@@ -317,7 +330,7 @@ export const DashboardLayout: React.FC = () => {
                 className="w-3.5 h-3.5 shrink-0"
                 style={{ color: currentJudge.color }}
               />
-              <span className="font-semibold">{currentJudge.name}</span>
+              <span className="min-w-0 flex-1 text-left font-semibold">{currentJudge.name}</span>
               <span className="text-[10px] text-neutral-500 dark:text-zinc-400 font-normal">
                 ({currentJudge.provider})
               </span>
@@ -378,6 +391,8 @@ export const DashboardLayout: React.FC = () => {
               </div>
             )}
             </div>
+          ) : (
+            <div className="relative min-w-0" aria-hidden="true"><div className="h-[34.925px] w-full sm:w-64" /></div>
           )}
         </div>
 

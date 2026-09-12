@@ -231,7 +231,7 @@ ${activeRecord.reasoning_text}
                     <button
                       key={`${record.prompt_id}-${idx}`}
                       onClick={() => setSelectedIndex(idx)}
-                      className={`w-full p-3 text-left transition-colors cursor-pointer flex flex-col space-y-1 ${
+                      className={`w-full p-3 text-left cursor-pointer flex flex-col space-y-1 ${
                         isSelected
                           ? 'bg-neutral-200 dark:bg-neutral-900 border-l-2 border-l-neutral-900 dark:border-l-white'
                           : 'hover:bg-neutral-100 dark:hover:bg-neutral-900/50 text-neutral-600 dark:text-neutral-400'
@@ -364,7 +364,7 @@ ${activeRecord.reasoning_text}
                     </span>
                     <span className="text-[10px] text-neutral-500">Candidate A</span>
                   </div>
-                  <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
+                  <div className="case-answer-scroll text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
                     {activeRecord.answer_a_text || 'Provenance unavailable; answer text is not displayed.'}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ ${activeRecord.reasoning_text}
                     </span>
                     <span className="text-[10px] text-neutral-500">Candidate B</span>
                   </div>
-                  <div className="text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
+                  <div className="case-answer-scroll text-xs text-neutral-700 dark:text-neutral-300 font-sans leading-relaxed max-h-44 overflow-y-auto pt-0.5 pr-1">
                     {activeRecord.answer_b_text || 'Provenance unavailable; answer text is not displayed.'}
                   </div>
                 </div>

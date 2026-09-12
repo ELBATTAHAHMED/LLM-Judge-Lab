@@ -1,0 +1,84 @@
+\documentclass[12pt,a4paper,oneside]{report}
+\usepackage[margin=2.45cm,includeheadfoot]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs,longtable,tabularx,multirow,array}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{pdflscape}
+\usepackage{listings}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=blue!55!black,urlcolor=blue!55!black,pdftitle={LLM-as-a-Judge Reliability Lab},pdfauthor={Master IPS}}
+\setstretch{1.22}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+\renewcommand{\arraystretch}{1.22}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{LLM-as-a-Judge Reliability Lab}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.35pt}
+\setlength{\headheight}{15pt}
+\newcommand{\projecttitle}{LLM-as-a-Judge Reliability Lab: Measuring and Mitigating Biases in Automatic Evaluation of Generated Responses}
+\newcommand{\artifacthash}{\texttt{ace75cfb15412c2070b848f048ad419ae70d46162c7b66d52ee4302432031d97}}
+\newcommand{\datasetsha}{\texttt{f4dd4b2ec9e44d61b7e963b34eba6fe796f61fbe930100f9c6fff82da6ab1209}}
+\begin{document}
+\begin{titlepage}
+\centering
+{\Large Faculté des Sciences de Rabat\par}
+\vspace{0.25cm}
+{\large Master IPS\par}
+\vspace{1.4cm}
+{\Large Master's/PFE Report\par}
+\vspace{1.1cm}
+{\huge\bfseries \projecttitle\par}
+\vspace{1.2cm}
+\begin{minipage}{0.82\textwidth}\centering
+\large A reproducible empirical study of agreement with human preference reference labels, repeated-evaluation consistency, answer-order sensitivity, controlled presentation effects, source-family association, and mitigation trade-offs.
+\end{minipage}
+\vfill
+\begin{tabular}{ll}
+Student: & \textit{[Student name to be completed]}\\
+Supervisor: & \textit{[Supervisor name to be completed]}\\
+Academic year: & \textit{[Academic year to be completed]}\\
+Repository state: & Source-corrected final evidence\\
+\end{tabular}
+\vfill
+{\large Rabat, Morocco\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\input{chapters/00_abstract}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+\input{chapters/01_introduction}
+\input{chapters/02_state_of_the_art}
+\input{chapters/03_design_and_reproducibility}
+\input{chapters/04_methods}
+\input{chapters/05_results}
+\input{chapters/06_discussion}
+\input{chapters/07_system_and_reproducibility}
+\input{chapters/08_conclusion}
+\appendix
+\input{chapters/A_protocol_and_evidence}
+\input{chapters/B_result_ledger}
+\input{chapters/C_reproducibility}
+\bibliographystyle{plainnat}
+\bibliography{references}
+\end{document}

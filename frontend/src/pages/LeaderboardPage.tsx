@@ -47,7 +47,12 @@ export const LeaderboardPage: React.FC = () => {
       />
 
       {/* Methodology Section */}
-      <MethodologyCards />
+      <details className="border-t border-neutral-200 pt-3 dark:border-neutral-800">
+        <summary className="cursor-pointer py-1 text-xs font-medium text-neutral-600 dark:text-neutral-400 focus-visible:outline-2 focus-visible:outline-offset-2">
+          Ranking methodology · Bradley–Terry &amp; OLS
+        </summary>
+        <div className="mt-2"><MethodologyCards /></div>
+      </details>
     </div>
   );
 };

@@ -10,6 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
+  ReferenceLine,
 } from 'recharts';
 
 interface Props {
@@ -85,38 +87,45 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
             No domain reliability data available.
           </div>
         ) : (
-          <div className="h-64 w-full">
+          <div className="w-full" style={{ height: Math.max(256, chartData.length * 34 + 48) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
                 data={chartData}
-                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                margin={{ top: 8, right: 48, left: 0, bottom: 20 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#262626' : '#e5e5e5'} />
-                <XAxis type="number" stroke="#a3a3a3" tick={{ fontSize: 11 }} domain={[0, 0.6]} />
+                <CartesianGrid horizontal={false} strokeDasharray="3 5" stroke={isDark ? '#303030' : '#e5e5e5'} />
+                <XAxis type="number" stroke={isDark ? '#a3a3a3' : '#737373'} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={8} domain={[0, 0.6]} tickCount={7} tickFormatter={(value) => Number(value).toFixed(2)} minTickGap={24} label={{ value: 'Cohen’s κ', position: 'bottom', offset: 6, fill: isDark ? '#a3a3a3' : '#525252', fontSize: 11 }} />
+                <ReferenceLine x={0} stroke={isDark ? '#737373' : '#a3a3a3'} />
                 <YAxis
                   type="category"
                   dataKey="domain"
-                  stroke="#a3a3a3"
-                  tick={{ fontSize: 11, fill: isDark ? '#d4d4d4' : '#404040' }}
-                  width={85}
+                  stroke={isDark ? '#a3a3a3' : '#737373'}
+                  tick={{ fontSize: 12, fill: isDark ? '#d4d4d4' : '#404040' }}
+                  width={94}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={10}
+                  interval={0}
                 />
                 <Tooltip
+                  cursor={{ fill: isDark ? '#ffffff08' : '#00000004' }}
                   contentStyle={{
                     background: isDark ? '#0a0a0a' : '#ffffff',
                     borderColor: isDark ? '#404040' : '#e5e5e5',
                     borderRadius: '4px',
                     fontSize: '12px',
-                    fontFamily: 'monospace',
+                    fontFamily: 'inherit',
                     boxShadow: isDark ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   }}
                   itemStyle={{ color: isDark ? '#e5e5e5' : '#171717' }}
                   labelStyle={{ color: isDark ? '#ffffff' : '#171717', fontWeight: 600 }}
-                  formatter={(val: unknown) => [`κ = ${Number(val).toFixed(3)}`, 'Cohen’s Kappa']}
+                  formatter={(val: unknown) => [`κ = ${(Number.isFinite(Number(val)) ? Number(val).toFixed(3) : 'Unavailable')}`, 'Cohen’s Kappa']}
                 />
-                <Bar dataKey="kappa" radius={[0, 2, 2, 0]}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} stroke={isDark ? '#1f2937' : '#d4d4d4'} strokeWidth={0.5} />
+                <Bar dataKey="kappa" radius={[0, 3, 3, 0]} maxBarSize={16} isAnimationActive={false}>
+                  <LabelList dataKey="kappa" position="right" offset={8} formatter={(value) => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : 'Unavailable'} fill={isDark ? '#d4d4d4' : '#404040'} fontSize={11} />
+                  {chartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={isDark ? '#568d85' : '#527f77'} />
                   ))}
                 </Bar>
               </BarChart>
@@ -127,10 +136,10 @@ export const DomainReliabilityChart: React.FC<Props> = ({ data, loading, error }
         {highest && lowest && (
           <div className="p-2.5 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400 font-mono flex justify-between">
             <span>
-              Highest Agreement: <strong className="text-teal-600 dark:text-teal-400 font-semibold">{highest.domain} (&kappa; = {typeof highest.kappa === 'number' ? highest.kappa.toFixed(3) : '0.000'})</strong>
+              Highest Agreement: <strong className="text-teal-600 dark:text-teal-400 font-semibold">{highest.domain} (&kappa; = {typeof highest.kappa === 'number' && Number.isFinite(highest.kappa) ? highest.kappa.toFixed(3) : 'Unavailable'})</strong>
             </span>
             <span>
-              Lowest Agreement: <strong className="text-neutral-500 font-semibold">{lowest.domain} (&kappa; = {typeof lowest.kappa === 'number' ? lowest.kappa.toFixed(3) : '0.000'})</strong>
+              Lowest Agreement: <strong className="text-neutral-500 font-semibold">{lowest.domain} (&kappa; = {typeof lowest.kappa === 'number' && Number.isFinite(lowest.kappa) ? lowest.kappa.toFixed(3) : 'Unavailable'})</strong>
             </span>
           </div>
         )}

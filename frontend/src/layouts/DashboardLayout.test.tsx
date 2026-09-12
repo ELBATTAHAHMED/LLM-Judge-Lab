@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -11,6 +11,15 @@ const renderRoute = (path: string) => render(
 );
 
 describe('aggregate controlled-page selector scope', () => {
+  it('opens mobile navigation and closes it after choosing a page', () => {
+    renderRoute('/leaderboard');
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    const navigation = screen.getByRole('navigation', { name: 'Mobile navigation' });
+    expect(within(navigation).getAllByRole('link')).toHaveLength(6);
+    fireEvent.click(within(navigation).getByRole('link', { name: 'Synthesis' }));
+    expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).not.toBeInTheDocument();
+    expect(screen.getByText('Synthesis content')).toBeInTheDocument();
+  });
   it.each(['/synthesis', '/controlled-results'])('hides the global judge selector on %s', (path) => {
     renderRoute(path);
     expect(screen.queryByText('GPT-4o-mini')).not.toBeInTheDocument();

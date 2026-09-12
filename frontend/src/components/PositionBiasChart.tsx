@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LabelList,
 } from 'recharts';
 
 interface Props {
@@ -22,12 +23,12 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const hasData = data?.position_a !== null && data?.position_b !== null && data?.tie !== null;
+  const hasData = [data?.position_a, data?.position_b, data?.tie].every(Number.isFinite);
   const chartData = hasData && data
     ? [
         { name: 'Position A', count: data.position_a, color: '#737373' },
         { name: 'Position B', count: data.position_b, color: '#818cf8' }, // Subtle desaturated indigo highlight
-        { name: 'Tie / Draw', count: data.tie, color: isDark ? '#262626' : '#525252' },
+        { name: 'Tie / Draw', count: data.tie, color: isDark ? '#737373' : '#525252' },
       ]
     : [];
 
@@ -53,8 +54,8 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             </p>
           </div>
           {hasData && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-400 dark:border-neutral-700 shadow-none ring-0">
-              &chi;&sup2; = {chi2Stat.toFixed(2)} (df=1)
+            <span className="inline-flex shrink-0 whitespace-nowrap items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-neutral-100 text-neutral-600 border border-neutral-200 dark:bg-neutral-800/50 dark:text-neutral-400 dark:border-neutral-700 shadow-none ring-0">
+              &chi;&sup2; = {Number.isFinite(chi2Stat) ? chi2Stat.toFixed(2) : 'Unavailable'} (df=1)
             </span>
           )}
         </div>
@@ -71,24 +72,26 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
           <div className="space-y-3 flex-1 flex flex-col justify-between">
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 15, right: 10, left: -15, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#262626' : '#e5e5e5'} />
-                  <XAxis dataKey="name" stroke="#a3a3a3" tick={{ fontSize: 11 }} />
-                  <YAxis stroke="#a3a3a3" tick={{ fontSize: 11 }} />
+                <BarChart data={chartData} margin={{ top: 24, right: 12, left: 0, bottom: 4 }} barCategoryGap="28%">
+                  <CartesianGrid vertical={false} strokeDasharray="3 5" stroke={isDark ? '#303030' : '#e5e5e5'} />
+                  <XAxis dataKey="name" stroke={isDark ? '#a3a3a3' : '#525252'} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={10} interval={0} />
+                  <YAxis stroke={isDark ? '#a3a3a3' : '#737373'} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickMargin={8} width={42} allowDecimals={false} />
                   <Tooltip
+                    cursor={{ fill: isDark ? '#ffffff08' : '#00000004' }}
                     contentStyle={{
                       background: isDark ? '#0a0a0a' : '#ffffff',
                       borderColor: isDark ? '#404040' : '#e5e5e5',
                       borderRadius: '4px',
                       fontSize: '12px',
-                      fontFamily: 'monospace',
+                      fontFamily: 'inherit',
                       boxShadow: isDark ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
                     itemStyle={{ color: isDark ? '#e5e5e5' : '#171717' }}
                     labelStyle={{ color: isDark ? '#ffffff' : '#171717', fontWeight: 600 }}
                     formatter={(val: unknown) => [`${val} decisions`, 'Count']}
                   />
-                  <Bar dataKey="count" radius={[2, 2, 0, 0]}>
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={64} isAnimationActive={false}>
+                    <LabelList dataKey="count" position="top" offset={8} fill={isDark ? '#e5e5e5' : '#404040'} fontSize={12} />
                     {chartData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
@@ -116,7 +119,7 @@ export const PositionBiasChart: React.FC<Props> = ({ data, loading, error }) => 
             <p className="text-neutral-500 text-[11px]">{p.name}</p>
             <p className="font-semibold text-neutral-900 dark:text-neutral-200 text-sm">{p.count}</p>
             <p className="text-[10px] text-neutral-500">
-              {total > 0 && p.count !== null ? `${((p.count / total) * 100).toFixed(1)}%` : 'N/A'}
+              {total > 0 && p.count !== null ? `${((p.count / total) * 100).toFixed(1)}%` : 'Unavailable'}
             </p>
           </div>
         ))}

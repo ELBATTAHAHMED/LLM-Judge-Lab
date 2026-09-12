@@ -1,0 +1,64 @@
+\chapter{Study Design, Data, and Provenance}
+\label{ch:design}
+
+\section{Study population}
+
+The final controlled population is a source-text-corrected dataset version named \texttt{controlled-source-text-corrected-v1}. It contains 1,568 records derived from 80 distinct MT-Bench questions, retaining upstream question IDs 81 through 160. MT-Bench is multi-turn; each question is represented by two turn-level prompt records. Thus, ``160 prompts'' in this report always means 80 questions multiplied by two turns, not 160 distinct questions. The canonical dataset hash is \datasetsha.
+
+The human comparison dataset was reconciled against upstream records: 3,355 of 3,355 raw human rows matched. In the canonical controlled source data, 1,070 records were exact source matches and 498 required source correction; unresolved records equal zero. These counts are not a performance result. They document the population and source lineage on which all later estimators depend.
+
+\begin{table}[H]
+\centering
+\caption{Canonical data lineage summary.}
+\label{tab:data-lineage}
+\begin{tabular}{lr}
+\toprule
+Item & Count / status \\
+\midrule
+Distinct MT-Bench questions & 80 (IDs 81--160)\\
+Turn-level prompt records & 160 (80 turn 1; 80 turn 2)\\
+Canonical source-corrected records & 1,568\\
+Exact source records & 1,070\\
+Source-correction-required records & 498\\
+Unresolved source records & 0\\
+Human rows reconciled with upstream & 3,355 / 3,355\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Provenance model}
+
+Each controlled observation is associated with exact prompt and answer identities, source-model identities, a judge identity, a protocol condition, and a durable attempt/slot state. The system must not obtain answer text merely by using a prompt identifier and whichever two answers appear first in a database query. Such an approach can relabel one source model's text as another source model's answer. The project therefore treats answer provenance and judge selection as separate fields. This separation is also used by the qualitative explorer: the user-selected top-level model filters the judge perspective, whereas answer A and answer B retain their exact source identities.
+
+The evidence pipeline applies a stated source precedence: source-correct reusable observations first, then corrected original observations, then recovery replacements, and finally terminal missing states. The analysis does not impute unavailable outcomes, substitute another model, or relax the decision parser merely to increase coverage. This policy turns missingness into a visible limitation rather than an invisible data-cleaning choice.
+
+\section{Operational accounting}
+
+The complete source-corrected controlled ledger contains 17,560 logical controlled passes. Of these, 13,103 are source-correct reusable, 4,373 corrected original slots, and 84 recovery replacements. Nine logical controlled passes are terminally missing; the total across all lineages includes fourteen terminal missing Claude observations. The distinction between physical, valid, and analytical counts is maintained per research question. A physical pair can exist even when it is not eligible for a decisive or complete-case estimator.
+
+\section{Software architecture}
+
+The application uses a React/Vite frontend and a FastAPI backend backed by a relational database. The backend is organized around core configuration and models, data construction, evaluation protocols and persistence, analysis, specialized experiments, multi-judge execution/analysis, release tooling, and historical audit lineage. The final controlled-results route obtains values from authoritative analysis runs rather than from display constants. If the unique required result or provenance identity is missing, duplicated, or malformed, the route fails closed instead of returning an invented numerical fallback.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=9mm and 10mm,>=Latex,every node/.style={font=\small},box/.style={draw,rounded corners,align=center,minimum height=9mm,minimum width=32mm,fill=blue!4}]
+\node[box] (front) {React frontend\\Synthesis / Controlled Results};
+\node[box,right=of front] (api) {FastAPI API\\analysis-run-pinned output};
+\node[box,right=of api] (db) {PostgreSQL\\runs, units, passes, attempts};
+\node[box,below=of api,fill=green!5] (analysis) {Controlled analysis\\and reproducibility verifiers};
+\node[box,left=of analysis,fill=orange!7] (canon) {Canonical source-corrected\\data and manifests};
+\node[box,right=of analysis,fill=orange!7] (evidence) {Frozen releases and\\evidence packages};
+\draw[->] (front)--(api); \draw[->] (api)--(db); \draw[->] (db)--(analysis); \draw[->] (canon)--(analysis); \draw[->] (analysis)--(evidence); \draw[->] (analysis)--(api);
+\end{tikzpicture}
+\caption{High-level architecture. Final values flow from identifiable analysis outputs; exploratory and live sandbox data are not a fallback source for controlled results.}
+\label{fig:architecture}
+\end{figure}
+
+\section{Evidence separation}
+
+The application exposes six user-facing areas. The default Leaderboard, Bias Diagnostics, and Qualitative Explorer are historical exploratory telemetry views. The Synthesis and Controlled Experiments views expose final controlled evidence from the final API. Live Evaluation is a manual single-trial sandbox. It can be disabled by default through a server-side environment gate and is not part of the frozen RQ1--RQ7 evidence. A live result therefore cannot be described as a population-level bias finding, a proof of debiasing, or a new final experimental result.
+
+\section{Final evidence identity}
+
+The source-corrected complete-case full-population analysis is identified by SHA-256 \artifacthash. Its analysis version is \texttt{source-corrected-complete-case-full-population-analysis-v2}. The final RQ results are pinned to eight authoritative analysis-run identifiers, including primary and secondary RQ7 runs. This report cites these identities in the evidence appendix rather than relying on an informal statement that a number is ``final.''

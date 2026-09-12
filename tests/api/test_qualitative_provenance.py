@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -43,6 +44,28 @@ def test_qualitative_ambiguous_or_missing_provenance_fails_closed(monkeypatch):
         row = _records(monkeypatch, answers)
         assert row["provenance_status"] == "UNAVAILABLE"
         assert "answer_a_text" not in row and "answer_b_text" not in row
+
+
+def test_qualitative_duplicate_database_answers_resolve_by_exact_source_text(monkeypatch):
+    import backend.data.canonical as canonical
+
+    raw_source = SimpleNamespace(
+        prompts={(81, 2): "prompt"},
+        answers={
+            (81, 2, "gpt-3.5-turbo"): SimpleNamespace(model="gpt-3.5-turbo", text="source gpt"),
+            (81, 2, "claude-v1"): SimpleNamespace(model="claude-v1", text="source claude"),
+        },
+    )
+    monkeypatch.setattr(canonical, "load_raw_source", lambda: raw_source)
+    row = _records(monkeypatch, [
+        (1, 81, "gpt-3.5-turbo", "legacy gpt one"),
+        (2, 81, "gpt-3.5-turbo", "legacy gpt two"),
+        (3, 81, "claude-v1", "legacy claude one"),
+        (4, 81, "claude-v1", "legacy claude two"),
+    ])
+    assert row["provenance_status"] == "VERIFIED"
+    assert (row["prompt_text"], row["answer_a_text"], row["answer_b_text"]) == ("prompt", "source gpt", "source claude")
+    assert (row["source_question_id"], row["source_turn"]) == (81, 2)
 
 
 def test_qualitative_ui_has_no_fabricated_answer_fallbacks():

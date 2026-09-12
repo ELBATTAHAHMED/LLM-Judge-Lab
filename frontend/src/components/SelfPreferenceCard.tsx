@@ -32,7 +32,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
   const hasData =
     data.total_self_matchups > 0 &&
     data.self_win_rate !== null &&
-    data.baseline_win_rate !== null;
+    data.baseline_win_rate !== null && Number.isFinite(data.self_win_rate) && Number.isFinite(data.baseline_win_rate);
 
   const selfPct =
     hasData && data.self_win_rate !== null ? (data.self_win_rate * 100).toFixed(1) : null;
@@ -45,7 +45,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
       ? ((data.self_win_rate - data.baseline_win_rate) * 100).toFixed(1)
       : null;
   const ratioStr =
-    hasData && data.self_preference_ratio !== null
+    hasData && data.self_preference_ratio !== null && Number.isFinite(data.self_preference_ratio)
       ? data.self_preference_ratio.toFixed(2)
       : null;
 
@@ -56,7 +56,7 @@ export const SelfPreferenceCard: React.FC<Props> = ({ data, loading, error }) =>
 
   // Scientific interpretation helpers
   const pValueStr =
-    data.p_value !== null
+    data.p_value !== null && Number.isFinite(data.p_value)
       ? data.p_value < 0.001
         ? '< 0.001'
         : data.p_value.toFixed(4)

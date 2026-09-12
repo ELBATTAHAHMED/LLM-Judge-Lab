@@ -5,27 +5,37 @@ import { EvidenceBadge } from './EvidenceBadge';
 
 const RQ_ORDER = ['RQ1', 'RQ2', 'RQ3', 'RQ4', 'RQ5', 'RQ6', 'RQ7'];
 
-const AccountingItem: React.FC<{ value: string; label: string }> = ({ value, label }) => <div className="min-w-0 border-l border-neutral-200 pl-3 first:border-l-0 first:pl-0 dark:border-neutral-800"><p className="font-mono text-sm font-semibold text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 text-[10px] text-neutral-500">{label}</p></div>;
+const AccountingItem: React.FC<{ value: string; label: string }> = ({ value, label }) => <div className="min-w-0"><p className="font-mono tabular-nums text-sm font-semibold text-neutral-900 dark:text-white">{value}</p><p className="mt-0.5 text-[10px] text-neutral-600 dark:text-neutral-400">{label}</p></div>;
 
-const MetricCell: React.FC<{ metric: ControlledMetricResult }> = ({ metric }) => <article className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-semibold text-neutral-900 dark:text-white">{metricLabel(metric)}</p>{(metric.judge || metric.condition) && <p className="mt-0.5 truncate text-[10px] text-neutral-500">{metric.judge ?? 'Overall'}{metric.condition ? ` · ${metric.condition}` : ''}</p>}</div><span className="shrink-0 font-mono text-[10px] text-neutral-500">{metric.value === null ? 'NOT ESTIMABLE' : metric.status}</span></div><p className="mt-2 text-xl font-mono font-semibold tracking-tight text-neutral-900 dark:text-white">{formatMetricValue(metric)}</p><p className="mt-1 text-[10px] leading-snug text-neutral-500">{formatMetricCi(metric)} · {metric.denominator === null ? 'N unavailable' : `N = ${metric.denominator}`}</p></article>;
+const MetricCell: React.FC<{ metric: ControlledMetricResult; label?: string }> = ({ metric, label }) => <article className="min-w-0 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><p className="text-xs font-semibold text-neutral-900 dark:text-white">{label ?? metricLabel(metric)}</p>{(metric.judge || metric.condition) && <p className="mt-0.5 break-words text-[10px] text-neutral-600 dark:text-neutral-400">{metric.judge ?? 'Overall'}{metric.condition ? ` · ${metric.condition}` : ''}</p>}</div><span className="shrink-0 font-mono text-[10px] text-neutral-600 dark:text-neutral-400">{metric.value === null ? 'NOT ESTIMABLE' : metric.status}</span></div><p className="mt-3 text-xl font-mono tabular-nums font-semibold tracking-tight text-neutral-900 dark:text-white">{formatMetricValue(metric)}</p><p className="mt-1 text-[10px] leading-snug text-neutral-500">{formatMetricCi(metric)} · {metric.denominator === null ? 'N unavailable' : `N = ${metric.denominator}`}</p></article>;
 
-const CompactRows: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }) => <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800"><table className="w-full min-w-[460px] text-left text-xs"><thead className="bg-neutral-50 text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:bg-[#0a0a0a]"><tr><th className="px-3 py-2 font-medium">Metric</th><th className="px-3 py-2 font-medium">Value</th><th className="px-3 py-2 font-medium">CI / N</th></tr></thead><tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">{metrics.map((metric, index) => <tr key={`${metric.metric_key ?? metric.metric}-${index}`}><td className="px-3 py-2 text-neutral-700 dark:text-neutral-300">{metricLabel(metric)}{metric.judge ? <span className="block text-[10px] text-neutral-500">{metric.judge}</span> : null}</td><td className="whitespace-nowrap px-3 py-2 font-mono font-semibold text-neutral-900 dark:text-white">{formatMetricValue(metric)}</td><td className="whitespace-nowrap px-3 py-2 text-[10px] text-neutral-500">{formatMetricCi(metric)} · {metric.denominator === null ? 'N unavailable' : `N = ${metric.denominator}`}</td></tr>)}</tbody></table></div>;
+const CompactRows: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }) => <div className="overflow-x-auto rounded-lg border border-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-neutral-800" tabIndex={0} role="region" aria-label="Reported metrics table"><table className="w-full min-w-[460px] text-left text-xs"><thead className="bg-neutral-50 text-[10px] text-neutral-600 dark:bg-[#0a0a0a] dark:text-neutral-400"><tr><th scope="col" className="px-4 py-2.5 font-medium">Metric</th><th scope="col" className="px-4 py-2.5 font-medium">Value</th><th scope="col" className="px-4 py-2.5 font-medium">CI / N</th></tr></thead><tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">{metrics.map((metric, index) => <tr key={`${metric.metric_key ?? metric.metric}-${index}`} className="align-top hover:bg-neutral-50 dark:hover:bg-neutral-900/40"><td className="px-4 py-2.5 text-neutral-700 dark:text-neutral-300">{metricLabel(metric)}{metric.judge ? <span className="block text-[10px] text-neutral-600 dark:text-neutral-400">{metric.judge}</span> : null}</td><td className="whitespace-nowrap px-4 py-2.5 font-mono font-semibold text-neutral-900 dark:text-white">{formatMetricValue(metric)}</td><td className="whitespace-nowrap px-4 py-2.5 text-[10px] text-neutral-600 dark:text-neutral-400">{formatMetricCi(metric)} · {metric.denominator === null ? 'N unavailable' : `N = ${metric.denominator}`}</td></tr>)}</tbody></table></div>;
 
 const formatPercent = (value: number): string => `${(value * 100).toFixed(2)}%`;
 const formatPp = (value: number): string => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)} pp`;
 
 const MitigationMetricMatrix: React.FC<{ testId: string; metrics: Array<{ label: string; value: string }> }> = ({ testId, metrics }) => (
-  <dl data-testid={testId} className="mt-3 divide-y divide-neutral-200 dark:divide-neutral-800">
-    {Array.from({ length: Math.ceil(metrics.length / 2) }, (_, rowIndex) => {
-      const row = metrics.slice(rowIndex * 2, rowIndex * 2 + 2);
-      return <div key={row[0]?.label} className="grid grid-cols-2 py-2.5 first:pt-0 last:pb-0">
-        {row.map((metric, columnIndex) => <div key={metric.label} className={columnIndex === 1 ? 'border-l border-neutral-200 pl-3 dark:border-neutral-800' : 'pr-3'}><dt className="text-[10px] text-neutral-500">{metric.label}</dt><dd className="mt-0.5 font-mono text-xs font-semibold text-neutral-900 dark:text-white">{metric.value}</dd></div>)}
-      </div>;
-    })}
+  <dl data-testid={testId} className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3">
+    {metrics.map((metric) => <div key={metric.label} className="min-w-0">
+      <dt className="text-[11px] text-neutral-600 dark:text-neutral-400">{metric.label}</dt>
+      <dd className={`mt-1 break-words font-mono tabular-nums font-semibold tracking-tight text-neutral-900 dark:text-white ${metric.label === 'Agreement' ? 'text-lg' : 'text-xs'}`}>{metric.value}</dd>
+    </div>)}
   </dl>
 );
 
-const MitigationStrategyPanel: React.FC<{ ariaLabel: string; listId: string; role: 'PRIMARY' | 'SECONDARY'; name: string; family: string; metrics: Array<{ label: string; value: string }>; detail: React.ReactNode }> = ({ ariaLabel, listId, role, name, family, metrics, detail }) => <article aria-label={ariaLabel} className="flex h-full flex-col rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]"><header data-testid={`${listId}-header`} className="min-h-[3.75rem] border-b border-neutral-200 pb-2 dark:border-neutral-800"><p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">{role}</p><h3 className="mt-0.5 text-sm font-semibold text-neutral-900 dark:text-white">{name}</h3><p className="mt-1 text-[11px] text-neutral-500">{family}</p></header><MitigationMetricMatrix testId={`${listId}-matrix`} metrics={metrics} /><footer data-testid={`${listId}-footer`} className="mt-3 border-t border-neutral-200 pt-2 text-[11px] leading-snug text-neutral-500 dark:border-neutral-800">{detail}</footer></article>;
+const MitigationStrategyPanel: React.FC<{ ariaLabel: string; listId: string; role: 'PRIMARY' | 'SECONDARY'; name: string; family: string; metrics: Array<{ label: string; value: string }>; detail: React.ReactNode }> = ({ ariaLabel, listId, role, name, family, metrics, detail }) => (
+  <article aria-label={ariaLabel} className="min-w-0 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#0a0a0a]">
+    <div className="grid lg:grid-cols-[14rem_minmax(0,1fr)]">
+      <header data-testid={`${listId}-header`} className="border-b border-neutral-200 p-4 dark:border-neutral-800 lg:border-b-0 lg:border-r">
+        <p className="text-[10px] font-medium tracking-wide text-neutral-600 dark:text-neutral-400">{role}</p>
+        <h3 className="mt-2 text-sm font-semibold text-neutral-900 dark:text-white">{name}</h3>
+        <p className="mt-1 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400">{family}</p>
+      </header>
+      <div className="p-4"><MitigationMetricMatrix testId={`${listId}-matrix`} metrics={metrics} /></div>
+    </div>
+    <footer data-testid={`${listId}-footer`} className="border-t border-neutral-200 px-4 py-3 text-[11px] leading-relaxed text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">{detail}</footer>
+  </article>
+);
 
 const Rq7Mitigations: React.FC<{ metrics: ControlledMetricResult[]; mitigation?: MultiJudgeConsensusSecondary }> = ({ metrics, mitigation }) => {
   const byKey = (key: string) => metrics.find((row) => row.metric_key === key);
@@ -50,7 +60,7 @@ const Rq7Mitigations: React.FC<{ metrics: ControlledMetricResult[]; mitigation?:
     { label: '95% CI', value: `${formatPp(mitigation.ci_95.low)} to ${formatPp(mitigation.ci_95.high)}` },
     { label: 'Retained / planned', value: `${mitigation.retained_n.toLocaleString()} / ${mitigation.planned_n.toLocaleString()}` },
   ] : null;
-  return <div className="mt-4 space-y-3"><h3 className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">Mitigation strategies</h3><div className="grid gap-3 sm:grid-cols-2"><MitigationStrategyPanel ariaLabel="DUAL_SWAP primary mitigation" listId="controlled-dual-swap" role="PRIMARY" name="DUAL_SWAP" family="Presentation-consistency filtering" metrics={dualMetrics} detail={<>Small matched point difference with a confidence interval crossing zero; dual-pass stability · {stability ? formatMetricValue(stability) : 'Unavailable'}; coverage is substantially reduced.</>} />{mitigation && multiJudgeMetrics && <MitigationStrategyPanel ariaLabel="Multi-Judge Consensus secondary mitigation" listId="controlled-multi-judge" role="SECONDARY" name="Multi-Judge Consensus" family="Cross-judge aggregation" metrics={multiJudgeMetrics} detail={<>Positive only against the equal-weight individual-judge comparator on the same retained consensus-covered pairs.</>} />}</div>{mitigation && <p className="border-t border-neutral-200 pt-3 text-[11px] leading-snug text-neutral-500 dark:border-neutral-800">DUAL_SWAP and Multi-Judge use different frozen units and comparators; their reported effects are separate operating-point results, not a direct head-to-head effect.</p>}</div>;
+  return <div className="mt-4 space-y-4"><h3 className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Mitigation strategies</h3><div className="grid gap-3"><MitigationStrategyPanel ariaLabel="DUAL_SWAP primary mitigation" listId="controlled-dual-swap" role="PRIMARY" name="DUAL_SWAP" family="Presentation-consistency filtering" metrics={dualMetrics} detail={<>Small matched point difference with a confidence interval crossing zero; dual-pass stability · {stability ? formatMetricValue(stability) : 'Unavailable'}; coverage is substantially reduced.</>} />{mitigation && multiJudgeMetrics && <MitigationStrategyPanel ariaLabel="Multi-Judge Consensus secondary mitigation" listId="controlled-multi-judge" role="SECONDARY" name="Multi-Judge Consensus" family="Cross-judge aggregation" metrics={multiJudgeMetrics} detail={<>Positive only against the equal-weight individual-judge comparator on the same retained consensus-covered pairs.</>} />}</div>{mitigation && <p className="border-t border-neutral-200 pt-3 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">DUAL_SWAP and Multi-Judge use different frozen units and comparators; their reported effects are separate operating-point results, not a direct head-to-head effect.</p>}</div>;
 };
 
 const Rq7Header: React.FC = () => <div className="max-w-3xl"><h2 id="selected-rq-title" className="text-lg font-semibold text-neutral-900 dark:text-white">RQ7 · {RQ_TITLES.RQ7}</h2><p className="mt-1.5 text-xs leading-relaxed text-neutral-700 dark:text-neutral-300">Two complementary approaches to improving judge reliability.</p><p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-neutral-500">DUAL_SWAP filters presentation-sensitive decisions; Multi-Judge aggregates independent judge votes. Each is evaluated against its own frozen comparator.</p></div>;
@@ -68,7 +78,48 @@ const Rq6Summary: React.FC<{ metrics: ControlledMetricResult[] }> = ({ metrics }
     ['GPT-4o-mini', byKey('judge:gpt-4o-mini:stable_same_family_preference')],
     ['Llama 3.3 70B', byKey('judge:meta-llama/llama-3.3-70b-instruct:stable_same_family_preference')],
   ] as const;
-  return <div className="mt-4 max-w-3xl space-y-3"><div className="border-y border-neutral-200 py-3 dark:border-neutral-800"><p className="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500">Stable same-family preference</p><p className="mt-1 font-mono text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white">{primary ? formatMetricValue(primary) : 'Unavailable'}</p><p className="mt-1 text-[11px] text-neutral-500">{primary ? `${formatMetricCi(primary)} · N = ${primary.denominator ?? 'unavailable'} stable decisive` : 'Counterbalanced result unavailable.'}</p></div><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800"><p className="font-medium text-neutral-900 dark:text-white">Per-judge stable preference</p><dl className="mt-2 space-y-1.5">{judges.map(([label, metric]) => <div key={label} className="flex justify-between gap-3"><dt className="text-neutral-500">{label}</dt><dd className="font-mono font-semibold text-neutral-900 dark:text-white">{metric ? formatMetricValue(metric) : 'Unavailable'}</dd></div>)}<div className="flex justify-between gap-3"><dt className="text-neutral-500">DeepSeek</dt><dd className="font-mono text-neutral-500">Not estimable — no eligible source data</dd></div></dl></div><div className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800"><p className="font-medium text-neutral-900 dark:text-white">Secondary metrics</p><dl className="mt-2 space-y-1.5">{secondary.map(([label, metric]) => <div key={label} className="flex justify-between gap-3"><dt className="text-neutral-500">{label}</dt><dd className="font-mono font-semibold text-neutral-900 dark:text-white">{metric ? formatMetricValue(metric) : 'Unavailable'}</dd></div>)}</dl></div></div><p className="text-[11px] leading-snug text-neutral-500">No clear uniform overall same-family preference; strong judge-level heterogeneity. Presentation order is counterbalanced, while source/content-quality confounding remains.</p></div>;
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section aria-label="Overall source-family result" className="min-w-0 rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+          <div className="p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-xs font-semibold text-neutral-900 dark:text-white">Stable same-family preference</h3>
+              {primary && <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400">{primary.value === null ? 'NOT ESTIMABLE' : primary.status}</span>}
+            </div>
+            {primary ? <>
+              {(primary.judge || primary.condition) && <p className="mt-0.5 break-words text-[10px] text-neutral-600 dark:text-neutral-400">{primary.judge ?? 'Overall'}{primary.condition ? ` · ${primary.condition}` : ''}</p>}
+              <p className="mt-3 font-mono text-xl font-semibold tabular-nums tracking-tight text-neutral-900 dark:text-white">{formatMetricValue(primary)}</p>
+              <p className="mt-1 text-[11px] text-neutral-600 dark:text-neutral-400">{formatMetricCi(primary)} · {primary.denominator === null ? 'N unavailable' : `N = ${primary.denominator}`}</p>
+            </> : <p className="mt-3 text-xs text-neutral-500">Counterbalanced result unavailable.</p>}
+          </div>
+          <div className="border-t border-neutral-200 px-4 py-3 dark:border-neutral-800">
+            <h3 className="text-xs font-medium text-neutral-900 dark:text-white">Secondary metrics</h3>
+            <dl className="mt-2 space-y-2">
+              {secondary.map(([label, metric]) => <div key={label} className="flex items-baseline justify-between gap-4 text-xs">
+                <dt className="text-neutral-600 dark:text-neutral-400">{label}</dt>
+                <dd className="shrink-0 font-mono font-semibold tabular-nums text-neutral-900 dark:text-white">{metric ? formatMetricValue(metric) : 'Unavailable'}</dd>
+              </div>)}
+            </dl>
+          </div>
+        </section>
+        <section aria-label="Per-judge stable preference" className="min-w-0 rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <h3 className="border-b border-neutral-200 px-4 py-3 text-xs font-semibold text-neutral-900 dark:border-neutral-800 dark:text-white">Per-judge stable preference</h3>
+          <dl className="divide-y divide-neutral-200 px-4 dark:divide-neutral-800">
+            {judges.map(([label, metric]) => <div key={label} className="flex items-baseline justify-between gap-4 py-3 text-xs">
+              <dt className="text-neutral-600 dark:text-neutral-400">{label}</dt>
+              <dd className="shrink-0 font-mono text-sm font-semibold tabular-nums text-neutral-900 dark:text-white">{metric ? formatMetricValue(metric) : 'Unavailable'}</dd>
+            </div>)}
+            <div className="flex items-baseline justify-between gap-4 py-3 text-xs">
+              <dt className="text-neutral-600 dark:text-neutral-400">DeepSeek</dt>
+              <dd className="max-w-[12rem] text-right text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400">Not estimable — no eligible source data</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+      <p className="text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400">No clear uniform overall same-family preference; strong judge-level heterogeneity. Presentation order is counterbalanced, while source/content-quality confounding remains.</p>
+    </div>
+  );
 };
 
 export const ControlledEvidencePanel: React.FC<{ data: ControlledResultsResponse | null; loading: boolean; error: string | null }> = ({ data, loading, error }) => {
@@ -96,11 +147,32 @@ export const ControlledEvidencePanel: React.FC<{ data: ControlledResultsResponse
   const detailMetrics = selectedRq === 'RQ7' ? metrics.filter((row) => !['baseline_agreement', 'dual_swap_agreement', 'agreement_delta', 'baseline_coverage', 'dual_swap_coverage', 'coverage_delta', 'dual_swap_dual_pass_stability'].includes(row.metric_key ?? '')) : without(mainKeys);
 
   return <section aria-label="Final controlled results" className="space-y-5">
-    {data.accounting && <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-[#0a0a0a]"><p className="mb-3 text-[10px] leading-relaxed text-neutral-500">Database-wide controlled execution accounting, including historical and superseded lineages. Final RQ estimates below use pinned authoritative AnalysisRuns.</p><div className="grid gap-y-3 sm:grid-cols-2 sm:gap-x-3 lg:grid-cols-4"><AccountingItem value={data.accounting.planned_units.toLocaleString()} label="all persisted controlled units" /><AccountingItem value={data.accounting.planned_pass_slots.toLocaleString()} label="pass slots" /><AccountingItem value={data.accounting.valid_returned_passes.toLocaleString()} label="valid returned" /><AccountingItem value={data.accounting.failed_pass_slots.toLocaleString()} label="non-valid / excluded" /><AccountingItem value={data.accounting.provider_error_pass_slots?.toLocaleString() ?? 'Unavailable'} label="provider errors" /><AccountingItem value={data.accounting.invalid_response_pass_slots?.toLocaleString() ?? 'Unavailable'} label="invalid responses" /><AccountingItem value={data.accounting.paired_excluded_valid_pass_slots?.toLocaleString() ?? 'Unavailable'} label="excluded valid paired slots" /><AccountingItem value={data.accounting.pending_units.toLocaleString()} label="pending" /></div></div>}
-    <nav aria-label="Research question navigation" className="flex gap-1 overflow-x-auto border-b border-neutral-200 pb-2 dark:border-neutral-800">{RQ_ORDER.map((rq) => <button key={rq} type="button" onClick={() => setSelectedRq(rq)} className={`shrink-0 rounded px-3 py-1.5 text-xs font-mono transition-colors ${selectedRq === rq ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'}`}>{rq}</button>)}</nav>
-    <section aria-labelledby="selected-rq-title">{selectedRq === 'RQ7' ? <Rq7Header /> : <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between"><div><h2 id="selected-rq-title" className="text-lg font-semibold text-neutral-900 dark:text-white">{selectedRq} · {RQ_TITLES[selectedRq]}</h2>{rqInterpretation(selectedRq) && <p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-500">{rqInterpretation(selectedRq)}</p>}</div>{selectedRq !== 'RQ6' && <span className="font-mono text-[10px] text-neutral-500">Overall controlled result</span>}</div>}
-      {selectedRq === 'RQ6' ? <Rq6Summary metrics={metrics} /> : selectedRq === 'RQ7' ? <Rq7Mitigations metrics={metrics} mitigation={data.secondary_mitigations.multi_judge_consensus} /> : <><div className={`mt-4 grid gap-3 ${selectedRq === 'RQ2' ? 'max-w-sm' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>{primary.map((metric) => <MetricCell key={metric.metric_key ?? metric.metric} metric={metric} />)}</div>{selectedRq === 'RQ1' && rq1Judges.length > 0 && <div className="mt-4"><h3 className="mb-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">Per-judge alignment</h3><CompactRows metrics={[...rq1Judges].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))} /></div>}</>}
-      {detailMetrics.length > 0 && <details className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800"><summary className="cursor-pointer text-xs font-medium text-neutral-700 dark:text-neutral-300">Additional reported metrics ({detailMetrics.length})</summary><div className="mt-3"><CompactRows metrics={detailMetrics} /></div></details>}
+    {data.accounting && <section aria-label="Execution summary" className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+      <h2 className="text-xs font-semibold text-neutral-900 dark:text-white">Execution summary</h2>
+      <p className="mt-1 text-[11px] leading-relaxed text-neutral-600 dark:text-neutral-400">Database-wide accounting · includes historical and superseded lineages, not just the final analysis population.</p>
+      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-4">
+        <AccountingItem value={data.accounting.planned_units.toLocaleString()} label="all persisted controlled units" />
+        <AccountingItem value={data.accounting.planned_pass_slots.toLocaleString()} label="pass slots" />
+        <AccountingItem value={data.accounting.valid_returned_passes.toLocaleString()} label="valid returned" />
+        <AccountingItem value={data.accounting.failed_pass_slots.toLocaleString()} label="non-valid / excluded" />
+      </div>
+      <details className="mt-3 border-t border-neutral-200 pt-2 text-xs dark:border-neutral-800">
+        <summary className="cursor-pointer py-1 focus-visible:outline-2 focus-visible:outline-offset-2 text-neutral-600 dark:text-neutral-400">Accounting details · {data.accounting.pending_units.toLocaleString()} pending</summary>
+        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 lg:grid-cols-4">
+          <AccountingItem value={data.accounting.provider_error_pass_slots?.toLocaleString() ?? 'Unavailable'} label="provider errors" />
+          <AccountingItem value={data.accounting.invalid_response_pass_slots?.toLocaleString() ?? 'Unavailable'} label="invalid responses" />
+          <AccountingItem value={data.accounting.paired_excluded_valid_pass_slots?.toLocaleString() ?? 'Unavailable'} label="excluded valid paired slots" />
+          <AccountingItem value={data.accounting.pending_units.toLocaleString()} label="pending" />
+        </div>
+        <p className="mt-3 text-neutral-500">Final RQ estimates below use pinned authoritative AnalysisRuns.</p>
+      </details>
+    </section>}
+    <nav aria-label="Research question navigation" className="grid grid-cols-7 gap-1 rounded-lg border border-neutral-200 bg-neutral-50 p-1 dark:border-neutral-800 dark:bg-[#0a0a0a]">
+      {RQ_ORDER.map((rq) => <button key={rq} type="button" onClick={() => setSelectedRq(rq)} aria-pressed={selectedRq === rq} aria-controls="controlled-rq-content" title={RQ_TITLES[rq]} className={`min-w-0 rounded px-1 py-2 text-xs font-mono transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${selectedRq === rq ? 'bg-neutral-900 font-semibold text-white dark:bg-neutral-200 dark:text-neutral-900' : 'text-neutral-600 hover:bg-neutral-200/60 dark:text-neutral-400 dark:hover:bg-neutral-800'}`}>{rq}</button>)}
+    </nav>
+    <section id="controlled-rq-content" aria-labelledby="selected-rq-title" className="min-w-0">{selectedRq === 'RQ7' ? <Rq7Header /> : <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between"><div><h2 id="selected-rq-title" className="text-lg font-semibold text-neutral-900 dark:text-white">{selectedRq} · {RQ_TITLES[selectedRq]}</h2>{rqInterpretation(selectedRq) && <p className="mt-1 max-w-3xl text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">{rqInterpretation(selectedRq)}</p>}</div>{selectedRq !== 'RQ6' && <span className="font-mono text-[10px] text-neutral-600 dark:text-neutral-400">Overall controlled result</span>}</div>}
+      {selectedRq === 'RQ6' ? <Rq6Summary metrics={metrics} /> : selectedRq === 'RQ7' ? <Rq7Mitigations metrics={metrics} mitigation={data.secondary_mitigations.multi_judge_consensus} /> : <><div className={`mt-4 grid gap-3 ${selectedRq === 'RQ2' ? 'max-w-sm' : primary.length === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : primary.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-2 xl:grid-cols-3'}`}>{primary.map((metric) => <MetricCell key={metric.metric_key ?? metric.metric} metric={metric} />)}</div>{selectedRq === 'RQ1' && rq1Judges.length > 0 && <div className="mt-4"><h3 className="mb-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">Per-judge alignment</h3><CompactRows metrics={[...rq1Judges].sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity))} /></div>}</>}
+      {detailMetrics.length > 0 && <details className="mt-4 border-t border-neutral-200 pt-3 dark:border-neutral-800"><summary className="cursor-pointer py-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 text-neutral-700 dark:text-neutral-300">Additional reported metrics ({detailMetrics.length})</summary><div className="mt-3"><CompactRows metrics={detailMetrics} /></div></details>}
     </section>
   </section>;
 };

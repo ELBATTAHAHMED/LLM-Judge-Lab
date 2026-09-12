@@ -32,7 +32,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
 
   const { data, loading, error, refetch } = useInterJudgeKappa(modelA, modelB);
 
-  const hasData = data?.status === 'AVAILABLE' && data.inter_judge_kappa !== null && data.agreement_rate !== null;
+  const hasData = data?.status === 'AVAILABLE' && Number.isFinite(data.inter_judge_kappa) && Number.isFinite(data.agreement_rate);
   const kappa = data?.inter_judge_kappa ?? 0;
   const agreement = (data?.agreement_rate ?? 0) * 100;
   const nTrials = data?.overlapping_trials ?? 0;
@@ -143,7 +143,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
             <div className="p-3 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
               <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Cohen's Kappa (&kappa;)</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                {kappa.toFixed(4)}
+                {(Number.isFinite(kappa) ? kappa.toFixed(4) : 'Unavailable')}
               </p>
               <span className="inline-block px-2 py-0.5 rounded border text-[10px] font-mono border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400">
                 {interpretation.label}
@@ -154,7 +154,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
             <div className="p-3 rounded bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 space-y-1">
               <p className="text-[10px] text-neutral-500 uppercase tracking-wider">Raw Agreement Rate</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-                {agreement.toFixed(1)}%
+                {Number.isFinite(agreement) ? `${agreement.toFixed(1)}%` : 'Unavailable'}
               </p>
               <p className="text-[10px] text-neutral-500">Unadjusted direct verdict match</p>
             </div>
@@ -192,7 +192,7 @@ export const InterJudgeComparisonCard: React.FC = () => {
               <span>Scientific Interpretation (Landis &amp; Koch Benchmark):</span>
             </div>
             <p className="leading-relaxed text-[11px]">
-              Cohen's &kappa; evaluates agreement between two judges after accounting for chance agreement ($P_e$). A Kappa score of <strong className="text-neutral-900 dark:text-neutral-200">{kappa.toFixed(4)}</strong> indicates <strong className="text-neutral-900 dark:text-neutral-200">{interpretation.label}</strong> between <strong className="text-neutral-900 dark:text-neutral-200">{selectedA.label}</strong> and <strong className="text-neutral-900 dark:text-neutral-200">{selectedB.label}</strong> across {nTrials.toLocaleString()} overlapping evaluation pairs.
+              Cohen's &kappa; evaluates agreement between two judges after accounting for chance agreement (Pₑ). A Kappa score of <strong className="text-neutral-900 dark:text-neutral-200">{(Number.isFinite(kappa) ? kappa.toFixed(4) : 'Unavailable')}</strong> indicates <strong className="text-neutral-900 dark:text-neutral-200">{interpretation.label}</strong> between <strong className="text-neutral-900 dark:text-neutral-200">{selectedA.label}</strong> and <strong className="text-neutral-900 dark:text-neutral-200">{selectedB.label}</strong> across {nTrials.toLocaleString()} overlapping evaluation pairs.
             </p>
           </div>
         </div>

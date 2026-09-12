@@ -1078,11 +1078,24 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
                 )
                 prompts_map = {row[0]: row[1] for row in conn.execute(p_stmt, {"pids": pids}).fetchall()}
 
-                # Batch query answers
+                # Batch query answers. A historical CSV does not carry answer IDs,
+                # so this path remains deliberately fail-closed if a prompt/model
+                # pair has multiple persisted answer texts.
                 a_stmt = sa_text("SELECT id, prompt_id, model_name, text FROM answers WHERE prompt_id IN :pids").bindparams(bindparam("pids", expanding=True))
                 answers_map: dict[tuple[int, str], list[tuple[int, str]]] = {}
                 for row in conn.execute(a_stmt, {"pids": pids}).fetchall():
                     answers_map.setdefault((row[1], row[2]), []).append((row[0], row[3]))
+
+                # The raw source is keyed by the exact rendered prompt text,
+                # upstream question/turn, and source model. It provides a
+                # deterministic provenance fallback for the historical database,
+                # whose answer table can contain duplicate legacy imports.
+                from backend.data.canonical import canonical_model, load_raw_source
+
+                source = load_raw_source()
+                source_prompt_keys: dict[str, list[tuple[int, int]]] = {}
+                for source_key, prompt_text in source.prompts.items():
+                    source_prompt_keys.setdefault(prompt_text, []).append(source_key)
 
                 for row in records:
                     pid_int = _parse_pid(row.get("prompt_id"))
@@ -1093,7 +1106,26 @@ def get_qualitative_bucket(bucket: str, judge_model: str = "gpt-4o-mini") -> lis
                         if pid_int in prompts_map and len(answer_a) == len(answer_b) == 1:
                             row.update({"prompt_text": prompts_map[pid_int], "answer_a_id": answer_a[0][0], "answer_a_model": declared[0], "answer_a_text": answer_a[0][1], "answer_b_id": answer_b[0][0], "answer_b_model": declared[1], "answer_b_text": answer_b[0][1], "provenance_status": "VERIFIED"})
                         else:
-                            row["provenance_status"] = "UNAVAILABLE"
+                            source_keys = source_prompt_keys.get(prompts_map.get(pid_int, ""), [])
+                            if len(declared) == 2 and len(source_keys) == 1:
+                                question_id, turn = source_keys[0]
+                                source_a = source.answers.get((question_id, turn, canonical_model(declared[0])))
+                                source_b = source.answers.get((question_id, turn, canonical_model(declared[1])))
+                                if source_a is not None and source_b is not None:
+                                    row.update({
+                                        "prompt_text": source.prompts[(question_id, turn)],
+                                        "answer_a_model": source_a.model,
+                                        "answer_a_text": source_a.text,
+                                        "answer_b_model": source_b.model,
+                                        "answer_b_text": source_b.text,
+                                        "source_question_id": question_id,
+                                        "source_turn": turn,
+                                        "provenance_status": "VERIFIED",
+                                    })
+                                else:
+                                    row["provenance_status"] = "UNAVAILABLE"
+                            else:
+                                row["provenance_status"] = "UNAVAILABLE"
                     else:
                         row["provenance_status"] = "UNAVAILABLE"
 
