@@ -2,25 +2,35 @@
 
 > Measuring and Mitigating Biases in Automatic Evaluation of Generated Responses
 
-LLM-as-a-Judge Reliability Lab is a Master's applied-research project about the reliability of large language models used to evaluate generated answers. Its central question is: **how reliable are LLM judges, which sensitivities affect their decisions, and which mitigation strategies improve the resulting evaluation process?**
+LLM-as-a-Judge Reliability Lab is a Master's applied-research project about the reliability of large language models used to evaluate generated answers. Its organizing question is how human agreement, stability, and mitigation coverage jointly describe an LLM judge as a measurement instrument.
 
 This is not merely a web application that calls model APIs. The project combines a controlled benchmark, provenance-preserving experiment records, quantitative analysis with uncertainty estimates, frozen evidence releases, and a research dashboard. The final scientific results are source-corrected, pinned to specific completed analysis records, and can be verified without making provider calls.
 
-## Research questions
+## Three main research questions
+
+| Main question | Internal analyses | Focus and official finding |
+| --- | --- | --- |
+| **1. Human Agreement** | RQ1 | Agreement with human preference reference labels: **457/772 = 59.20%**; Cohen's κ **0.3230**. The labels are comparison references, not absolute ground truth. |
+| **2. Stability** | RQ2 and RQ3, separately | RQ2 fixed-condition repeatability: **96.53%**. RQ3 decisive mapped answer-order flips: **96/549 = 17.49%**. Repeatability measures neither accuracy nor robustness to order inversion. |
+| **3. Mitigation** | RQ7 Primary / DUAL_SWAP | Matched agreement **67.84% → 68.51%**, **+0.67 pp** (official 95% CI **−0.17 to +1.68 pp**); coverage **96.87% → 75.84%**, **−21.03 pp**. The agreement change is small and uncertain while coverage falls substantially. |
+
+High fixed-condition repeatability does not imply strong agreement with human preference reference labels or stability under answer-order inversion. The study's contribution is an integrated reliability-measurement and reproducibility framework, including the agreement–coverage trade-off of mitigation. It does not claim to have invented LLM-as-a-Judge, position or verbosity bias, consensus judging, or presentation-consistency filtering.
+
+### Internal and supporting analyses
 
 | RQ | Final scope |
 | --- | --- |
 | **RQ1 — Human alignment** | Agreement between LLM judgments and human preference reference labels. The labels are not treated as absolute ground truth. |
 | **RQ2 — Repeatability** | Fixed-condition consistency when the same judge evaluates the same pair repeatedly. This is not a general temperature-effects study. |
 | **RQ3 — Position sensitivity** | Change in the mapped decision when the same answers are shown as A/B and B/A. |
-| **RQ4 — Redundant-length treatment** | Effect of an exact duplicated-text treatment under a narrow controlled design; not a general claim about verbosity bias. |
-| **RQ5 — Presentation-format treatment** | Effect of a content-equivalent list-prefix treatment; not a general claim about formatting bias. |
-| **RQ6 — Source-family association** | Counterbalanced association between a judge and answer-source family; not proof of causal self-preference. |
-| **RQ7 — Mitigation** | DUAL_SWAP is the primary mitigation; Multi-Judge consensus is secondary. Their estimands and comparators differ, so direct superiority is not assessed. |
+| **RQ4 — Secondary controlled analysis** | Exact duplicated-text treatment under a narrow design; not a general claim about verbosity bias. |
+| **RQ5 — Secondary controlled analysis** | Content-equivalent list-prefix treatment; not a general claim about presentation bias. |
+| **RQ6 — Exploratory source-family association** | Counterbalanced association between a judge and answer-source family; not proof of causal self-preference. |
+| **RQ7 — Mitigation** | DUAL_SWAP is the main analysis; Multi-Judge consensus is secondary/exploratory and positive against its own equal-weight individual comparator. Their estimands and populations differ, so direct superiority is not assessed. |
 
 ## Research contribution
 
-The project provides a controlled, reproducible framework for pairwise LLM judging. It preserves dataset, prompt, answer, model, configuration, presentation, pass, attempt, and analysis provenance; measures reliability and sensitivity against human preference references; reports confidence intervals and operational outcomes; and presents the resulting evidence in a research dashboard.
+The project provides a controlled, reproducible framework for pairwise LLM judging. It preserves dataset, prompt, answer, model, configuration, presentation, pass, attempt, and analysis provenance; measures human alignment and two distinct forms of stability; reports mitigation agreement together with coverage; and presents the resulting evidence in a research dashboard.
 
 The current authority is the **source-corrected full-population analysis**. Historical evidence remains available for audit, but it is not substituted for the current final results.
 
@@ -49,6 +59,8 @@ The distinction matters: the study contains **80 benchmark questions**, each rep
 
 The framework evaluates answer pairs with structured LLM judgments. It includes repeated fixed-condition evaluations, counterbalanced A/B ↔ B/A presentation, deterministic redundant-text and format-only variants, source-family counterbalancing, and mitigation protocols. Ties, provider failures, invalid responses, missing observations, and incomplete paired units are retained as explicit operational outcomes and are handled by the estimator-specific inclusion rules.
 
+The exact judge identifiers are `gpt-4o-mini`, `anthropic/claude-3-haiku`, `deepseek/deepseek-chat`, and `meta-llama/llama-3.3-70b-instruct`. These judge models are distinct from the historical models that produced the candidate answers. The [methodology record](docs/STUDY_METHODOLOGY.md) documents the LMSYS human-label linkage by question, turn, source model, and answer hash; A/B/TIE mapping and swapped-order remapping; prompt/JSON schema and parser; inference settings, retries, routing, seeds, and estimator-specific eligibility. Fourteen terminal Claude observations remained unavailable after bounded recovery; they were neither fabricated nor imputed, and no MCAR or MAR assumption is made.
+
 ## Final results
 
 These are the authoritative results from the verified source-corrected full-population artifact.
@@ -66,6 +78,10 @@ These are the authoritative results from the verified source-corrected full-popu
 
 For full metric definitions, strata, and operational accounting, consult [the technical and scientific record](PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md) and the frozen evidence.
 
+### Statistical-dependence sensitivity
+
+Observations from the same original MT-Bench question may be correlated. A separate deterministic **10,000-replicate question-clustered bootstrap** (seed `20260912`) therefore resampled original question IDs while keeping their turns, judges, repetitions, swaps, variants, and matched observations together. All substantive conclusions remained unchanged. This is a robustness check and **does not replace any frozen official confidence interval**. For RQ7 Primary coverage delta, its **−24.62 to −17.64 pp** interval is sensitivity-analysis evidence only; the frozen result had no official CI for that delta. See the [validation record](evidence/validation/question_clustered_bootstrap_sensitivity_v1.md).
+
 ## Interpretation boundaries and limitations
 
 - Human labels are preference reference labels, not objective ground truth.
@@ -73,7 +89,7 @@ For full metric definitions, strata, and operational accounting, consult [the te
 - RQ6 is an association; residual source and answer-quality confounding prevent a causal self-bias conclusion.
 - RQ7 DUAL_SWAP has a small, uncertain agreement difference and a substantial coverage trade-off. Multi-Judge is evaluated against its own retained-pair comparator, not against DUAL_SWAP.
 - Provider-specific missing observations are reported through the complete-case populations rather than silently removed.
-- Bootstrap intervals apply to the logical units specified by each estimator; they do not claim a wider independent benchmark-pair population.
+- Official bootstrap intervals apply to the logical units specified by each estimator. The separate question-clustered sensitivity addresses possible within-question dependence without changing those intervals.
 - The final analysis and evidence are reproducible from the released database and frozen artifacts. Exact historical provider-response replay is not guaranteed where provider-side determinism, seed behavior, or immutable provider-revision metadata was unavailable or not durably exposed.
 
 ## Architecture

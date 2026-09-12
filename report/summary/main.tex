@@ -67,7 +67,7 @@ Large language models (LLMs) are increasingly used to compare generated answers,
 
 An LLM judge may react to the prompt, the answer texts, their order of presentation, the judging protocol, and repeated requests. For this reason, a single agreement score is not enough. A judge can repeat the same decision very consistently while still having only limited agreement with human preferences, or while changing its decision after the two answers are swapped.
 
-In this project, I study LLM judges as measurement instruments. The aim is not to identify one universally best judge. Instead, the project measures several reliability dimensions, examines controlled sensitivities, and evaluates mitigation strategies together with their practical trade-offs. For RQ1, the comparison target is called \emph{human preference reference labels}. These labels are useful references for the study, but they are not treated as ground truth.
+In this project, I study LLM judges as measurement instruments through three main questions: Human Agreement, Stability, and Mitigation. Human Agreement maps to RQ1. Stability retains the distinct fixed-condition repeatability (RQ2) and answer-order sensitivity (RQ3) analyses. Mitigation focuses on RQ7 Primary DUAL\_SWAP and its agreement--coverage trade-off. RQ4--RQ5 are secondary controlled analyses, RQ6 is exploratory, and Multi-Judge is secondary/exploratory mitigation. Human preference reference labels are comparison targets, not absolute ground truth.
 
 \section{Related Work and Research Positioning}
 
@@ -83,23 +83,22 @@ These studies motivate the design of this project, but they do not answer all re
 
 \section{Research Questions}
 
-The study addresses seven related questions. They are kept separate because they describe different aspects of LLM-judge reliability.
+The study is organized around three main questions while retaining all seven internal analyses and their different estimands.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Research questions in plain language.}
-\begin{tabularx}{\textwidth}{@{}p{0.08\textwidth}p{0.28\textwidth}X@{}}
+\caption{Three main questions and supporting internal analyses.}
+\begin{tabularx}{\textwidth}{@{}p{0.23\textwidth}p{0.20\textwidth}X@{}}
 \toprule
-RQ & Topic & Question \\
+Scope & Internal analysis & Question \\
 \midrule
-RQ1 & Human alignment & How often does a judge match a human preference reference label?\\
-RQ2 & Repeatability & Does the same fixed evaluation condition produce the same result when repeated?\\
-RQ3 & Position sensitivity & Does the mapped decision change when answers are shown in the opposite order?\\
-RQ4 & Redundant text & Does one narrow, frozen redundant-text treatment receive a stable advantage?\\
-RQ5 & Presentation & Does one controlled list-prefix/presentation treatment receive a stable advantage?\\
-RQ6 & Source family & Is there a counterbalanced association between a judge and answers from the same source family?\\
-RQ7 & Mitigation & What agreement and coverage trade-offs follow from DUAL\_SWAP and Multi-Judge Consensus?\\
+Main Q1 & RQ1 & How often does a judge match a human preference reference label?\\
+Main Q2 & RQ2; RQ3 & How stable are decisions under fixed repetition and answer-order inversion?\\
+Main Q3 & RQ7 Primary & What agreement--coverage trade-off follows from DUAL\_SWAP?\\
+Secondary & RQ4; RQ5 & What occurs under the narrow redundant-text and list-prefix treatments?\\
+Exploratory & RQ6 & What source-family association appears under counterbalancing?\\
+Secondary/exploratory mitigation & RQ7 Secondary & How does strict consensus compare with its own equal-weight comparator?\\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -134,6 +133,8 @@ Several design choices support the analysis. RQ2 repeats the same fixed conditio
 The answer-order mapping is especially important. A raw response of ``Answer A'' has a different meaning after the displayed answers are swapped. The analysis maps every pass back to the identity of the original answer before deciding whether two passes agree or whether a decisive winner changed. This prevents the swap itself from being confused with a preference for an original answer.
 
 When a metric requires complete or decisive observations, the study uses complete-case analysis. Missing results are not imputed, and the eligibility rule is not loosened to enlarge the sample. Confidence intervals are obtained with the frozen procedure using 10,000 bootstrap iterations. The denominator reported for each result therefore states the population to which that result applies. This makes a zero result, a missing observation, and a valid tie distinct outcomes rather than treating them as the same thing.
+
+Fourteen terminal Claude observations remained unavailable after bounded recovery. They were not fabricated or imputed, and their judge-specific, question-clustered missingness is not assumed to be MCAR or MAR. A separate deterministic 10,000-replicate bootstrap sensitivity analysis (seed 20260912) resampled original MT-Bench questions while preserving their turns, judges, repetitions, swaps, variants, and matched observations together. All substantive conclusions remained unchanged. This sensitivity does not replace official frozen intervals; its RQ7 Primary coverage-delta interval of -24.62 to -17.64 points is sensitivity evidence only.
 
 The pairwise design is useful because both answers are judged in response to the same prompt. However, pairwise results are still conditional on the selected answer pairs and the judging protocol. The study therefore reports the exact analytical population for each RQ instead of presenting a percentage as if it described every possible prompt or model response. This is also why confidence intervals and coverage are reported alongside the point estimates.
 
@@ -208,7 +209,7 @@ Coverage deserves separate attention. A mitigation can look better on the cases 
 
 The main lesson is simple: LLM-judge reliability has several dimensions. In this study, the judges were highly repeatable under a fixed condition, yet their agreement with human preference reference labels was moderate and their decisions could change when answer order changed. These findings are compatible. A judge may reproduce the same decision consistently while that decision is sensitive to how the alternatives are presented.
 
-The seven research questions make these dimensions visible. RQ1 measures human agreement. RQ2 measures repeated stability. RQ3 measures position sensitivity. RQ4 and RQ5 test two defined treatments. RQ6 examines a counterbalanced source-family association. RQ7 considers agreement and coverage trade-offs in two mitigation designs. Reporting only one score would hide these differences.
+The three main questions make the central progression visible: human alignment, multidimensional stability, and mitigation trade-off. The supporting RQ4--RQ6 analyses and RQ7 Multi-Judge retain their own secondary or exploratory roles. Reporting only one score would hide these differences.
 
 The results also vary across judge families. This is why the project does not claim that one judge is universally best. A useful evaluation workflow should report the aggregate result, the relevant per-judge differences, and the conditions under which the result was obtained.
 

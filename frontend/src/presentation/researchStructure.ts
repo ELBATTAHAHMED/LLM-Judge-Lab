@@ -97,6 +97,16 @@ export const MITIGATION_BY_ID: Readonly<Record<MitigationPresentation['id'], Mit
   MITIGATION_PRESENTATION.map((entry) => [entry.id, entry]),
 ) as Record<MitigationPresentation['id'], MitigationPresentation>;
 
+export const MAIN_QUESTION_BY_ID: Readonly<Record<MainQuestionId, MainQuestionPresentation>> = Object.fromEntries(
+  MAIN_QUESTION_PRESENTATION.map((entry) => [entry.id, entry]),
+) as Record<MainQuestionId, MainQuestionPresentation>;
+
+export const presentationRoleLabel = (entry: ResearchQuestionPresentation): string =>
+  entry.role === 'MAIN' ? 'Main analysis' : entry.role === 'SECONDARY' ? 'Secondary analysis' : 'Exploratory analysis';
+
+export const mitigationRoleLabel = (entry: MitigationPresentation): string =>
+  entry.role === 'PRIMARY' ? 'Main analysis' : 'Secondary / exploratory mitigation';
+
 export const DETAILED_RQ_ORDER: readonly InternalRqId[] = RESEARCH_QUESTION_PRESENTATION
   .toSorted((left, right) => left.displayOrder - right.displayOrder)
   .map((entry) => entry.internalRqId);

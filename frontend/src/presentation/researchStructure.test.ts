@@ -4,6 +4,8 @@ import {
   MAIN_QUESTION_PRESENTATION,
   MITIGATION_BY_ID,
   RESEARCH_QUESTION_BY_ID,
+  mitigationRoleLabel,
+  presentationRoleLabel,
 } from './researchStructure';
 
 describe('research presentation structure', () => {
@@ -28,5 +30,12 @@ describe('research presentation structure', () => {
 
   it('retains the detailed RQ1–RQ7 navigation order', () => {
     expect(DETAILED_RQ_ORDER).toEqual(['RQ1', 'RQ2', 'RQ3', 'RQ4', 'RQ5', 'RQ6', 'RQ7']);
+  });
+
+  it('provides shared hierarchy labels for pages', () => {
+    expect(presentationRoleLabel(RESEARCH_QUESTION_BY_ID.RQ1)).toBe('Main analysis');
+    expect(presentationRoleLabel(RESEARCH_QUESTION_BY_ID.RQ4)).toBe('Secondary analysis');
+    expect(presentationRoleLabel(RESEARCH_QUESTION_BY_ID.RQ6)).toBe('Exploratory analysis');
+    expect(mitigationRoleLabel(MITIGATION_BY_ID.MULTI_JUDGE_CONSENSUS)).toBe('Secondary / exploratory mitigation');
   });
 });

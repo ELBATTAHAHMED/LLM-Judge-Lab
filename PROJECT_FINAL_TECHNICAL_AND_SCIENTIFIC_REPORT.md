@@ -1,5 +1,11 @@
 # LLM-as-a-Judge Reliability Lab: Current Technical and Scientific Record
 
+## Scientific framing and contribution
+
+This integrated reliability-measurement and reproducibility study is organized around **three main questions**. **Human Agreement** (RQ1) asks how often judge decisions match human preference reference labels: 457/772 = **59.20%**, with Cohen's κ = **0.3230**. **Stability** combines two separate analyses: RQ2's **96.53%** fixed-condition repeatability and RQ3's **96/549 = 17.49%** decisive mapped flips after answer-order inversion. These are distinct estimands: repeatability does not establish correctness, strong human alignment, or order robustness. **Mitigation** is primarily RQ7 DUAL_SWAP: matched agreement changed from **67.84%** to **68.51%** (**+0.67 pp**, official 95% CI **−0.17 to +1.68 pp**) while coverage changed from **96.87%** to **75.84%** (**−21.03 pp**). The agreement change is small and uncertain, and the coverage loss is substantial.
+
+RQ4 and RQ5 remain secondary narrow controlled treatment analyses; their zero variant-win findings do not establish that generic verbosity or presentation bias is absent. RQ6 is an exploratory source-family **association**, not causal self-bias evidence. RQ7 Multi-Judge is secondary/exploratory mitigation evidence with a positive matched effect against its own equal-weight individual comparator on its own retained population. Its effect must not be directly ranked against DUAL_SWAP. The contribution is the integrated, provenance-controlled measurement and interpretation of these dimensions, not invention of LLM-as-a-Judge, known biases, consensus, or swap filtering.
+
 ## Authority and evidence boundary
 
 The current controlled science is the source-corrected full-population analysis
@@ -51,12 +57,14 @@ rerun additively, while historical evidence remained immutable.
 Fourteen terminal Claude observations remained unavailable after bounded
 recovery. Provider response identifiers were retained, but raw rejected
 response bodies were not persisted, preventing scientifically defensible
-offline re-parsing. The missing observations are judge-specific and
+offline re-parsing. They were neither fabricated nor imputed. The missing observations are judge-specific and
 concentrated in a small subset of questions, turns, and categories. Analyses
 therefore use explicitly reported complete-case populations, without claiming
 MCAR or MAR.
 
 ## Corrected research results
+
+The table retains every internal RQ and denominator. Main Q1 maps to RQ1; Main Q2 contains RQ2 and RQ3 as independently inspectable analyses; Main Q3 maps to RQ7 Primary. RQ4–RQ5 are secondary, RQ6 exploratory, and RQ7 Secondary is secondary/exploratory mitigation.
 
 | RQ | Corrected estimator and result |
 | --- | --- |
@@ -101,16 +109,19 @@ persisted historical and superseded controlled lineages for operational
 transparency. It is not an RQ denominator; every final RQ estimate uses the
 pinned authoritative AnalysisRuns above.
 
-## Inference and provider-provenance limitations
+## Verified inference protocol and provider provenance
 
-The frozen 95% percentile bootstrap uses the logical analysis unit supplied to
-each estimator—typically a judge×pair cell or a complete paired record, never
-an independently resampled presentation pass. RQ6 uses its counterbalanced
-logical unit and the Multi-Judge secondary analysis resamples complete
-pair-level consensus records. These intervals describe those specified
-inferential populations; because benchmark pairs can recur across judges, they
-do not claim a cluster-by-benchmark-pair population inference. This limitation
-does not change any reported point estimate or frozen interval.
+The human preference reference labels come from LMSYS MT-Bench Human Judgments. Canonical records link question ID and turn to exact source-model answer texts and SHA-256 answer hashes. Upstream `model_a`, `model_b`, and `tie` winners map to canonical `ANSWER_A`, `ANSWER_B`, and `TIE`; reversed source order reverses A/B but leaves TIE unchanged. Judge verdicts on swapped displays are mapped through the persisted presented answer IDs to canonical answer identity before comparison. Missing, ambiguous, or hash-mismatched identities are rejected. Two forensic turn-2 disambiguations retain their committed reconciliation lineage rather than inferring a label from a different raw row. Ties remain valid only where the particular estimator admits them, and each RQ applies its documented eligibility/exclusion rule.
+
+The exact configured **judge** identifiers are `gpt-4o-mini`, `anthropic/claude-3-haiku`, `deepseek/deepseek-chat`, and `meta-llama/llama-3.3-70b-instruct`; these are distinct from historical candidate-answer source models (`alpaca-13b`, `claude-v1`, `gpt-3.5-turbo`, `gpt-4`, `llama-13b`, and `vicuna-13b`). The frozen `controlled-judge-pairwise-v1` prompt instructs impartial comparison of the question and two answers and requests JSON only. Its four required fields are `verdict`, `criteria_scores`, `confidence`, and `explanation`. Verdict accepts `ANSWER_A`, `ANSWER_B`, `TIE`, or `UNKNOWN`; only the first three are scientifically valid labels. The five criterion scores are strict integers 1–5, confidence a finite self-reported value in [0,1], and explanation nonempty text. The adapter may strip a code fence/isolate an apparent object, then validates the strict schema; malformed or extra fields become `INVALID_RESPONSE`, never heuristic labels.
+
+The source-corrected execution manifest records historical and corrected-pass temperatures `0.0000` or `0.7000`, top-p `1.0000`, and provider request seeds `null`, `42`, or `20260818` (non-null seeds only for GPT). RQ2 has five planned repetitions in each exact fixed-configuration group; retries are operational attempts, not extra repetitions or a temperature-effects comparison. The separate four-judge Multi-Judge manifest specifies temperature `0`, top-p `1`, maximum output tokens `350`, and no provider request seed. Frozen analysis/bootstrap seeds are `20260818` for RQ1–RQ7 Primary/RQ6 and `20260823` for Multi-Judge; the clustered sensitivity seed is `20260912`. The frozen route policy `controlled-routing-v1` disallows fallback and validates requested/effective/observed model and provider provenance.
+
+The `controlled-retry-v2` policy permits at most two retries for rate limits, temporary HTTP 5xx, or connection failure (2- and 8-second backoffs), and one retry for timeout (5-second backoff). Invalid/schema-invalid responses, refusals, authentication/configuration failures, provenance mismatches, budget blocks, unsupported parameters, and ambiguous attempts are terminal. Attempts are persisted before sending; bounded recovery preserves scientific inputs and never silently duplicates a successful pass. Fourteen terminal Claude observations remained unavailable after recovery. Their judge-specific, question-clustered missingness is handled by the applicable complete-case rules, without an MCAR or MAR claim. See [the detailed methodology record](docs/STUDY_METHODOLOGY.md) for the exact source and policy references.
+
+## Statistical dependence and uncertainty
+
+The frozen official 95% percentile bootstrap uses each estimator's logical analysis unit—typically a judge×pair cell or complete paired record, never an independently resampled presentation pass. RQ6 uses its counterbalanced logical unit and Multi-Judge resamples complete pair-level consensus records. Observations from the same original MT-Bench question may nevertheless be correlated. A separate deterministic 10,000-replicate **question-clustered bootstrap sensitivity analysis** (seed `20260912`) resampled original question IDs, preserving all turns, judges, repetitions, swaps, variants, and matched observations belonging to each sampled question. All substantive conclusions remained unchanged. This sensitivity **does not replace official frozen CIs** or AnalysisRuns. Its RQ7 Primary coverage-delta CI of **−24.62 to −17.64 pp** is sensitivity evidence only; no official frozen CI was reported for that quantity. See [the validation record](evidence/validation/question_clustered_bootstrap_sensitivity_v1.md).
 
 Requested model identifiers, returned effective model identifiers, response
 IDs, and routing provenance are persisted. `model_version` stores a provider

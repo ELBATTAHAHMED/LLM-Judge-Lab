@@ -3,7 +3,7 @@
 
 Generative systems increasingly produce answers, summaries, code explanations, and conversational assistance at a scale that makes manual evaluation expensive. Pairwise evaluation by a language model is attractive because a judge can read a task, compare two candidate answers, and return a compact preference. This apparent simplicity is also the central methodological risk. A verdict may change because the evaluator sees a different order, because a response has superficial presentation features, because repeated sampling is not identical, or because the protocol filters observations in ways that change coverage. A useful evaluator therefore needs to be studied as an empirical measurement instrument.
 
-The LLM-as-a-Judge Reliability Lab treats each verdict as a recorded experimental observation rather than as an unquestionable assessment. The project asks how closely judges agree with human preference reference labels, whether they repeat their decisions under fixed conditions, whether presentation order affects their decisions, whether narrowly controlled text variants receive a systematic advantage, whether source-family identity is associated with preference in a counterbalanced design, and what mitigation strategies gain or lose. This framing avoids a false binary between ``works'' and ``does not work.'' A judge can be stable in one setting, sensitive in another, and operationally useful only with clearly stated limits.
+The LLM-as-a-Judge Reliability Lab treats each verdict as a recorded experimental observation rather than as an unquestionable assessment. Its scientific arc follows three main questions: agreement with human preference reference labels, stability under fixed-condition repetition and answer-order inversion, and the agreement--coverage trade-off of mitigation. A judge can be repeatable in one setting, sensitive to order in another, and operationally useful only with clearly stated limits. Narrow controlled treatments and source-family association provide supporting evidence.
 
 \section{Problem statement}
 
@@ -19,30 +19,29 @@ This combination creates a different kind of deliverable from a benchmark leader
 
 \section{Research questions}
 
-The seven research questions are deliberately separated because they measure different phenomena. RQ1 measures agreement with human preference reference labels. RQ2 measures repeated-evaluation consistency under fixed conditions. RQ3 measures position sensitivity by pairing both answer orders and mapping the results back to original answer identity. RQ4 measures a controlled redundant-length effect, not generic verbosity. RQ5 measures a controlled presentation-format effect, not generic formatting quality. RQ6 measures a counterbalanced source-family preference association. RQ7 evaluates mitigation trade-offs using two complementary strategies.
+The narrative has three main research questions while preserving distinct internal RQ1--RQ7 analyses and their estimands. Main Question 1 asks how closely judges agree with human preference reference labels (RQ1). Main Question 2 asks how stable decisions are across two distinct analyses: fixed-condition repeatability (RQ2) and answer-order inversion (RQ3). Main Question 3 asks what agreement--coverage trade-off the primary DUAL\_SWAP mitigation produces (RQ7 Primary). RQ4 and RQ5 are secondary controlled treatments, RQ6 is an exploratory source-family association, and RQ7 Multi-Judge is secondary/exploratory mitigation evidence against its own comparator.
 
 \begin{table}[H]
 \centering
-\caption{Canonical research questions and principal estimands.}
+\caption{Three main questions and supporting internal analyses.}
 \label{tab:rq-overview}
-\begin{tabularx}{\textwidth}{@{}p{0.10\textwidth}p{0.30\textwidth}X@{}}
+\begin{tabularx}{\textwidth}{@{}p{0.26\textwidth}p{0.17\textwidth}X@{}}
 \toprule
-RQ & Focus & Principal final estimand \\
+Scope & Internal analysis & Principal final estimand \\
 \midrule
-RQ1 & Human alignment & Exact three-class agreement with human preference reference labels; Cohen's $\kappa$.\\
-RQ2 & Stochastic consistency & Strict consistency across repeated fixed-condition evaluations.\\
-RQ3 & Position sensitivity & Paired decisive mapped flip rate under AB/BA answer-order swaps.\\
-RQ4 & Redundant length & Stable win rate of a narrowly defined redundant-text variant.\\
-RQ5 & Presentation format & Stable win rate of a controlled list-prefix/presentation variant.\\
-RQ6 & Source family & Stable same-family preference rate in a counterbalanced lineage.\\
-RQ7 & Mitigation & Agreement and coverage trade-offs under DUAL\_SWAP and strict multi-judge consensus.\\
+Main Q1: Human Agreement & RQ1 & Exact three-class agreement with human preference reference labels; Cohen's $\kappa$.\\
+Main Q2: Stability & RQ2; RQ3 & Distinct fixed-condition repeatability and decisive mapped AB/BA flip analyses.\\
+Main Q3: Mitigation & RQ7 Primary & DUAL\_SWAP matched agreement change and coverage change.\\
+Secondary & RQ4; RQ5 & Narrow redundant-text and list-prefix treatment-win rates.\\
+Exploratory & RQ6 & Counterbalanced source-family association.\\
+Secondary/exploratory mitigation & RQ7 Secondary & Strict Multi-Judge consensus versus its own equal-weight comparator.\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \section{Contributions}
 
-The work contributes an evidence-oriented controlled evaluation workflow, an explicit provenance model, a source-text correction and recovery lineage, and a complete final analysis that reports both numerator/denominator detail and uncertainty. It also provides a cautious interpretation framework. Agreement with a human preference reference label is not ground truth. A measured order effect is not proof of a causal internal bias mechanism. A null result for a narrow synthetic perturbation is not proof that length or format never matter. A mitigation is not universally better simply because it improves one estimator while reducing coverage.
+The contribution is an integrated reliability-measurement and reproducibility study: judges can be highly repeatable under a controlled fixed condition without being strongly aligned with human preference reference labels or robust to answer-order inversion, and mitigation must be assessed jointly through agreement and coverage. The evidence chain binds source text, observations, estimators, uncertainty, and dashboard presentation. The work does not claim to have invented LLM-as-a-Judge, position or verbosity bias, consensus judging, or swap consistency checks. Agreement with human preference reference labels is not objective accuracy; narrow treatment and associational results retain their stated limits.
 
 \section{Report roadmap}
 

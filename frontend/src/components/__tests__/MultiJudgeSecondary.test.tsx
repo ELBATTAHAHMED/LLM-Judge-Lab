@@ -30,15 +30,15 @@ describe('RQ7 Multi-Judge secondary presentation', () => {
   it('renders the API-backed secondary without ranking it against primary DUAL_SWAP', () => {
     render(<ControlledEvidencePanel loading={false} error={null} data={response({ multi_judge_consensus: multiJudge })} />);
     fireEvent.click(screen.getByRole('button', { name: 'RQ7' }));
-    expect(screen.getByText('Two complementary approaches to improving judge reliability.')).toBeInTheDocument();
-    expect(screen.getByText(/DUAL_SWAP filters presentation-sensitive decisions/i)).toBeInTheDocument();
+    expect(screen.getByText(/DUAL_SWAP is the main agreement–coverage analysis/i)).toBeInTheDocument();
+    expect(screen.getByText(/Multi-Judge is secondary\/exploratory mitigation evidence/i)).toBeInTheDocument();
     expect(screen.queryByText('Overall controlled result')).not.toBeInTheDocument();
     const dualSwap = screen.getByLabelText('DUAL_SWAP primary mitigation');
     const multiJudgePanel = screen.getByLabelText('Multi-Judge Consensus secondary mitigation');
     expect(dualSwap).toHaveClass('rounded-lg', 'border', 'bg-white');
     expect(multiJudgePanel).toHaveClass('rounded-lg', 'border', 'bg-white');
-    expect(screen.getByTestId('controlled-dual-swap-header')).toHaveTextContent('PRIMARY');
-    expect(screen.getByTestId('controlled-multi-judge-header')).toHaveTextContent('SECONDARY');
+    expect(screen.getByTestId('controlled-dual-swap-header')).toHaveTextContent('Main analysis');
+    expect(screen.getByTestId('controlled-multi-judge-header')).toHaveTextContent('Secondary / exploratory mitigation');
     expect([...screen.getByTestId('controlled-dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Matched N']);
     expect([...screen.getByTestId('controlled-multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Retained / planned']);
     expect(screen.getByTestId('controlled-dual-swap-footer')).toHaveTextContent(/Dual-pass stability/i);

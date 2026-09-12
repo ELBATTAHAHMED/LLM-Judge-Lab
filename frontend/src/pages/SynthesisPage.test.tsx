@@ -26,7 +26,7 @@ const multiJudge: MultiJudgeConsensusSecondary = {
 const response: ControlledResultsResponse = {
   status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
   accounting: null, analysis_runs: {}, secondary_mitigations: { multi_judge_consensus: multiJudge },
-  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'baseline_agreement', 0.6), metric('RQ7', 'dual_swap_agreement', 0.7), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'dual_swap_coverage', 0.7), metric('RQ7', 'dual_swap_dual_pass_stability', 0.8)],
+  results: [metric('RQ1', 'exact_agreement', 0.5), metric('RQ2', 'consistency', 0.9), metric('RQ3', 'paired_decisive_flip_rate', 0.1), metric('RQ4', 'variant_win_rate', 0.01), metric('RQ5', 'variant_win_rate', 0.02), metric('RQ6', 'stable_same_family_preference', 0.5), metric('RQ6', 'valid_stable_decisive_coverage', 0.3), metric('RQ7', 'baseline_agreement', 0.6), metric('RQ7', 'dual_swap_agreement', 0.7), metric('RQ7', 'agreement_delta', 0.1), metric('RQ7', 'baseline_coverage', 0.9), metric('RQ7', 'dual_swap_coverage', 0.7), metric('RQ7', 'coverage_delta', -0.2), metric('RQ7', 'dual_swap_dual_pass_stability', 0.8)],
   message: 'frozen',
 };
 
@@ -34,22 +34,24 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
   it('shows the API-backed secondary finding while preserving DUAL_SWAP as primary', () => {
     controlledState.value = { data: response, loading: false, error: null };
     render(<MemoryRouter><SynthesisPage /></MemoryRouter>);
-    expect(screen.getByText('2 complementary strategies')).toBeInTheDocument();
-    expect(screen.getByText('Reliability')).toBeInTheDocument();
-    expect(screen.getByText('Controlled Effects')).toBeInTheDocument();
+    expect(screen.getByText('Human Agreement')).toBeInTheDocument();
+    expect(screen.getByText('Stability')).toBeInTheDocument();
+    expect(screen.getByText(/High repeatability does not imply strong human alignment/i)).toBeInTheDocument();
+    expect(screen.getByText('Supporting analyses')).toBeInTheDocument();
     const pairedGrid = screen.getByLabelText('Paired RQ1–RQ6 findings');
     expect(pairedGrid).toHaveClass('md:grid-cols-2');
     expect([...pairedGrid.querySelectorAll('[data-testid^="finding-rq"]')].map((child) => child.getAttribute('data-testid'))).toEqual(['finding-rq1', 'finding-rq2', 'finding-rq3', 'finding-rq4', 'finding-rq5', 'finding-rq6']);
-    expect(screen.getByRole('heading', { name: 'Mitigation' })).toHaveClass('border-b', 'border-neutral-200', 'pb-2');
+    expect(screen.getByRole('heading', { name: 'Main Question 3 · Mitigation' })).toHaveClass('border-b', 'border-neutral-200', 'pb-2');
     expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
     expect(pairedGrid).not.toContainElement(screen.getByLabelText('RQ7 Mitigation Strategies'));
     expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
     expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
-    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('PRIMARY');
-    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('SECONDARY');
+    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('Main analysis');
+    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('Secondary / exploratory mitigation');
     expect([...screen.getByTestId('dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
     expect([...screen.getByTestId('multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
-    expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('70.00%');
+    expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('60.00% → 70.00%');
+    expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('90.00% → 70.00%');
     expect(screen.getByTestId('multi-judge-matrix')).toHaveTextContent('71.82%');
     expect(screen.queryByText('Comparator')).not.toBeInTheDocument();
     expect(screen.queryByText('95% CI')).not.toBeInTheDocument();
@@ -57,7 +59,7 @@ describe('SynthesisPage RQ7 secondary mitigation', () => {
     expect(screen.queryByText('Retained / planned')).not.toBeInTheDocument();
     expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('Presentation-consistency filtering');
     expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('Cross-judge aggregation');
-    expect(screen.getByTestId('dual-swap-footer')).toHaveTextContent(/Matched retained-decision comparison/i);
+    expect(screen.getByTestId('dual-swap-footer')).toHaveTextContent(/Small, uncertain agreement change/i);
     expect(screen.getByTestId('multi-judge-footer')).toHaveTextContent(/equal-weight individual-judge baseline/i);
     expect(screen.getByText(/not a direct head-to-head comparison/i)).toBeInTheDocument();
   });

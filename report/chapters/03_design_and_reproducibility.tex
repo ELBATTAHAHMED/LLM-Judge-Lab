@@ -7,6 +7,8 @@ The final controlled population is a source-text-corrected dataset version named
 
 The human comparison dataset was reconciled against upstream records: 3,355 of 3,355 raw human rows matched. In the canonical controlled source data, 1,070 records were exact source matches and 498 required source correction; unresolved records equal zero. These counts are not a performance result. They document the population and source lineage on which all later estimators depend.
 
+The human preference reference labels originate in LMSYS MT-Bench Human Judgments. Each canonical record links the original question ID and turn, ordered source-model identities, and SHA-256 hashes of both exact answer texts. Upstream \texttt{model\_a}, \texttt{model\_b}, and \texttt{tie} winners map to canonical \texttt{ANSWER\_A}, \texttt{ANSWER\_B}, and \texttt{TIE}. Reversed source order reverses A/B while preserving TIE. Missing, ambiguous, or hash-mismatched source identities are rejected. Two forensic turn-2 disambiguations retain their committed reconciliation lineage rather than deriving a label from another raw row. These are human preference reference labels, not absolute ground truth.
+
 \begin{table}[H]
 \centering
 \caption{Canonical data lineage summary.}
@@ -30,7 +32,11 @@ Human rows reconciled with upstream & 3,355 / 3,355\\
 
 Each controlled observation is associated with exact prompt and answer identities, source-model identities, a judge identity, a protocol condition, and a durable attempt/slot state. The system must not obtain answer text merely by using a prompt identifier and whichever two answers appear first in a database query. Such an approach can relabel one source model's text as another source model's answer. The project therefore treats answer provenance and judge selection as separate fields. This separation is also used by the qualitative explorer: the user-selected top-level model filters the judge perspective, whereas answer A and answer B retain their exact source identities.
 
+The configured judge identifiers are \texttt{gpt-4o-mini}, \texttt{anthropic/claude-3-haiku}, \texttt{deepseek/deepseek-chat}, and \texttt{meta-llama/llama-3.3-70b-instruct}. They differ from the historical candidate-answer source models \texttt{alpaca-13b}, \texttt{claude-v1}, \texttt{gpt-3.5-turbo}, \texttt{gpt-4}, \texttt{llama-13b}, and \texttt{vicuna-13b}. The frozen \texttt{controlled-routing-v1} policy disallows fallback routing and validates requested, effective, and observed model/provider provenance.
+
 The evidence pipeline applies a stated source precedence: source-correct reusable observations first, then corrected original observations, then recovery replacements, and finally terminal missing states. The analysis does not impute unavailable outcomes, substitute another model, or relax the decision parser merely to increase coverage. This policy turns missingness into a visible limitation rather than an invisible data-cleaning choice.
+
+Fourteen terminal Claude observations remained unavailable after bounded recovery. Their provider response IDs were retained, but the raw rejected bodies were not persisted, so offline re-parsing is not scientifically defensible. They were neither fabricated nor imputed. Missingness is judge-specific and concentrated in a small subset of original question clusters. Complete-case eligibility is applied where each estimator requires it; no MCAR or MAR assumption is made.
 
 \section{Operational accounting}
 
