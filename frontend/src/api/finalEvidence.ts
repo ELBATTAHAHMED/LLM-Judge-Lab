@@ -1,14 +1,5 @@
 import type { ControlledMetricResult } from './types';
-
-export const RQ_TITLES: Record<string, string> = {
-  RQ1: 'Human Alignment',
-  RQ2: 'Stochastic Consistency',
-  RQ3: 'Position Sensitivity',
-  RQ4: 'Controlled Redundant-Length Effect',
-  RQ5: 'Controlled Presentation-Format Effect',
-  RQ6: 'Counterbalanced Matched Source-Family Preference',
-  RQ7: 'Mitigation Trade-off',
-};
+import { RESEARCH_QUESTION_BY_ID, type InternalRqId } from '../presentation/researchStructure';
 
 const JUDGE_LABELS: Record<string, string> = {
   'gpt-4o-mini': 'GPT-4o-mini',
@@ -95,12 +86,4 @@ export const formatMetricCi = (metric: ControlledMetricResult): string => {
   return `95% CI: ${(metric.ci_low * 100).toFixed(2)}–${(metric.ci_high * 100).toFixed(2)}%`;
 };
 
-export const rqInterpretation = (rq: string): string | null => ({
-  RQ1: 'Agreement is measured against human preference reference labels; it is not an accuracy claim.',
-  RQ2: 'Primary: fixed-temperature strict complete-repetition consistency. Conditional returned-judgment consistency is a sensitivity analysis, not a temperature-effect estimate.',
-  RQ3: 'Position sensitivity is measured after canonical answer-identity remapping under answer-order swaps.',
-  RQ4: 'Narrow frozen estimator: stable controlled redundant-text variant wins among valid controlled pairs; this is not a broad verbosity-bias claim.',
-  RQ5: 'Narrow frozen estimator: stable controlled presentation/list-prefix variant wins among valid controlled pairs; this is not a general formatting-effect claim.',
-  RQ6: 'Counterbalanced matched source-family association only. Strong judge-level heterogeneity remains; source/content-quality confounding prevents a causal self-bias claim.',
-  RQ7: 'DUAL_SWAP has a small matched point difference with a confidence interval crossing zero and substantial coverage loss. Multi-Judge is positive only against its own equal-weight comparator on retained consensus-covered pairs; they are not directly comparable.',
-}[rq] ?? null);
+export const rqInterpretation = (rq: string): string | null => RESEARCH_QUESTION_BY_ID[rq as InternalRqId]?.interpretation ?? null;
