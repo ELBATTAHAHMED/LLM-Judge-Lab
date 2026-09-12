@@ -9,6 +9,7 @@ export type InternalRqId = 'RQ1' | 'RQ2' | 'RQ3' | 'RQ4' | 'RQ5' | 'RQ6' | 'RQ7'
 export type MainQuestionId = 'MAIN_Q1' | 'MAIN_Q2' | 'MAIN_Q3';
 export type PresentationRole = 'MAIN' | 'SECONDARY' | 'EXPLORATORY';
 export type MitigationRole = 'PRIMARY' | 'SECONDARY' | null;
+export type PresentationSectionId = 'PRINCIPAL' | 'SECONDARY' | 'EXPLORATORY' | 'ADDITIONAL_MITIGATION';
 
 export interface ResearchQuestionPresentation {
   internalRqId: InternalRqId;
@@ -39,6 +40,14 @@ export interface MitigationPresentation {
   displayOrder: number;
   family: string;
   exploratory: boolean;
+}
+
+export interface PresentationSection {
+  id: PresentationSectionId;
+  displayTitle: string;
+  shortPresentationLabel: string;
+  internalRqIds: readonly InternalRqId[];
+  displayOrder: number;
 }
 
 export const MAIN_QUESTION_PRESENTATION: readonly MainQuestionPresentation[] = [
@@ -89,6 +98,25 @@ export const MITIGATION_PRESENTATION: readonly MitigationPresentation[] = [
   },
 ];
 
+export const PRESENTATION_SECTIONS: readonly PresentationSection[] = [
+  {
+    id: 'PRINCIPAL', displayTitle: 'Three Main Research Questions', shortPresentationLabel: 'Principal research questions',
+    internalRqIds: ['RQ1', 'RQ2', 'RQ3', 'RQ7'], displayOrder: 1,
+  },
+  {
+    id: 'SECONDARY', displayTitle: 'Secondary Analyses', shortPresentationLabel: 'Secondary analyses',
+    internalRqIds: ['RQ4', 'RQ5'], displayOrder: 2,
+  },
+  {
+    id: 'EXPLORATORY', displayTitle: 'Exploratory Analysis', shortPresentationLabel: 'Exploratory analysis',
+    internalRqIds: ['RQ6'], displayOrder: 3,
+  },
+  {
+    id: 'ADDITIONAL_MITIGATION', displayTitle: 'Additional Mitigation Analysis', shortPresentationLabel: 'Additional mitigation analysis',
+    internalRqIds: ['RQ7'], displayOrder: 4,
+  },
+];
+
 export const RESEARCH_QUESTION_BY_ID: Readonly<Record<InternalRqId, ResearchQuestionPresentation>> = Object.fromEntries(
   RESEARCH_QUESTION_PRESENTATION.map((entry) => [entry.internalRqId, entry]),
 ) as Record<InternalRqId, ResearchQuestionPresentation>;
@@ -100,6 +128,10 @@ export const MITIGATION_BY_ID: Readonly<Record<MitigationPresentation['id'], Mit
 export const MAIN_QUESTION_BY_ID: Readonly<Record<MainQuestionId, MainQuestionPresentation>> = Object.fromEntries(
   MAIN_QUESTION_PRESENTATION.map((entry) => [entry.id, entry]),
 ) as Record<MainQuestionId, MainQuestionPresentation>;
+
+export const PRESENTATION_SECTION_BY_ID: Readonly<Record<PresentationSectionId, PresentationSection>> = Object.fromEntries(
+  PRESENTATION_SECTIONS.map((entry) => [entry.id, entry]),
+) as Record<PresentationSectionId, PresentationSection>;
 
 export const presentationRoleLabel = (entry: ResearchQuestionPresentation): string =>
   entry.role === 'MAIN' ? 'Main analysis' : entry.role === 'SECONDARY' ? 'Secondary analysis' : 'Exploratory analysis';

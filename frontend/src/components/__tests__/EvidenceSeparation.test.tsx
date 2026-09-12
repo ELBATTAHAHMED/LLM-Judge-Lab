@@ -53,6 +53,20 @@ describe('controlled evidence separation', () => {
     expect(screen.getByText(/dual-pass stability/i)).toBeInTheDocument();
   });
 
+  it('groups detailed evidence by principal, secondary, exploratory, and additional mitigation roles', () => {
+    render(<ControlledEvidencePanel loading={false} error={null} data={{
+      status: 'CONTROLLED_RESULTS_AVAILABLE', evidence_class: 'CONTROLLED', executed_runs: 1, executed_passes: 1,
+      accounting: null, analysis_runs: { RQ1: 'pinned' }, secondary_mitigations: {},
+      results: [controlledMetric('RQ1', 'exact_agreement', 0.5), controlledMetric('RQ2', 'consistency', 0.9), controlledMetric('RQ3', 'paired_decisive_flip_rate', 0.1), controlledMetric('RQ4', 'variant_win_rate', 0), controlledMetric('RQ5', 'variant_win_rate', 0), controlledMetric('RQ6', 'stable_same_family_preference', 0.5), controlledMetric('RQ7', 'baseline_agreement', 0.6), controlledMetric('RQ7', 'dual_swap_agreement', 0.7), controlledMetric('RQ7', 'agreement_delta', 0.1), controlledMetric('RQ7', 'dual_swap_coverage', 0.7)],
+      message: 'frozen',
+    }} />);
+    expect(screen.getByRole('heading', { name: 'Three Main Research Questions' })).toBeInTheDocument();
+    expect(screen.getByText('Main Question 2 · Stability')).toBeInTheDocument();
+    expect(screen.getByText('Secondary analyses')).toBeInTheDocument();
+    expect(screen.getByText('Exploratory analysis')).toBeInTheDocument();
+    expect(screen.getByText('Additional mitigation analysis')).toBeInTheDocument();
+  });
+
   it('shows the RQ2 primary estimator once while retaining the distinct conditional sensitivity metric', () => {
     const rq2 = (metric_key: string, value: number, denominator: number) => ({ ...controlledMetric('RQ2', metric_key, value), denominator });
     const data: ControlledResultsResponse = {

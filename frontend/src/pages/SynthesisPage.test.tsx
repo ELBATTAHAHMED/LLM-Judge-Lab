@@ -30,37 +30,22 @@ const response: ControlledResultsResponse = {
   message: 'frozen',
 };
 
-describe('SynthesisPage RQ7 secondary mitigation', () => {
-  it('shows the API-backed secondary finding while preserving DUAL_SWAP as primary', () => {
+describe('SynthesisPage research hierarchy', () => {
+  it('shows three principal questions before supporting and additional mitigation analyses', () => {
     controlledState.value = { data: response, loading: false, error: null };
     render(<MemoryRouter><SynthesisPage /></MemoryRouter>);
-    expect(screen.getByText('Human Agreement')).toBeInTheDocument();
-    expect(screen.getByText('Stability')).toBeInTheDocument();
-    expect(screen.getByText(/High repeatability does not imply strong human alignment/i)).toBeInTheDocument();
-    expect(screen.getByText('Supporting analyses')).toBeInTheDocument();
-    const pairedGrid = screen.getByLabelText('Paired RQ1–RQ6 findings');
-    expect(pairedGrid).toHaveClass('md:grid-cols-2');
-    expect([...pairedGrid.querySelectorAll('[data-testid^="finding-rq"]')].map((child) => child.getAttribute('data-testid'))).toEqual(['finding-rq1', 'finding-rq2', 'finding-rq3', 'finding-rq4', 'finding-rq5', 'finding-rq6']);
-    expect(screen.getByRole('heading', { name: 'Main Question 3 · Mitigation' })).toHaveClass('border-b', 'border-neutral-200', 'pb-2');
-    expect(screen.getByLabelText('RQ7 Mitigation Strategies')).toHaveTextContent('Two complementary mitigation families.');
-    expect(pairedGrid).not.toContainElement(screen.getByLabelText('RQ7 Mitigation Strategies'));
-    expect(screen.getByLabelText('DUAL_SWAP primary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
-    expect(screen.getByLabelText('Multi-Judge Consensus secondary synthesis finding')).toHaveClass('rounded-lg', 'border', 'bg-white');
-    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('Main analysis');
-    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('Secondary / exploratory mitigation');
-    expect([...screen.getByTestId('dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
-    expect([...screen.getByTestId('multi-judge-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Matched delta', 'Coverage']);
-    expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('60.00% → 70.00%');
-    expect(screen.getByTestId('dual-swap-matrix')).toHaveTextContent('90.00% → 70.00%');
-    expect(screen.getByTestId('multi-judge-matrix')).toHaveTextContent('71.82%');
+    const principal = screen.getByLabelText('Principal research questions');
+    expect(principal).toHaveTextContent('Main Question 1');
+    expect(principal).toHaveTextContent('Main Question 2');
+    expect(principal).toHaveTextContent('Main Question 3');
+    expect(screen.getByLabelText('Main Question 2 Stability')).toHaveTextContent('RQ2');
+    expect(screen.getByLabelText('Main Question 2 Stability')).toHaveTextContent('RQ3');
+    expect(screen.getByLabelText('Main Question 3 Mitigation')).toHaveTextContent('DUAL_SWAP');
+    expect(screen.getByLabelText('Secondary analyses')).toHaveTextContent('RQ4');
+    expect(screen.getByLabelText('Secondary analyses')).toHaveTextContent('RQ5');
+    expect(screen.getByLabelText('Exploratory analysis')).toHaveTextContent('RQ6');
+    expect(screen.getByLabelText('Additional Multi-Judge mitigation analysis')).toHaveTextContent('Secondary / exploratory mitigation');
     expect(screen.queryByText('Comparator')).not.toBeInTheDocument();
-    expect(screen.queryByText('95% CI')).not.toBeInTheDocument();
-    expect(screen.queryByText('Matched N')).not.toBeInTheDocument();
-    expect(screen.queryByText('Retained / planned')).not.toBeInTheDocument();
-    expect(screen.getByTestId('dual-swap-header')).toHaveTextContent('Presentation-consistency filtering');
-    expect(screen.getByTestId('multi-judge-header')).toHaveTextContent('Cross-judge aggregation');
-    expect(screen.getByTestId('dual-swap-footer')).toHaveTextContent(/Small, uncertain agreement change/i);
-    expect(screen.getByTestId('multi-judge-footer')).toHaveTextContent(/equal-weight individual-judge baseline/i);
     expect(screen.getByText(/not a direct head-to-head comparison/i)).toBeInTheDocument();
   });
 });

@@ -36,7 +36,11 @@ describe('RQ7 Multi-Judge secondary presentation', () => {
     const dualSwap = screen.getByLabelText('DUAL_SWAP primary mitigation');
     const multiJudgePanel = screen.getByLabelText('Multi-Judge Consensus secondary mitigation');
     expect(dualSwap).toHaveClass('rounded-lg', 'border', 'bg-white');
-    expect(multiJudgePanel).toHaveClass('rounded-lg', 'border', 'bg-white');
+    expect(multiJudgePanel).toHaveClass('rounded-lg', 'border', 'bg-neutral-50');
+    const additionalMitigationSection = screen
+      .getAllByLabelText('Additional mitigation analysis')
+      .find((element) => element.getAttribute('aria-label') === 'Additional mitigation analysis');
+    expect(additionalMitigationSection).toContainElement(multiJudgePanel);
     expect(screen.getByTestId('controlled-dual-swap-header')).toHaveTextContent('Main analysis');
     expect(screen.getByTestId('controlled-multi-judge-header')).toHaveTextContent('Secondary / exploratory mitigation');
     expect([...screen.getByTestId('controlled-dual-swap-matrix').querySelectorAll('dt')].map((item) => item.textContent)).toEqual(['Agreement', 'Comparator', 'Matched delta', 'Coverage', '95% CI', 'Matched N']);
