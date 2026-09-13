@@ -62,7 +62,9 @@ RQ7 Multi-Judge & +5.02 pp agreement; 69.83\% coverage & 1,125 & secondary withi
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=1cm,y=0.055cm,font=\small]
+% Keep category rows at a readable physical distance.  The prior y-scale
+% compressed five rows into less than 3 mm, causing labels and values to overlap.
+\begin{tikzpicture}[x=1cm,y=0.72cm,font=\small]
 \draw[->] (0,0)--(10,0) node[right]{percentage};
 \foreach \x/\lab in {0/0,2/20,4/40,6/60,8/80,10/100} \draw (\x,0.1)--(\x,-0.1) node[below]{\lab};
 \foreach \y/\lab/\val in {1/RQ1 agreement/59.20,2/RQ2 consistency/96.53,3/RQ3 decisive flips/17.49,4/RQ6 same-family/50.94,5/Multi-Judge agreement/71.82} {\node[left] at (0,\y) {\lab}; \fill[blue!60] (0,\y-0.22) rectangle (\val/10,\y+0.22); \node[right] at (\val/10+0.1,\y) {\val\%};}
