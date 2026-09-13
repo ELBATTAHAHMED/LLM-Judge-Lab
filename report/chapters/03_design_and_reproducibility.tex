@@ -3,7 +3,10 @@
 
 \section{Study population}
 
-The final controlled population is a source-text-corrected dataset version named \texttt{controlled-source-text-corrected-v1}. It contains 1,568 records derived from 80 distinct MT-Bench questions, retaining upstream question IDs 81 through 160. MT-Bench is multi-turn; each question is represented by two turn-level prompt records. Thus, ``160 prompts'' in this report always means 80 questions multiplied by two turns, not 160 distinct questions. The canonical dataset hash is \datasetsha.
+The final controlled population is a source-text-corrected dataset version named:
+\newline {\small\ttfamily controlled-source-text-corrected-v1}.
+It contains 1,568 records derived from 80 distinct MT-Bench questions, retaining upstream question IDs 81 through 160. MT-Bench is multi-turn; each question is represented by two turn-level prompt records. Thus, ``160 prompts'' in this report always means 80 questions multiplied by two turns, not 160 distinct questions. The canonical dataset hash is:
+\newline {\footnotesize \datasetsha}.
 
 The human comparison dataset was reconciled against upstream records: 3,355 of 3,355 raw human rows matched. In the canonical controlled source data, 1,070 records were exact source matches and 498 required source correction; unresolved records equal zero. These counts are not a performance result. They document the population and source lineage on which all later estimators depend.
 
@@ -32,7 +35,9 @@ Human rows reconciled with upstream & 3,355 / 3,355\\
 
 Each controlled observation is associated with exact prompt and answer identities, source-model identities, a judge identity, a protocol condition, and a durable attempt/slot state. The system must not obtain answer text merely by using a prompt identifier and whichever two answers appear first in a database query. Such an approach can relabel one source model's text as another source model's answer. The project therefore treats answer provenance and judge selection as separate fields. This separation is also used by the qualitative explorer: the user-selected top-level model filters the judge perspective, whereas answer A and answer B retain their exact source identities.
 
-The configured judge identifiers are \texttt{gpt-4o-mini}, \texttt{anthropic/claude-3-haiku}, \texttt{deepseek/deepseek-chat}, and \texttt{meta-llama/llama-3.3-70b-instruct}. They differ from the historical candidate-answer source models \texttt{alpaca-13b}, \texttt{claude-v1}, \texttt{gpt-3.5-turbo}, \texttt{gpt-4}, \texttt{llama-13b}, and \texttt{vicuna-13b}. The frozen \texttt{controlled-routing-v1} policy disallows fallback routing and validates requested, effective, and observed model/provider provenance.
+The configured judge identifiers are:
+\newline {\small\ttfamily gpt-4o-mini\\ anthropic/claude-3-haiku\\ deepseek/deepseek-chat\\ meta-llama/llama-3.3-70b-instruct.}
+They differ from the historical candidate-answer source models \texttt{alpaca-13b}, \texttt{claude-v1}, \texttt{gpt-3.5-turbo}, \texttt{gpt-4}, \texttt{llama-13b}, and \texttt{vicuna-13b}. The frozen \texttt{controlled-routing-v1} policy disallows fallback routing and validates requested, effective, and observed model/provider provenance.
 
 The evidence pipeline applies a stated source precedence: source-correct reusable observations first, then corrected original observations, then recovery replacements, and finally terminal missing states. The analysis does not impute unavailable outcomes, substitute another model, or relax the decision parser merely to increase coverage. This policy turns missingness into a visible limitation rather than an invisible data-cleaning choice.
 
@@ -67,4 +72,6 @@ The application exposes six user-facing areas. The default Leaderboard, Bias Dia
 
 \section{Final evidence identity}
 
-The source-corrected complete-case full-population analysis is identified by SHA-256 \artifacthash. Its analysis version is \texttt{source-corrected-complete-case-full-population-analysis-v2}. The final RQ results are pinned to eight authoritative analysis-run identifiers, including primary and secondary RQ7 runs. This report cites these identities in the evidence appendix rather than relying on an informal statement that a number is ``final.''
+The source-corrected complete-case full-population analysis is identified by SHA-256:
+\newline {\footnotesize \artifacthash}.
+Its analysis version is \texttt{source-corrected-complete-case-full-population-analysis-v2}. The final RQ results are pinned to eight authoritative analysis-run identifiers, including primary and secondary RQ7 runs. This report cites these identities in the evidence appendix rather than relying on an informal statement that a number is ``final.''

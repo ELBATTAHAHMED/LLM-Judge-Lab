@@ -228,21 +228,20 @@ replace official CIs. All included metrics had 10,000 valid and zero
 non-estimable replicates; no relevant null-value status or substantive
 scientific conclusion changed.
 
-## Deferred synchronization inventory for Phase 6
+## Synchronization status
 
-No presentation document was changed in this phase. The following locations
-need a later, controlled synchronization against this methodology record:
+The following locations have been synchronized against this methodology
+record. They retain the distinction between official intervals and the
+question-clustered sensitivity analysis:
 
-- `README.md`: link or concise methodology summary; distinguish official CIs
-  from the question-clustered sensitivity analysis.
-- `PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`: add exact judge IDs,
-  prompt/parsing/retry provenance, the 14-observation missingness statement,
-  and the Phase-2 clustered-bootstrap qualification.
-- `report/chapters/`: synchronize the academic methods, limitations, and
-  uncertainty wording without replacing official CIs.
+- `README.md` and `PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`: concise
+  methodology, exact judge identifiers, provenance, missingness, and the
+  clustered-bootstrap qualification.
+- `report/chapters/`: aligned methods, limitations, and uncertainty wording
+  without replacing official CIs.
 - `frontend/src/pages/SynthesisPage.tsx`,
   `frontend/src/pages/ControlledResultsPage.tsx`, and related result copy:
-  synchronize only explanatory text after approval; do not alter API values.
+  aligned explanatory text only; API values remain unchanged.
 - Any legacy/historical analysis text that uses `gpt-4o-mini` as a generic
   label must distinguish that judge identifier from historical candidate-answer
   source models, and must avoid unqualified “ground truth”, causal self-bias,

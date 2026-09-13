@@ -45,11 +45,10 @@ individual-judge comparator. It must not be directly ranked against, or
 claimed superior/inferior to, `DUAL_SWAP`; the two results have different
 estimands and comparators.
 
-## Deferred synchronization inventory
+## Synchronization status
 
-This Phase-1 definition is intentionally not yet propagated. Later phases
-should synchronize the following presentation/documentation locations while
-preserving the internal `RQ1`–`RQ7` evidence model:
+The three-question framing has been propagated to the mutable presentation and
+documentation layers while preserving the internal `RQ1`–`RQ7` evidence model:
 
 - `README.md`: research-question table, results narrative, and interpretation
   boundaries.
@@ -65,5 +64,5 @@ preserving the internal `RQ1`–`RQ7` evidence model:
   labels and interpretations only, without changing the API contract or
   scientific values.
 
-No backend API, database, evidence, estimator, or experiment change is implied
-by this framing document.
+No backend API, database, evidence, estimator, or experiment change was
+required for this synchronization.

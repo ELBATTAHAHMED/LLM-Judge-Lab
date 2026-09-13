@@ -145,38 +145,22 @@ The project must not claim that:
 - consensus output is ground truth or ensembles always outperform individual
   judges.
 
-## Deferred Phase-6 synchronization targets
+## Synchronization status
 
-The following mutable presentation layers still use the older flat
-`RQ1`–`RQ7` narrative or need the Phase-2 sensitivity boundary added. They are
-identified here but intentionally unchanged in Phase 4:
+The following mutable presentation layers have been synchronized to the
+three-question framing and the Phase-2 sensitivity boundary while preserving
+the internal `RQ1`–`RQ7` identifiers:
 
-- `README.md`: reorganize the research scope and headline findings around the
-  three main questions while retaining secondary/exploratory results.
-- `PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`: align the contribution,
-  research questions, discussion, and conclusion; add the clustered-bootstrap
-  sensitivity without replacing official intervals.
-- `report/chapters/01_introduction.tex`, `report/chapters/04_methods.tex`,
-  `report/chapters/05_results.tex`, `report/chapters/06_discussion.tex`, and
-  `report/chapters/08_conclusion.tex`: replace the flat seven-question narrative
-  with the three-question hierarchy and its supporting-analysis boundaries.
-- `report/chapters/03_design_and_reproducibility.tex` and
-  `report/chapters/A_protocol_and_evidence.tex`: add the question-clustered
-  sensitivity role and preserve the official-versus-sensitivity distinction.
-- `frontend/src/pages/SynthesisPage.tsx` and its tests: present the three main
-  questions first and demote `RQ4`–`RQ6` and Multi-Judge to their documented
-  supporting roles.
-- `frontend/src/pages/ControlledResultsPage.tsx`,
-  `frontend/src/components/ControlledEvidencePanel.tsx`, and related tests:
-  align explanatory hierarchy and labels without changing the API contract or
-  metric values.
-- `frontend/src/api/finalEvidence.ts`: review display-only labels and
-  interpretations for consistency with the three-question framing.
+- `README.md` and `PROJECT_FINAL_TECHNICAL_AND_SCIENTIFIC_REPORT.md`: research
+  scope, headline findings, contribution, and limitations.
+- `report/chapters/`: the three-question hierarchy, supporting-analysis
+  boundaries, and official-versus-sensitivity distinction.
+- `frontend/src/pages/SynthesisPage.tsx`,
+  `frontend/src/pages/ControlledResultsPage.tsx`, and related presentation
+  metadata/tests: display hierarchy and explanatory labels only.
 - Historical/exploratory wording in `backend/analysis/latent_quality.py` and
-  `backend/analysis/neutralized_scores.py`: review any causal or confirmatory
-  prose before it is surfaced in later documentation; do not treat those
-  telemetry helpers as final controlled evidence.
+  `backend/analysis/neutralized_scores.py`: retained as historical telemetry,
+  not final controlled evidence.
 
-These are synchronization tasks only. No backend scientific estimator, API
-schema, database record, dataset, AnalysisRun, or frozen artifact needs to
-change to adopt this narrative.
+No backend scientific estimator, API schema, database record, dataset,
+AnalysisRun, or frozen artifact changed to adopt this narrative.

@@ -340,7 +340,6 @@ def main() -> None:
     df = fetch_decisions_with_lengths(engine, judge_model_name=judge_model)
     print(f"Loaded {len(df):,} decisions for judge model '{judge_model}' with word-count data.\n")
 
-    # 1. Linear regression with 5-Fold Cross Validation
     alpha, beta, r_sq, p_val, residuals, slope_se, cv_metrics = run_length_bias_regression(df)
     df["residual"] = residuals
 
@@ -356,7 +355,6 @@ def main() -> None:
     print(f"  CV Correlation Significance (p-value): {cv_metrics['cv_residual_length_p']:.4e}")
     print(f"  Validation: Calibration holds out-of-sample on unseen test folds!\n")
 
-    # 2. Neutralized scores
     result_df = compute_neutralized_scores(df, residuals)
 
     print(f"  {'Model':<20} {'Raw Win%':>10}  {'Neutralized':>12}  {'Rank Chg':>8}")
@@ -368,7 +366,6 @@ def main() -> None:
             f"{row['neutralized_score']:>+12.5f}  {chg:>8}"
         )
 
-    # 3. Save CSV (model specific)
     CSV_DIR = ROOT_DIR / "data" / "artifacts" / "csv"
     REPORTS_DIR = ROOT_DIR / "data" / "artifacts" / "reports"
     CSV_DIR.mkdir(parents=True, exist_ok=True)
@@ -384,7 +381,6 @@ def main() -> None:
         result_df.to_csv(default_csv_path, index=False)
         print(f"Saved: '{default_csv_path}' OK (backwards compatibility)")
 
-    # 4. Save Markdown report
     report_md = build_report(result_df, alpha, beta, r_sq, p_val, slope_se)
     md_path = REPORTS_DIR / "neutralized_scores_report.md"
     md_path.write_text(report_md, encoding="utf-8")

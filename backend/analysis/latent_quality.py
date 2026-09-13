@@ -290,14 +290,11 @@ def main() -> None:
     models = sorted(list(set(df["model_i"].tolist() + df["model_j"].tolist())))
     print(f"Models identified: {models}\n")
 
-    # 1. Raw win rates
     raw_wr = compute_raw_win_rates(df, models)
 
-    # 2. Bradley-Terry MLE
     theta, log_likelihood = fit_bradley_terry(df, models)
     print(f"BT model converged. Log-likelihood: {log_likelihood:.2f}")
 
-    # 3. Build results table
     results = pd.DataFrame({
         "model":        models,
         "raw_win_rate": [raw_wr[m] for m in models],
@@ -306,7 +303,6 @@ def main() -> None:
     results = results.sort_values("bt_score", ascending=False).reset_index(drop=True)
     results["rank"] = results.index + 1
 
-    # Assign quality tiers based on BT score
     def assign_tier(score: float) -> str:
         if score >= 0.5:
             return "Top Tier"
@@ -318,7 +314,6 @@ def main() -> None:
 
     results["quality_tier"] = results["bt_score"].apply(assign_tier)
 
-    # 4. Print table
     print(f"\n{'Rank':<5} {'Model':<20} {'Raw Win%':<12} {'BT Score':>10}  {'Tier'}")
     print("-" * 60)
     for _, row in results.iterrows():
@@ -328,7 +323,6 @@ def main() -> None:
             f"{row['bt_score']:>+7.4f}  {row['quality_tier']}"
         )
 
-    # 5. Save CSV (model specific)
     CSV_DIR = ROOT_DIR / "data" / "artifacts" / "csv"
     REPORTS_DIR = ROOT_DIR / "data" / "artifacts" / "reports"
     CSV_DIR.mkdir(parents=True, exist_ok=True)
@@ -344,7 +338,6 @@ def main() -> None:
         results.to_csv(default_csv_path, index=False)
         print(f"Saved: '{default_csv_path}' OK (backwards compatibility)")
 
-    # 6. Save Markdown report
     report_md = build_report(results, log_likelihood, total_decisions=len(df))
     md_path = REPORTS_DIR / "bradley_terry_report.md"
     md_path.write_text(report_md, encoding="utf-8")

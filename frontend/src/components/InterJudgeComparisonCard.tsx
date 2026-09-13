@@ -20,7 +20,6 @@ export const InterJudgeComparisonCard: React.FC = () => {
   });
   const [isOpenB, setIsOpenB] = useState<boolean>(false);
 
-  // Auto-switch Model B if global judgeModel changes to match Model B
   useEffect(() => {
     if (modelB === judgeModel) {
       const alternative = MODEL_OPTIONS.find((m) => m.value !== judgeModel);
