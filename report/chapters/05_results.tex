@@ -26,6 +26,13 @@ Among 799 physical AB/BA pairs, 759 were valid paired outcomes and 549 were deci
 
 Per-judge decisive flip rates were Claude 53.70\% (58/108), DeepSeek 10.98\% (19/173), GPT 2.70\% (3/111), and Llama 10.19\% (16/157). This is an empirical position-sensitivity observation within the experiment; it does not identify a causal internal mechanism or license a general statement about future model versions.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth]{figures/human-alignment-stability.pdf}
+\caption{Human alignment and stability measure complementary properties. Agreement is measured against human preference reference labels (RQ1), whereas RQ2 evaluates repeated decisions under a fixed condition and RQ3 evaluates decisive mapped-original reversals under answer-order inversion. High fixed-condition repeatability therefore does not imply strong alignment with the human reference.}
+\label{fig:human-alignment-stability}
+\end{figure}
+
 \section{Secondary controlled analyses: RQ4 and RQ5}
 
 RQ4 found zero stable redundant-text variant wins among 682 eligible pairs (0.00\%). RQ5 found zero stable presentation/list-prefix variant wins among 716 eligible pairs (0.00\%). Both results are clear for the specified frozen treatments and eligible denominators. They should not be turned into broad claims that longer answers, verbose answers, or all formatting changes do not influence language-model judges. The point of these experiments is to make the treatment sufficiently narrow that the inference is honest.
@@ -38,6 +45,13 @@ The counterbalanced source-family result is 81/159 = 50.94\% stable same-family 
 
 For primary DUAL\_SWAP, 799 of 800 linked triplets were physically complete and 597 were retained for the matched agreement comparison. Baseline agreement was 405/597 = 67.84\%; DUAL\_SWAP agreement was 409/597 = 68.51\%. The matched change was +0.67 percentage points with a 95\% CI of -0.17 to +1.68 points. Baseline coverage was 774/799 = 96.87\%, while DUAL\_SWAP coverage was 606/799 = 75.84\%, a -21.03 point change. The appropriate reading is a small, uncertain agreement change paired with a material coverage trade-off.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.94\textwidth]{figures/dual-swap-agreement-coverage-tradeoff.pdf}
+\caption{Primary DUAL\_SWAP agreement--coverage trade-off. Agreement is evaluated on the exact matched retained subset (597 units); coverage is evaluated across eligible linked triplets (799 units). The +0.67 percentage-point agreement change has an official 95\% CI from -0.17 to +1.68 points, which includes zero.}
+\label{fig:dual-swap-tradeoff}
+\end{figure}
+
 \section{Secondary/exploratory mitigation: RQ7 Multi-Judge}
 
 For secondary strict Multi-Judge Consensus, 1,125 of 1,611 planned pairs were retained (69.83\% coverage). Consensus agreement with human preference reference labels was 808/1,125 = 71.82\%, compared with 66.80\% for the equal-weight individual-judge comparator on the same retained pairs. The matched difference was +5.02 points (95\% CI +4.16 to +5.89). This supports the limited claim that, under this frozen strict four-judge consensus protocol and its own comparator, aggregation increased reference-label agreement on retained pairs. It does not establish superiority over DUAL\_SWAP because the units, comparator, and retained population differ.
@@ -46,7 +60,8 @@ For secondary strict Multi-Judge Consensus, 1,125 of 1,611 planned pairs were re
 \centering
 \caption{Main and supporting results with their frozen analytical denominators.}
 \label{tab:primary-results}
-\begin{tabularx}{\textwidth}{@{}p{0.10\textwidth}X r X@{}}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.16\textwidth}p{0.34\textwidth}p{0.10\textwidth}X@{}}
 \toprule
 RQ & Final result & N & Cautious interpretation\\
 \midrule
@@ -56,34 +71,8 @@ RQ3 & 17.49\% decisive mapped flips & 549 & answer order can change a decisive r
 RQ4 & 0.00\% redundant-variant wins & 682 & no stable win in this frozen treatment\\
 RQ5 & 0.00\% format-variant wins & 716 & no stable win in this frozen treatment\\
 RQ6 & 50.94\% same-family preference & 159 & no uniform aggregate preference; heterogeneous\\
-RQ7 DUAL\_SWAP & +0.67 pp agreement; -21.03 pp coverage & 597 & small uncertain gain; lower coverage\\
-RQ7 Multi-Judge & +5.02 pp agreement; 69.83\% coverage & 1,125 & secondary within-own-comparator effect\\
+\shortstack[l]{RQ7\\DUAL\_SWAP} & +0.67 pp agreement; -21.03 pp coverage & 597 & small uncertain gain; lower coverage\\
+\shortstack[l]{RQ7\\Multi-Judge} & +5.02 pp agreement; 69.83\% coverage & 1,125 & secondary within-own-comparator effect\\
 \bottomrule
 \end{tabularx}
 \end{table}
-
-\begin{figure}[H]
-\centering
-% Keep category rows at a readable physical distance.  The prior y-scale
-% compressed five rows into less than 3 mm, causing labels and values to overlap.
-\begin{tikzpicture}[x=1cm,y=0.72cm,font=\small]
-\draw[->] (0,0)--(10,0) node[right]{percentage};
-\foreach \x/\lab in {0/0,2/20,4/40,6/60,8/80,10/100} \draw (\x,0.1)--(\x,-0.1) node[below]{\lab};
-\foreach \y/\lab/\val in {1/RQ1 agreement/59.20,2/RQ2 consistency/96.53,3/RQ3 decisive flips/17.49,4/RQ6 same-family/50.94,5/Multi-Judge agreement/71.82} {\node[left] at (0,\y) {\lab}; \fill[blue!60] (0,\y-0.22) rectangle (\val/10,\y+0.22); \node[right] at (\val/10+0.1,\y) {\val\%};}
-\end{tikzpicture}
-\caption{Selected final percentages. Metrics measure different estimands and are not a common score or ranking.}
-\label{fig:selected-results}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[x=0.095cm,y=1cm,font=\small]
-\draw[->] (0,0)--(100,0) node[right]{coverage (\%)};
-\foreach \x in {0,20,40,60,80,100} \draw (\x,0.08)--(\x,-0.08) node[below]{\x};
-\node[left] at (0,1) {DUAL\_SWAP baseline}; \fill[green!55!black] (0,0.78) rectangle (96.87,1.22); \node[right] at (97.5,1) {96.87\%};
-\node[left] at (0,2) {DUAL\_SWAP retained}; \fill[orange!80] (0,1.78) rectangle (75.84,2.22); \node[right] at (76.5,2) {75.84\%};
-\node[left] at (0,3) {Multi-Judge retained}; \fill[blue!60] (0,2.78) rectangle (69.83,3.22); \node[right] at (70.5,3) {69.83\%};
-\end{tikzpicture}
-\caption{Coverage is part of the RQ7 mitigation result. The methods use different retained populations and comparators.}
-\label{fig:coverage}
-\end{figure}

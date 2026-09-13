@@ -1,0 +1,3 @@
+# Generated thesis artifacts are binary PDF streams, not text for whitespace checks.
+report/LLM_as_a_Judge_Reliability_Lab_Master_Report.pdf binary
+report/figures/*.pdf binary

@@ -142,5 +142,3 @@ export const mitigationRoleLabel = (entry: MitigationPresentation): string =>
 export const DETAILED_RQ_ORDER: readonly InternalRqId[] = RESEARCH_QUESTION_PRESENTATION
   .toSorted((left, right) => left.displayOrder - right.displayOrder)
   .map((entry) => entry.internalRqId);
-
-export const presentationForRq = (rq: string): ResearchQuestionPresentation | undefined => RESEARCH_QUESTION_BY_ID[rq as InternalRqId];
