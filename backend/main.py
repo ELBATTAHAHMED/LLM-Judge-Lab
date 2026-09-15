@@ -13,7 +13,7 @@ from scipy.stats import chisquare
 from sklearn.metrics import cohen_kappa_score
 import uuid
 import json
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from sqlalchemy import text
@@ -107,6 +107,33 @@ def _require_live_sandbox_enabled() -> None:
     """Disabled-by-default boundary before any manual provider transport."""
     if not _live_sandbox_provider_calls_enabled():
         raise HTTPException(status_code=403, detail="Live sandbox provider calls are disabled before provider transport.")
+
+
+# ── Live Lab Rate Limiter ─────────────────────────────────────────────────────
+# Minimal in-memory cooldown to prevent accidental repeated clicks or abusive
+# calls in the deployed demo.  Not a DDoS solution — just cost protection for a
+# two-user PFE demo.  Stateless across Render restarts (acceptable).
+
+import time as _time
+
+_LIVE_RATE_LIMIT_SECONDS = float(os.getenv("JUDGELAB_RATE_LIMIT_SECONDS", "10"))
+_live_last_call: dict[str, float] = {}
+
+MAX_ENSEMBLE_MODELS = 5
+
+
+def _rate_limit_live(request: Request) -> None:
+    """Enforce a per-IP cooldown on Live Lab provider-calling endpoints."""
+    client_ip = request.client.host if request.client else "unknown"
+    now = _time.monotonic()
+    last = _live_last_call.get(client_ip, 0.0)
+    if now - last < _LIVE_RATE_LIMIT_SECONDS:
+        remaining = _LIVE_RATE_LIMIT_SECONDS - (now - last)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: please wait {remaining:.0f}s before the next evaluation.",
+        )
+    _live_last_call[client_ip] = now
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1252,7 +1279,7 @@ def _insert_decision_safe(db: Session, prompt_id: int, judge_model_name: str, a_
 
 
 @app.post("/api/evaluate", response_model=EvaluateResponse)
-def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict:
+def evaluate_judge(req: EvaluateRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled), __: None = Depends(_rate_limit_live)) -> dict:
     """
     Perform one manually triggered Live Sandbox G-EVAL trial.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
@@ -1319,7 +1346,7 @@ class CalibratedEvaluationRequest(BaseModel):
 
 
 @app.post("/api/evaluate/calibrated", response_model=CalibratedEvaluationResponse)
-def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
+def evaluate_calibrated(req: CalibratedEvaluationRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled), __: None = Depends(_rate_limit_live)) -> dict[str, Any]:
     """
     Execute one manual sandbox trial using its selected presentation or prompt adjustment.
     Enforces a strict Zero-Mock policy. Internal failures are logged server-side
@@ -1406,7 +1433,7 @@ class MultiJudgeEnsembleResponse(BaseModel):
 
 
 @app.post("/api/evaluate/ensemble", response_model=MultiJudgeEnsembleResponse)
-def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled)) -> dict[str, Any]:
+def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_db), _: None = Depends(_require_live_sandbox_enabled), __: None = Depends(_rate_limit_live)) -> dict[str, Any]:
     """
     Execute one manual sandbox ensemble trial across selected judge models.
     Its operational records are retained for inspection, but are excluded from
@@ -1415,6 +1442,8 @@ def evaluate_ensemble(req: MultiJudgeEnsembleRequest, db: Session = Depends(get_
     _require_live_text_inputs(req.question, req.answer_a, req.answer_b)
     if not req.judge_models or len(req.judge_models) == 0:
         raise HTTPException(status_code=400, detail="At least one judge model must be provided in 'judge_models'.")
+    if len(req.judge_models) > MAX_ENSEMBLE_MODELS:
+        raise HTTPException(status_code=400, detail=f"Ensemble is limited to {MAX_ENSEMBLE_MODELS} judge models per request.")
 
     # Validate API keys for cloud/openrouter models
     for m in req.judge_models:
