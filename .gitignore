@@ -64,3 +64,6 @@ data/artifacts/
 /archive/development_history/data_artifacts/
 /archive/exploratory_outputs/
 
+# 8. Local-only thesis/report workspace
+report/
+
