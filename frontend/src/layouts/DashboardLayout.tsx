@@ -147,7 +147,7 @@ export const DashboardLayout: React.FC = () => {
       {/* Fixed Left Sidebar - Collapsible Vercel v0 Style */}
       <aside
         className={`${
-          isCollapsed ? 'w-16' : 'w-64'
+          isCollapsed ? 'w-16' : 'w-[260px]'
         } bg-neutral-50 dark:bg-[#0a0a0a] border-r border-neutral-200 dark:border-neutral-800 hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 z-40 select-none transition-all duration-200 ease-in-out`}
       >
         {/* Top Header & Nav Section */}
