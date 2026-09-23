@@ -148,10 +148,12 @@ export const DashboardLayout: React.FC = () => {
       <aside
         className={`${
           isCollapsed ? 'w-16' : 'w-[260px]'
-        } bg-neutral-50 dark:bg-[#0a0a0a] border-r border-neutral-200 dark:border-neutral-800 hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 z-40 select-none transition-all duration-200 ease-in-out`}
+        } bg-neutral-50 dark:bg-[#0a0a0a] border-r border-neutral-200 dark:border-neutral-800 hidden lg:flex flex-col self-stretch min-h-screen shrink-0 z-40 select-none transition-all duration-200 ease-in-out`}
       >
-        {/* Top Header & Nav Section */}
-        <div className="px-4 pb-4 pt-9 space-y-10">
+        {/* Keep the background page-height while the sidebar content stays viewport-sticky. */}
+        <div className="sticky top-0 flex h-screen flex-col justify-between">
+          {/* Top Header & Nav Section */}
+          <div className="px-4 pb-4 pt-9 space-y-10">
           {/* Top Branding Header & Controls */}
           <div className="flex items-center justify-between px-1.5 py-1 rounded-md text-neutral-800 dark:text-neutral-200">
             {!isCollapsed ? (
@@ -256,10 +258,10 @@ export const DashboardLayout: React.FC = () => {
               );
             })}
           </nav>
-        </div>
+          </div>
 
-        {/* Bottom User Profile Section */}
-        <div className="p-3 border-t border-neutral-200 dark:border-neutral-800">
+          {/* Bottom User Profile Section */}
+          <div className="p-3 border-t border-neutral-200 dark:border-neutral-800">
           {!isCollapsed ? (
             <div className="flex items-center space-x-2.5 px-1 py-0.5">
               <div className="w-6.5 h-6.5 rounded-full bg-neutral-200 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -287,6 +289,7 @@ export const DashboardLayout: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
         </div>
       </aside>
 
